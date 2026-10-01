@@ -26,6 +26,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var GI = obj(typeof GROUP_INTROS === 'undefined' ? null : GROUP_INTROS) || {};
     var FLOWS = arr(typeof FLOW_SVGS === 'undefined' ? [] : FLOW_SVGS);
     var CHECKED = typeof SOURCE_CHECKED === 'undefined' ? '' : SOURCE_CHECKED;
+    var LESSONSARR = arr(typeof LESSONS === 'undefined' ? [] : LESSONS);
 
     var FLOW_BY_ID = {};
     FLOWS.forEach(function (f) { if (f && f.id) FLOW_BY_ID[f.id] = f; });
@@ -34,7 +35,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var Q_BY_ID = {};
     QS.forEach(function (q) { if (q && q.id) Q_BY_ID[q.id] = q; });
 
-    var VIEWS = ['intro', 'questions', 'flashcard', 'quiz', 'mock', 'plan', 'case', 'sources'];
+    var VIEWS = ['learn', 'intro', 'questions', 'flashcard', 'quiz', 'mock', 'plan', 'case', 'sources'];
     var PR = { P0: 0, P1: 1, P2: 2 };
     var STATUSES = [
       { v: 'new', t: 'Chưa học' },
@@ -667,6 +668,82 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
           '<tbody>' + rows + '</tbody></table>');
     };
 
+    // ---- learning path (lessons) ----
+    var lessonCard = function (l) {
+      l = obj(l) || {};
+      var say = arr(l.sayIt).map(function (s) { return '<li>' + esc(str(s)) + '</li>'; }).join('');
+      var qbtns = arr(l.qids).map(function (id) {
+        var q = obj(Q_BY_ID[str(id)]);
+        return '<button type="button" class="btn" data-qid="' + esc(str(id)) + '">' + esc(str(id)) +
+          (q ? ' · ' + esc(str(q.topic)) : '') + '</button>';
+      }).join(' ');
+      var refs = arr(l.refs).map(str).join(' · ');
+      return '<article class="lesson" id="lesson-' + esc(str(l.id)) + '" data-lesson="' + esc(str(l.id)) + '">' +
+        '<h4 class="lesson-h">' + esc(str(l.title)) + '</h4>' +
+        '<p class="lesson-goal">' + esc(str(l.goal)) + '</p>' +
+        '<div class="deep">' + sanitize(l.body) + '</div>' +
+        when(l.code, '<pre><code>' + esc(str(l.code)) + '</code></pre>') +
+        when(l.codeNote, '<p class="small">' + esc(str(l.codeNote)) + '</p>') +
+        flowFigure(l.flow) +
+        when(say, '<div class="sayit"><div class="sc-h">Bạn phải nói được</div><ul class="tight">' + say + '</ul></div>') +
+        when(qbtns, '<p class="lesson-qids">Luyện ngay: ' + qbtns + '</p>') +
+        when(refs, '<span class="status-note">Nguồn: ' + esc(refs) + '</span>') +
+        '</article>';
+    };
+
+    var renderLearn = function () {
+      var body = $('learn-body');
+      if (!body) return;
+      if (!LESSONSARR.length) {
+        body.innerHTML = '<p class="stat-line">Chưa có bài học.</p>';
+        return;
+      }
+      var byStage = {};
+      LESSONSARR.forEach(function (raw) {
+        var l = obj(raw) || {};
+        var n = Number(l.stage) || 0;
+        if (!byStage[n]) byStage[n] = { n: n, title: str(l.stageTitle), intro: str(l.stageIntro), items: [] };
+        byStage[n].items.push(l);
+      });
+      var order = Object.keys(byStage).map(Number).sort(function (a, b) { return a - b; });
+      body.innerHTML = order.map(function (n) {
+        var st = byStage[n];
+        // lesson data may already open the title with "Chặng N — "; number shows once
+        var title = st.title.replace(/^\s*Chặng\s*\d+\s*[—–:.\-]?\s*/i, '');
+        return '<h3 class="sub learn-stage">Chặng ' + esc(st.n + '. ' + title) + '</h3>' +
+          when(st.intro, '<div class="deep">' + sanitize(st.intro) + '</div>') +
+          st.items.map(lessonCard).join('');
+      }).join('');
+    };
+
+    var jumpToQuestion = function (id) {
+      showView('questions');
+      var box = $('search');
+      if (box) box.value = id;
+      renderQuestions();
+      var card = doc.querySelector('#q-list .card[data-id="' + id + '"]');
+      if (!card) {
+        // hidden by an active filter — drop the search term once, then look again
+        if (!box) return;
+        box.value = '';
+        renderQuestions();
+        card = doc.querySelector('#q-list .card[data-id="' + id + '"]');
+        if (!card) return;
+      }
+      card.scrollIntoView({ block: 'start' });
+      card.classList.add('flash-hi');
+      setTimeout(function () { card.classList.remove('flash-hi'); }, 1600);
+    };
+
+    var wireLearn = function () {
+      on($('learn-body'), 'click', function (ev) {
+        var t = ev.target;
+        if (!t || !t.closest) return;
+        var btn = t.closest('[data-qid]');
+        if (btn) jumpToQuestion(btn.getAttribute('data-qid'));
+      });
+    };
+
     // ---- theme, sidebar, print ----
     var applyTheme = function (t) {
       doc.documentElement.setAttribute('data-theme', t);
@@ -713,6 +790,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var renderCounts = function () {
       var counts = {
         intro: QS.filter(function (q) { return q && q.prio === 'P0'; }).length,
+        learn: LESSONSARR.length,
         questions: QS.length,
         flashcard: DECK.length,
         quiz: QUIZSET.length,
@@ -741,7 +819,9 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       wireFlash();
       wireQuiz();
       wireMock();
+      wireLearn();
       renderCounts();
+      renderLearn();
       renderIntro();
       renderPlans();
       renderCase();
@@ -750,7 +830,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       renderProgress();
       renderFlash(0);
       renderQuiz();
-      showView(str(window.location && window.location.hash).replace(/^#/, '') || 'questions');
+      showView(str(window.location && window.location.hash).replace(/^#/, '') || 'learn');
     };
 
     init();

@@ -14,6 +14,7 @@
       <nav aria-label="Các chế độ học">
         <h2 id="nav-list-heading">Chế độ</h2>
         <ul class="navlist" id="nav-list" aria-labelledby="nav-list-heading">
+          <li><button type="button" data-view="learn" aria-current="false">Lộ trình học <span class="n" data-count-for="learn"></span></button></li>
           <li><button type="button" data-view="intro" aria-current="false">Bắt đầu &amp; lộ trình <span class="n" data-count-for="intro"></span></button></li>
           <li><button type="button" data-view="questions" aria-current="true">Câu hỏi &amp; đáp án <span class="n" data-count-for="questions"></span></button></li>
           <li><button type="button" data-view="flashcard" aria-current="false">Flashcard <span class="n" data-count-for="flashcard"></span></button></li>
@@ -105,6 +106,12 @@
   </aside>
 
   <main class="main" id="main" tabindex="-1">
+
+    <section class="view" id="view-learn" aria-labelledby="learn-h">
+      <h2 class="page-title" id="learn-h">Lộ trình học liền mạch</h2>
+      <p class="page-lede">Đọc theo thứ tự: AWS nền tảng → Python/FastAPI gắn AWS → VueJS → cách hai mảng gọi nhau. Mỗi bài có mục tiêu, giải thích cơ chế, ví dụ và câu hỏi liên quan để luyện ngay.</p>
+      <div id="learn-body"></div>
+    </section>
 
     <section class="view" id="view-intro" aria-labelledby="intro-h">
       <h2 class="page-title" id="intro-h">Bắt đầu: cách dùng tài liệu này</h2>

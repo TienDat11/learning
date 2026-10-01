@@ -89,7 +89,7 @@ const store = () => {
 };
 
 const EXPORTS = ['QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'CASE_STUDY', 'SOURCES',
-  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LOGIC'];
+  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LOGIC', 'LESSONS'];
 let data;
 try {
   const loader = new Function(
@@ -110,7 +110,7 @@ try {
 }
 
 const { QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, CASE_STUDY, SOURCES, GROUP_INTROS,
-  SOURCE_CHECKED, FLOW_SVGS, LOGIC } = data;
+  SOURCE_CHECKED, FLOW_SVGS, LOGIC, LESSONS } = data;
 
 // ---- 3. content validation ---------------------------------------------
 const errors = [];
@@ -267,6 +267,24 @@ for (const f of FLOW_SVGS || []) {
   if (!t(f.caption) || f.caption.length < 30) err(`flow ${f.id}: caption missing or <30 chars`);
 }
 
+const LESSON_IDS = new Set();
+for (const l of LESSONS || []) {
+  if (!t(l.id)) { err('lesson missing id'); continue; }
+  if (LESSON_IDS.has(l.id)) err(`duplicate lesson id ${l.id}`);
+  LESSON_IDS.add(l.id);
+  if (!t(l.title)) err(`${l.id}: missing title`);
+  if (!t(l.goal)) err(`${l.id}: missing goal`);
+  if (!t(l.body) || l.body.length < 600) err(`${l.id}: body missing or <600 chars (${(l.body||'').length})`);
+  if (t(l.body) && /<script|<img|onerror=|onload=/i.test(l.body)) err(`${l.id}: body contains script/img/event-handler`);
+  if (!Number.isInteger(l.stage) || l.stage < 1) err(`${l.id}: bad stage`);
+  if (!Array.isArray(l.sayIt) || l.sayIt.length < 3) err(`${l.id}: needs >=3 sayIt lines`);
+  if (!Array.isArray(l.qids) || !l.qids.length) err(`${l.id}: needs qids`);
+  else for (const q of l.qids) if (!byId.has(q)) err(`${l.id}: unknown question id "${q}"`);
+  if (!Array.isArray(l.refs) || !l.refs.length) err(`${l.id}: needs refs`);
+  else for (const r of l.refs) if (!srcKeys.has(r)) err(`${l.id}: unknown source ref "${r}"`);
+  if (l.flow && !FLOW_SVGS.some((f) => f.id === l.flow)) err(`${l.id}: unknown flow "${l.flow}"`);
+}
+
 // ---- 4. self-containment ------------------------------------------------
 const URL_RE = /https?:\/\/(?!www\.w3\.org)[^\s"'<>)]+/g;
 const FORBIDDEN = [
@@ -361,6 +379,7 @@ const metrics = {
   plans: Object.keys(STUDY_PLANS || {}).length,
   case_sections: ((CASE_STUDY || {}).sections || []).length,
   flow_svgs: (FLOW_SVGS || []).length,
+  lessons: (LESSONS || []).length,
   sources: (SOURCES || []).length,
   sources_groups: new Set((SOURCES || []).map((s) => s.group)).size,
   ui_ids_required: REQUIRED_UI_IDS.length,

@@ -264,6 +264,23 @@ th { background: var(--bg-sunken); font-weight: 600; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
+/* ---------- learning path ---------- */
+.learn-stage { margin-top: 26px; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+.learn-stage:first-child { margin-top: 4px; }
+.lesson {
+  background: var(--bg-soft); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.lesson-h { font-size: 15px; margin: 0 0 6px; }
+.lesson-goal { margin: 0 0 10px; padding-left: 10px; border-left: 3px solid var(--accent); color: var(--fg-soft); }
+.sayit { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-top: 10px; }
+.sayit .sc-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); padding: 6px 10px; background: var(--bg-sunken); font-weight: 700; }
+.sayit ul { margin: 0; padding: 8px 10px 8px 32px; }
+.sayit li { margin-bottom: 3px; font-size: 13.5px; }
+.lesson-qids { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 0; }
+.lesson-qids .btn { font-size: 12px; padding: 4px 9px; }
+.flash-hi { outline: 3px solid var(--accent); outline-offset: 2px; background: var(--accent-soft); }
+
 /* ---------- print ---------- */
 @media print {
   .side, .mobile-bar, .filterbar, .mark-btns, .qfoot, .btn, .progress-box { display: none !important; }
