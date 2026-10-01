@@ -1,0 +1,203 @@
+<a class="skip-link" href="#main">Bỏ qua điều hướng, tới nội dung chính</a>
+
+<div class="wrap">
+  <aside class="side" aria-label="Điều hướng và bộ lọc">
+    <div class="mobile-bar">
+      <button class="btn" id="side-toggle" aria-expanded="false" aria-controls="side-body">☰ Bộ lọc &amp; mục lục</button>
+    </div>
+    <div class="side-body" id="side-body">
+      <div class="brand">
+        <h1>Ôn phỏng vấn Fullstack</h1>
+      </div>
+      <p class="subtitle">AWS · Python · VueJS — chuẩn bị 2–3 ngày</p>
+
+      <nav aria-label="Các chế độ học">
+        <h2 id="nav-list-heading">Chế độ</h2>
+        <ul class="navlist" id="nav-list" aria-labelledby="nav-list-heading">
+          <li><button type="button" data-view="intro" aria-current="false">Bắt đầu &amp; lộ trình <span class="n" data-count-for="intro"></span></button></li>
+          <li><button type="button" data-view="questions" aria-current="true">Câu hỏi &amp; đáp án <span class="n" data-count-for="questions"></span></button></li>
+          <li><button type="button" data-view="flashcard" aria-current="false">Flashcard <span class="n" data-count-for="flashcard"></span></button></li>
+          <li><button type="button" data-view="quiz" aria-current="false">Quiz <span class="n" data-count-for="quiz"></span></button></li>
+          <li><button type="button" data-view="mock" aria-current="false">Mock interview <span class="n" data-count-for="mock"></span></button></li>
+          <li><button type="button" data-view="plan" aria-current="false">Lịch ôn <span class="n" data-count-for="plan"></span></button></li>
+          <li><button type="button" data-view="case" aria-current="false">Case study xuyên suốt <span class="n" data-count-for="case"></span></button></li>
+          <li><button type="button" data-view="sources" aria-current="false">Nguồn tham khảo <span class="n" data-count-for="sources"></span></button></li>
+        </ul>
+      </nav>
+
+      <form id="filter-form" role="search" aria-label="Tìm kiếm và lọc câu hỏi">
+        <div class="field">
+          <label for="search">Tìm kiếm (không phân biệt dấu)</label>
+          <input type="search" id="search" name="search" placeholder="vd: mutable default, event loop, presigned" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="f-prio">Ưu tiên</label>
+          <select id="f-prio" name="prio">
+            <option value="">Tất cả (P0 + P1 + P2)</option>
+            <option value="P0">P0 — phải ôn trước</option>
+            <option value="P1">P1 — hoàn thành trong 2–3 ngày</option>
+            <option value="P2">P2 — bổ sung nếu còn thời gian</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-level">Độ sâu</label>
+          <select id="f-level" name="level">
+            <option value="">Tất cả</option>
+            <option value="L1">L1 — định nghĩa</option>
+            <option value="L2">L2 — cơ chế, ví dụ</option>
+            <option value="L3">L3 — edge case, failure mode</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-group">Nhóm kiến thức</label>
+          <select id="f-group" name="group">
+            <option value="">Tất cả nhóm A–J</option>
+            <option value="A">A — Python nền tảng</option>
+            <option value="B">B — JavaScript / TypeScript</option>
+            <option value="C">C — Vue 3</option>
+            <option value="D">D — Web / HTTP / API</option>
+            <option value="E">E — FastAPI &amp; Django/DRF</option>
+            <option value="F">F — SQL / PostgreSQL</option>
+            <option value="G">G — AWS</option>
+            <option value="H">H — Docker, CI/CD, Linux, vận hành</option>
+            <option value="I">I — DSA &amp; thiết kế phần mềm</option>
+            <option value="J">J — Dự án &amp; giao tiếp phỏng vấn</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-status">Trạng thái học</label>
+          <select id="f-status" name="status">
+            <option value="">Tất cả trạng thái</option>
+            <option value="new">Chưa học</option>
+            <option value="learning">Đang ôn</option>
+            <option value="known">Đã nắm</option>
+            <option value="weak">Cần ôn lại</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="weak-only" style="display:inline">
+            <input type="checkbox" id="weak-only" name="weakOnly" style="width:auto; margin-right:6px">
+            Chỉ hiện câu đánh dấu yếu
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn" id="only-p0" aria-pressed="false">Chỉ P0</button>
+          <button type="button" class="btn" id="clear-filters">Xoá lọc</button>
+        </div>
+      </form>
+
+      <h2 id="progress-text-heading">Tiến độ</h2>
+      <div class="progress-box">
+        <p class="small" id="progress-text" aria-live="polite">Chưa có tiến độ</p>
+        <div class="bar bar-ok" id="progress-bar" role="progressbar" aria-labelledby="progress-text-heading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <i></i>
+        </div>
+      </div>
+
+      <h2>Tài liệu</h2>
+      <div class="btn-row">
+        <button type="button" class="btn" id="theme-btn" aria-pressed="false">🌙 Chế độ tối</button>
+        <button type="button" class="btn" id="print-btn">🖨 In tài liệu</button>
+        <button type="button" class="btn btn-danger" id="reset-btn">Xoá tiến độ</button>
+      </div>
+      <p class="small" id="storage-note">Tiến độ lưu trong localStorage của trình duyệt. Nếu trình duyệt chặn lưu trữ, tài liệu vẫn dùng được trong phiên hiện tại.</p>
+    </div>
+  </aside>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="view" id="view-intro" aria-labelledby="intro-h">
+      <h2 class="page-title" id="intro-h">Bắt đầu: cách dùng tài liệu này</h2>
+      <div id="intro-body"></div>
+    </section>
+
+    <section class="view" id="view-questions" aria-labelledby="q-h">
+      <h2 class="page-title" id="q-h">Câu hỏi &amp; đáp án</h2>
+      <p class="page-lede">Mỗi câu có trả lời miệng 30–60 giây, giải thích sâu, ví dụ, câu hỏi đào sâu kèm gợi ý đáp án, hiểu nhầm thường gặp và tiêu chí tự đánh giá.</p>
+      <div class="filterbar">
+        <span class="stat-line" id="stat-line" role="status" aria-live="polite"></span>
+      </div>
+      <p class="stat-line" id="q-count"></p>
+      <div id="q-list"></div>
+      <p class="empty" id="q-empty" hidden>Không có câu hỏi nào khớp bộ lọc. Bỏ bớt điều kiện lọc hoặc xoá từ khoá tìm kiếm.</p>
+    </section>
+
+    <section class="view" id="view-flashcard" aria-labelledby="fc-h">
+      <h2 class="page-title" id="fc-h">Flashcard</h2>
+      <p class="page-lede">Đọc câu hỏi, trả lời miệng, rồi mới bật đáp án. Tự chấm: <em>biết</em> hoặc <em>yếu</em> — trạng thái lưu vào tiến độ.</p>
+      <div class="fc-stage">
+        <div class="fc-card">
+          <div class="fc-meta" id="fc-progress"></div>
+          <p class="fc-front" id="fc-front"></p>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="fc-reveal" aria-expanded="false" aria-controls="fc-back">Hiện đáp án</button>
+            <span class="small" id="fc-count"></span>
+          </div>
+          <div class="fc-back" id="fc-back" hidden></div>
+          <div class="btn-row" style="margin-top:14px">
+            <button type="button" class="btn" id="fc-prev">← Câu trước</button>
+            <button type="button" class="btn btn-primary" id="fc-next">Câu sau →</button>
+            <button type="button" class="btn" id="fc-know" aria-pressed="false">Đã nắm</button>
+            <button type="button" class="btn" id="fc-weak" aria-pressed="false">Cần ôn lại</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-quiz" aria-labelledby="qz-h">
+      <h2 class="page-title" id="qz-h">Quiz tự kiểm</h2>
+      <p class="page-lede">Trộn câu hỏi tình huống và câu hỏi kiến thức. Chọn đáp án rồi mới bấm chấm để xem giải thích.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="quiz-submit">Chấm điểm</button>
+        <button type="button" class="btn" id="quiz-reset">Làm lại</button>
+        <span class="stat-line" id="quiz-count" role="status" aria-live="polite"></span>
+      </div>
+      <div id="quiz-result" role="status" aria-live="polite"></div>
+      <div id="quiz-list"></div>
+    </section>
+
+    <section class="view" id="view-mock" aria-labelledby="mk-h">
+      <h2 class="page-title" id="mk-h">Mock interview theo chủ đề</h2>
+      <p class="page-lede">Chọn nhóm chủ đề và thời lượng. Trả lời to nhỏ theo thời gian, đúng kiểu phỏng vấn thật, rồi xem gợi ý đáp án.</p>
+      <div class="card">
+        <div class="field">
+          <label for="mock-topic">Chủ đề</label>
+          <select id="mock-topic"></select>
+        </div>
+        <div class="field">
+          <label for="mock-minutes">Thời lượng (phút)</label>
+          <input type="number" id="mock-minutes" value="20" min="1" max="120" step="1">
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="mock-start">Bắt đầu phiên</button>
+          <button type="button" class="btn" id="mock-next" disabled>Câu tiếp theo →</button>
+        </div>
+        <p class="small" id="mock-result" role="status" aria-live="polite"></p>
+      </div>
+      <div class="mock-stage" id="mock-panel" hidden>
+        <p class="timer" id="mock-timer" role="timer" aria-live="off">—</p>
+        <p class="qtext" id="mock-question"></p>
+        <div id="mock-answer"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-plan" aria-labelledby="pl-h">
+      <h2 class="page-title" id="pl-h">Lịch ôn</h2>
+      <p class="page-lede">Ba kịch bản: khẩn cấp trong 6 giờ, 2 ngày, 3 ngày. Mỗi khối ghi rõ phải đạt được gì khi kết thúc.</p>
+      <div id="plan-body"></div>
+    </section>
+
+    <section class="view" id="view-case" aria-labelledby="cs-h">
+      <h2 class="page-title" id="cs-h">Case study xuyên suốt</h2>
+      <p class="page-lede">Ứng dụng quản lý tài liệu: Vue 3 · Python API · PostgreSQL · S3 · SQS worker · Docker/CI-CD. Đi hết happy path rồi đi hết từng failure mode.</p>
+      <div id="case-body"></div>
+    </section>
+
+    <section class="view" id="view-sources" aria-labelledby="sr-h">
+      <h2 class="page-title" id="sr-h">Nguồn tham khảo</h2>
+      <p class="page-lede">Chỉ dẫn tài liệu chính thức. Ngày kiểm tra ghi kèm từng mục. Bài blog và diễn đàn không được dùng làm nguồn chính ở đây.</p>
+      <div id="sources-body"></div>
+    </section>
+
+  </main>
+</div>
