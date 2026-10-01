@@ -43,7 +43,7 @@ const mem = () => {
 const fails = [];
 let checkCount = 0;
 let crashed = false;
-let LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS;
+let LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES;
 
 const check = (name, cond, detail = '') => {
   checkCount++;
@@ -86,7 +86,7 @@ const finish = (fatal) => {
 try {
   let data;
   try {
-    const EXPORTS = ['LOGIC', 'QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'FLOW_SVGS'];
+    const EXPORTS = ['LOGIC', 'QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'FLOW_SVGS', 'LESSONS', 'SOURCES'];
     // Same `typeof` guards build.mjs uses: a bundle that has not shipped LOGIC yet must
     // still load, so the missing export is a check failure rather than a fatal error.
     data = new Function('document', 'window', 'localStorage', 'navigator', 'console', '__BUILD_CHECK__', APP + `
@@ -99,7 +99,7 @@ try {
     fails.push('app.js failed to load: ' + (e && e.message ? e.message : String(e)));
     finish(true);
   }
-  ({ LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS } = data || {});
+  ({ LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES } = data || {});
 
 // ---- LOGIC must exist and be callable ----------------------------------
 const need = ['normalize', 'stripTags', 'esc', 'haystack', 'matchQuery', 'filterQuestions', 'quizScore', 'resolvePick'];
@@ -214,6 +214,25 @@ try {
   check('>=50 code examples', codeExamples >= 50, `got ${codeExamples}`);
   check('all 10 groups present',
     ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].every((g) => Q.some((q) => q && q.group === g)));
+
+  // ---- LESSONS must exist and every cross-reference must resolve --------
+  const LL = arr(LESSONS);
+  const qidSet = new Set(Q.filter((q) => q && q.id).map((q) => q.id));
+  const srcKeySet = new Set(arr(SOURCES).filter((s) => s && s.key).map((s) => s.key));
+  const flowIdSet = new Set(FS.filter((f) => f && f.id).map((f) => f.id));
+
+  check('lessons_complete', Array.isArray(LESSONS) && LL.length >= 22, `got ${LL.length}`);
+  check('lesson_ids_unique',
+    LL.every((l) => l && l.id) && new Set(LL.map((l) => l.id)).size === LL.length);
+  check('lesson_qids_resolve',
+    LL.every((l) => l && arr(l.qids).every((qid) => qidSet.has(qid))),
+    LL.flatMap((l) => (l ? arr(l.qids).filter((qid) => !qidSet.has(qid)).map((qid) => `${l.id}:${qid}`) : [])).join(', '));
+  check('lesson_refs_resolve',
+    LL.every((l) => l && arr(l.refs).every((r) => srcKeySet.has(r))),
+    LL.flatMap((l) => (l ? arr(l.refs).filter((r) => !srcKeySet.has(r)).map((r) => `${l.id}:${r}`) : [])).join(', '));
+  check('lesson_flows_resolve',
+    LL.every((l) => l && (!l.flow || flowIdSet.has(l.flow))),
+    LL.filter((l) => l && l.flow && !flowIdSet.has(l.flow)).map((l) => `${l.id}:${l.flow}`).join(', '));
 } catch (e) {
   fails.push('data invariants crashed: ' + (e && e.message ? e.message : String(e)));
 }
