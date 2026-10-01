@@ -103,3 +103,4 @@ CASE_STUDY.sections = [
       '<p><strong>Cách sửa chi tiết.</strong> Bảng outbox cần index theo trạng thái và thời điểm tạo để việc đọc theo lô không quét toàn bảng, một cột khoá để hai tiến trình không cùng gửi một dòng, và một job dọn xoá dòng đã gửi sau vài ngày để bảng không phình vô hạn. Ta cũng hạn số lần gửi lại và cảnh báo nếu một dòng già quá 5 phút vẫn chưa đi được, vì đó thường là dấu hiệu SQS hoặc khoá quyền đang hỏng.</p>' +
       '<p><strong>Tradeoff.</strong> Outbox thêm một bảng, một tiến trình và một khoảng độ trễ nhỏ. Đổi lại toàn bộ sự không nhất quán giữa cơ sở dữ liệu và hàng đợi biến mất, và việc tái chế tạo cơ sở dữ liệu từ bản sao lưu không còn để lọt message. Với hệ thống không cần mức tin cậy đó, chẳng hạn một hàng đợi báo cáo có thể mất vài bản ghi, gửi thẳng SQS rồi chấp nhận rủi ro là hợp lý hơn và ít vận hành hơn.</p>'
   }
+];
