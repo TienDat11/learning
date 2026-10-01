@@ -158,7 +158,7 @@ for (const q of QUESTIONS || []) {
     err(`${q.id}: type=${q.type} requires 'expected' outcome text`);
   }
   if (q.code != null && typeof q.code !== 'string') err(`${q.id}: code must be a string or null`);
-  if (q.code && /<[a-z]/i.test(q.code)) err(`${q.id}: code must be raw text, not HTML-escaped markup`);
+  if (q.code && /&(lt|gt|amp|quot|#39);/i.test(q.code)) err(`${q.id}: code must be raw text, not HTML-escaped (found entity)`);
   if (q.refs != null && !Array.isArray(q.refs)) err(`${q.id}: refs must be an array`);
 }
 

@@ -161,3 +161,22 @@ ops:        dockerfile-ref, docker-multi-stage, docker-compose, docker-security,
    Run this on YOUR file only. Do not run the project build or another agent's file.
 3. Object count matches the assignment exactly.
 4. No placeholder, no TODO, no empty fields, no "trả lời mẫu".
+
+## src/ file map (pinned — the build special-cases `00-meta.js`)
+
+Bundle = every `src/*.js` concatenated in filename order. Only `00-meta.js` may contain
+http(s) URL literals; every other src file must be URL-free (no fetch/XHR/WebSocket —
+the build rejects them).
+
+| file | owner | must define |
+|---|---|---|
+| `00-bootstrap.js` | harness | empty containers; never remove |
+| `00-meta.js` | meta agent | `SOURCES`, `SOURCE_CHECKED`, `GROUP_INTROS` |
+| `05-logic.js` | app agent | `LOGIC` — names/semantics pinned by `tests/smoke.cjs` |
+| `10-q-a.js` … `19-q-j.js` | one per group | that group's questions (ids `A01`…, `B01`…, …) |
+| `20-quiz.js` | quiz agent | `QUIZ` (25–30 items, several situational) |
+| `30-mock.js` | mock agent | `MOCK_SETS` (≥5 sets) |
+| `40-plans.js` | plan agent | `STUDY_PLANS` (exactly 3) |
+| `50-case.js` | case agent | `CASE_STUDY` (≥12 sections; `flow` ids must exist in `FLOW_SVGS`) |
+| `60-flows.js` | flow agent | `FLOW_SVGS` (≥10 inline SVG, `viewBox`, `role="img"`) |
+| `90-app.js` | app agent | DOM engine; must no-op when `__BUILD_CHECK__` is truthy |
