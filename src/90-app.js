@@ -3,7 +3,7 @@
    GROUP_INTROS, SOURCE_CHECKED, FLOW_SVGS) and LOGIC come from earlier src files.
    Under __BUILD_CHECK__ the build evaluates this file in a DOM-less sandbox:
    touch nothing. */
-if (!__BUILD_CHECK__) {
+if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
   (function () {
     'use strict';
 
@@ -18,7 +18,7 @@ if (!__BUILD_CHECK__) {
 
     // ---- data (coerced — never assume another file shipped the right type) ----
     var QS = arr(typeof QUESTIONS === 'undefined' ? [] : QUESTIONS);
-    var QUIZ = arr(typeof QUIZ === 'undefined' ? [] : QUIZ);
+    var QUIZSET = arr(typeof QUIZ === 'undefined' ? [] : QUIZ);
     var MOCKS = obj(typeof MOCK_SETS === 'undefined' ? null : MOCK_SETS) || {};
     var PLANS = obj(typeof STUDY_PLANS === 'undefined' ? null : STUDY_PLANS) || {};
     var CASE = obj(typeof CASE_STUDY === 'undefined' ? null : CASE_STUDY) || {};
@@ -369,7 +369,7 @@ if (!__BUILD_CHECK__) {
     var renderQuiz = function () {
       var list = $('quiz-list');
       if (list) {
-        list.innerHTML = QUIZ.map(function (q, i) {
+        list.innerHTML = QUIZSET.map(function (q, i) {
           q = obj(q) || {};
           var opts = arr(q.options).map(function (o, j) {
             return '<label class="opt"><input type="radio" name="qz-' + esc(str(q.id)) + '" value="' + j + '">' +
@@ -382,8 +382,8 @@ if (!__BUILD_CHECK__) {
       }
       var count = $('quiz-count');
       if (count) {
-        count.textContent = QUIZ.length + ' câu · ' +
-          QUIZ.filter(function (q) { return obj(q) && q.situational; }).length + ' câu tình huống.';
+        count.textContent = QUIZSET.length + ' câu · ' +
+          QUIZSET.filter(function (q) { return obj(q) && q.situational; }).length + ' câu tình huống.';
       }
     };
 
@@ -395,12 +395,12 @@ if (!__BUILD_CHECK__) {
           var name = str(picked[i].getAttribute('name')).replace(/^qz-/, '');
           answers[name] = Number(picked[i].value);
         }
-        var s = LOGIC.quizScore(QUIZ, answers) || {};
-        var total = typeof s.total === 'number' ? s.total : QUIZ.length;
+        var s = LOGIC.quizScore(QUIZSET, answers) || {};
+        var total = typeof s.total === 'number' ? s.total : QUIZSET.length;
         var correct = typeof s.correct === 'number' ? s.correct : 0;
 
         var byGroup = {};
-        QUIZ.forEach(function (q) {
+        QUIZSET.forEach(function (q) {
           if (q && q.group) byGroup[q.group] = (byGroup[q.group] || 0) + 1;
         });
         var perGroup = s.perGroup || {};
@@ -414,7 +414,7 @@ if (!__BUILD_CHECK__) {
           var item = items[k];
           var id = item.getAttribute('data-quiz');
           var q = null;
-          for (var j = 0; j < QUIZ.length; j++) if (QUIZ[j] && QUIZ[j].id === id) { q = QUIZ[j]; break; }
+          for (var j = 0; j < QUIZSET.length; j++) if (QUIZSET[j] && QUIZSET[j].id === id) { q = QUIZSET[j]; break; }
           if (!q) continue;
           var labels = item.querySelectorAll('.opt');
           var chosen = answers[id];
@@ -715,7 +715,7 @@ if (!__BUILD_CHECK__) {
         intro: QS.filter(function (q) { return q && q.prio === 'P0'; }).length,
         questions: QS.length,
         flashcard: DECK.length,
-        quiz: QUIZ.length,
+        quiz: QUIZSET.length,
         mock: Object.keys(MOCKS).length,
         plan: Object.keys(PLANS).length,
         case: arr(CASE.sections).length,
