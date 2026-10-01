@@ -221,9 +221,17 @@ try {
   const srcKeySet = new Set(arr(SOURCES).filter((s) => s && s.key).map((s) => s.key));
   const flowIdSet = new Set(FS.filter((f) => f && f.id).map((f) => f.id));
 
-  check('lessons_complete', Array.isArray(LESSONS) && LL.length >= 22, `got ${LL.length}`);
-  check('lesson_ids_unique',
-    LL.every((l) => l && l.id) && new Set(LL.map((l) => l.id)).size === LL.length);
+  const EXPECTED_LESSON_IDS = Array.from({ length: 22 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
+  const gotIds = LL.map((l) => (l ? l.id : undefined));
+  const idSet = new Set(gotIds);
+  const missingIds = EXPECTED_LESSON_IDS.filter((id) => !idSet.has(id));
+  const extraIds = gotIds.filter((id) => !EXPECTED_LESSON_IDS.includes(id));
+
+  check('lessons_complete', Array.isArray(LESSONS) && LL.length === 22, `got ${LL.length}, want exactly 22`);
+  check('lesson_ids_exact', missingIds.length === 0 && extraIds.length === 0,
+    `missing [${missingIds.join(', ')}] extra [${extraIds.join(', ')}]`);
+  check('lesson_ids_unique', LL.every((l) => l && l.id) && idSet.size === LL.length,
+    `${LL.length} lessons, ${idSet.size} distinct ids`);
   check('lesson_qids_resolve',
     LL.every((l) => l && arr(l.qids).every((qid) => qidSet.has(qid))),
     LL.flatMap((l) => (l ? arr(l.qids).filter((qid) => !qidSet.has(qid)).map((qid) => `${l.id}:${qid}`) : [])).join(', '));
@@ -233,6 +241,11 @@ try {
   check('lesson_flows_resolve',
     LL.every((l) => l && (!l.flow || flowIdSet.has(l.flow))),
     LL.filter((l) => l && l.flow && !flowIdSet.has(l.flow)).map((l) => `${l.id}:${l.flow}`).join(', '));
+
+  const stages = new Set(LL.map((l) => (l ? l.stage : undefined)));
+  const missingStages = [1, 2, 3, 4].filter((s) => !stages.has(s));
+  check('lesson_stages_cover', missingStages.length === 0,
+    `missing stage(s) [${missingStages.join(', ')}], got [${Array.from(stages).sort((a, b) => a - b).join(', ')}]`);
 } catch (e) {
   fails.push('data invariants crashed: ' + (e && e.message ? e.message : String(e)));
 }
