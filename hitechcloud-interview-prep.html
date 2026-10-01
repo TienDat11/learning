@@ -4167,7 +4167,7 @@ sayIt: [
   'Chọn ECS nghĩa là tự viết Dockerfile, tự đặt scaling policy, tự định nghĩa health check và tự vá bảo mật image, vì bốn việc đó là đổi lại cho process sống và pool ấm.',
   'Tác vụ nền chạy trong cùng tiến trình không bền, nó mất khi tiến trình chết; việc nền thật phải đẩy message vào hàng đợi để một worker khác xử lý, và mỗi lần xử lý phải idempotent vì message có thể tới lại.'
 ],
-qids: ['E10', 'E11', 'E12'],
+qids: ['G16', 'H02', 'H03', 'H07'],
 refs: ['aws-ecs', 'docker-multi-stage', 'docker-security', 'gh-actions', 'aws-lambda-best']
 }
 ,
@@ -4188,7 +4188,7 @@ sayIt: [
   '5xx tăng mà độ trễ phẳng là lỗi logic hoặc quyền bị từ chối; độ trễ tăng mà 5xx phẳng là nghẽn tài nguyên như connection pool cạn; cả hai cùng tăng là nghẽn hàng đợi hoặc bị throttle.',
   'Ranh giới transaction đặt ở tầng service vì nó không thể vượt qua lời gọi mạng, side effect ra ngoài thì đẩy qua bảng outbox trong cùng transaction, và migration phải theo expand rồi contract vì code cũ và code mới cùng chạy lúc deploy.'
 ],
-qids: ['E10', 'E11', 'E12'],
+qids: ['G13', 'F07', 'F10'],
 refs: ['aws-cloudwatch', 'pg-transactions', 'pg-mvcc', 'aws-sqs-dlq', 'aws-rds']
 }
 );
