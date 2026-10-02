@@ -267,8 +267,12 @@ for (const f of FLOW_SVGS || []) {
   if (!t(f.caption) || f.caption.length < 30) err(`flow ${f.id}: caption missing or <30 chars`);
 }
 
+const LESSON_ARR = LESSONS || [];
+const LESSON_POS = new Map(LESSON_ARR.map((l, i) => [l && l.id, i]));
+const LESSON_BY_ID = new Map(LESSON_ARR.filter((l) => l && l.id).map((l) => [l.id, l]));
+const SPINE_NODES = ['client', 'gateway', 'compute', 'data', 'queue', 'all'];
 const LESSON_IDS = new Set();
-for (const l of LESSONS || []) {
+for (const [li, l] of LESSON_ARR.entries()) {
   if (!t(l.id)) { err('lesson missing id'); continue; }
   if (LESSON_IDS.has(l.id)) err(`duplicate lesson id ${l.id}`);
   LESSON_IDS.add(l.id);
@@ -283,6 +287,42 @@ for (const l of LESSONS || []) {
   if (!Array.isArray(l.refs) || !l.refs.length) err(`${l.id}: needs refs`);
   else for (const r of l.refs) if (!srcKeys.has(r)) err(`${l.id}: unknown source ref "${r}"`);
   if (l.flow && !FLOW_SVGS.some((f) => f.id === l.flow)) err(`${l.id}: unknown flow "${l.flow}"`);
+  if (typeof l.bridge !== 'string' || l.bridge.length < 120) err(`${l.id}: bridge missing or <120 chars (${typeof l.bridge === 'string' ? l.bridge.length : 0})`);
+  else if (/[<>]/.test(l.bridge)) err(`${l.id}: bridge must be plain text (no < or >)`);
+  if (!Array.isArray(l.buildsOn)) err(`${l.id}: buildsOn must be an array`);
+  else {
+    for (const dep of l.buildsOn) {
+      if (typeof dep !== 'string' || !/^L\d{2}$/.test(dep)) err(`${l.id}: bad buildsOn entry "${dep}"`);
+      else if (!LESSON_POS.has(dep)) err(`${l.id}: unknown buildsOn lesson "${dep}"`);
+      else if (dep === l.id) err(`${l.id}: buildsOn must not contain itself`);
+      else if (!(LESSON_POS.get(dep) < li)) err(`${l.id}: buildsOn ${dep} is not an earlier lesson`);
+    }
+    if (li !== 0 && l.buildsOn.length < 1) err(`${l.id}: buildsOn empty (must link to at least one earlier lesson)`);
+  }
+  if (typeof l.spine !== 'string' || l.spine.length < 60) err(`${l.id}: spine missing or <60 chars (${typeof l.spine === 'string' ? l.spine.length : 0})`);
+  else if (/[<>'"]/.test(l.spine)) err(`${l.id}: spine must be plain text`);
+  if (!SPINE_NODES.includes(l.spineNode)) err(`${l.id}: bad spineNode "${l.spineNode}"`);
+  else if (li === 0 && l.spineNode !== 'all') err(`${l.id}: first lesson spineNode must be "all"`);
+  else if (li !== 0 && l.spineNode === 'all') err(`${l.id}: only the first lesson may use spineNode "all"`);
+}
+
+// L01 reachability: every lesson must hang off the backbone ("tới bài 10 vẫn thuộc bài 1").
+for (const l of LESSON_ARR) {
+  if (!l || !l.id) continue;
+  const seen = new Set([l.id]);
+  const queue = [l.id];
+  let reached = l.id === 'L01';
+  while (!reached && queue.length) {
+    const cur = queue.shift();
+    const node = LESSON_BY_ID.get(cur);
+    for (const dep of (node && Array.isArray(node.buildsOn) ? node.buildsOn : [])) {
+      if (typeof dep !== 'string' || seen.has(dep)) continue;
+      if (dep === 'L01') { reached = true; break; }
+      seen.add(dep);
+      queue.push(dep);
+    }
+  }
+  if (!reached) err(`${l.id}: buildsOn chain does not reach L01`);
 }
 
 // ---- 4. self-containment ------------------------------------------------
@@ -380,6 +420,29 @@ const metrics = {
   case_sections: ((CASE_STUDY || {}).sections || []).length,
   flow_svgs: (FLOW_SVGS || []).length,
   lessons: (LESSONS || []).length,
+  lessons_with_bridge: (LESSONS || []).filter((l) => typeof l.bridge === 'string' && l.bridge.length > 0).length,
+  lessons_linked: (LESSONS || []).filter((l) => Array.isArray(l.buildsOn) && l.buildsOn.length > 0).length,
+  lessons_with_spine: (LESSONS || []).filter((l) => typeof l.spine === 'string' && l.spine.length > 0).length,
+  lessons_reaching_L01: (() => {
+    let n = 0;
+    for (const l of LESSON_ARR) {
+      if (!l || !l.id) continue;
+      const seen = new Set([l.id]);
+      const queue = [l.id];
+      let reached = l.id === 'L01';
+      while (!reached && queue.length) {
+        const node = LESSON_BY_ID.get(queue.shift());
+        for (const dep of (node && Array.isArray(node.buildsOn) ? node.buildsOn : [])) {
+          if (typeof dep !== 'string' || seen.has(dep)) continue;
+          if (dep === 'L01') { reached = true; break; }
+          seen.add(dep);
+          queue.push(dep);
+        }
+      }
+      if (reached) n++;
+    }
+    return n;
+  })(),
   sources: (SOURCES || []).length,
   sources_groups: new Set((SOURCES || []).map((s) => s.group)).size,
   ui_ids_required: REQUIRED_UI_IDS.length,

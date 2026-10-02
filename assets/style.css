@@ -280,10 +280,49 @@ th { background: var(--bg-sunken); font-weight: 600; }
 .lesson-qids { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 0; }
 .lesson-qids .btn { font-size: 13px; padding: 4px 9px; }
 .flash-hi { outline: 3px solid var(--accent); outline-offset: 2px; background: var(--accent-soft); }
+.lesson-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; margin: 0 0 8px; }
+.lesson-idx { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--fg-soft); text-transform: uppercase; letter-spacing: .05em; }
+.lesson-id { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--fg); background: var(--bg-sunken); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 1px 8px; }
+.lesson-bridge { margin: 0 0 10px; padding: 9px 12px; background: var(--accent-soft); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; color: var(--fg); }
+.lb-h { display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 0 7px; margin-right: 8px; }
+.lesson-builds { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 0; }
+.lesson-link { font: inherit; font-size: 13px; padding: 3px 9px; cursor: pointer; background: var(--bg-sunken); color: var(--fg); border: 1px solid var(--line-strong); border-radius: var(--radius); }
+.lesson-link:hover { background: var(--accent-soft); border-color: var(--accent); text-decoration: underline; }
+.lesson-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lesson-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line-strong); }
+.lesson-thread { background: var(--bg-sunken); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 0 0 16px; }
+.thread-stage { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 0; }
+.thread-stage-t { font-size: 13px; font-weight: 700; color: var(--fg-soft); min-width: 64px; }
+.thread-stage-n { font-size: 12px; color: var(--fg-faint); background: var(--bg-soft); border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 0 7px; margin-left: 6px; }
+
+/* L01 backbone — deliberately not the bridge block: dashed left edge, sunken, not accent-soft */
+.lesson-spine {
+  margin: 0 0 12px; padding: 9px 12px; background: var(--bg-sunken);
+  border: 1px solid var(--line); border-left: 3px dashed var(--line-strong);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.spine-path { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; list-style: none; margin: 8px 0 0; padding: 0; }
+.spine-node {
+  font-size: 13px; color: var(--fg-faint); background: var(--bg-soft);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px;
+}
+.spine-node.is-on {
+  background: var(--accent-soft); color: var(--accent); font-weight: 700; border: 1px solid var(--accent);
+}
+.spine-node.is-on::before { content: '▸ '; }
+.spine-say { margin: 8px 0 0; color: var(--fg-soft); font-size: 14.5px; }
+.spine-chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 0; }
+.chain-sep { color: var(--fg-faint); font-weight: 700; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
 
 /* ---------- print ---------- */
 @media print {
   .side, .mobile-bar, .filterbar, .mark-btns, .qfoot, .btn, .progress-box { display: none !important; }
+  .lesson-nav, .lesson-builds, .lesson-thread, .spine-chain { display: none !important; }
+  /* .lesson-spine and .lesson-bridge stay visible: they are the L01 content. */
   .wrap { display: block; }
   body { background: #fff; color: #000; font-size: 12pt; }
   .view { display: none !important; }

@@ -241,6 +241,47 @@ try {
   check('lesson_flows_resolve',
     LL.every((l) => l && (!l.flow || flowIdSet.has(l.flow))),
     LL.filter((l) => l && l.flow && !flowIdSet.has(l.flow)).map((l) => `${l.id}:${l.flow}`).join(', '));
+  check('lesson_bridges_present', LL.every((l) => l && str(l.bridge).length >= 120),
+    LL.filter((l) => !(l && str(l.bridge).length >= 120)).map((l) => (l && l.id) || '?').join(', '));
+  check('lesson_bridges_plain', LL.every((l) => l && !/[<>]/.test(str(l.bridge))));
+  check('lesson_buildsOn_resolve', LL.every((l) => l && arr(l.buildsOn).every((id) => idSet.has(id))));
+  check('lesson_buildsOn_not_self', LL.every((l) => l && !arr(l.buildsOn).includes(l.id)));
+  check('lesson_buildsOn_backward',
+    LL.every((l, i) => l && arr(l.buildsOn).every((id) => gotIds.indexOf(id) >= 0 && gotIds.indexOf(id) < i)));
+  check('lesson_linked_all', LL.every((l, i) => l && (i === 0 ? true : arr(l.buildsOn).length >= 1)));
+  const stageById = {};
+  LL.forEach((l) => { if (l && l.id) stageById[l.id] = l.stage; });
+  let crossStage = 0;
+  LL.forEach((l) => { if (l) arr(l.buildsOn).forEach((id) => { if (stageById[id] !== undefined && stageById[id] !== l.stage) crossStage++; }); });
+  check('lesson_cross_stage_links', crossStage >= 6, `got ${crossStage}`);
+  check('lesson_spine_present', LL.every((l) => l && str(l.spine).length >= 60),
+    LL.filter((l) => !(l && str(l.spine).length >= 60)).map((l) => (l && l.id) || '?').join(', '));
+  check('lesson_spine_plain', LL.every((l) => l && !/[<>'"]/.test(str(l.spine))));
+  check('lesson_spineNode_valid',
+    LL.every((l) => l && ['client', 'gateway', 'compute', 'data', 'queue', 'all'].includes(l.spineNode)));
+  check('lesson_spine_anchor_all',
+    LL.every((l, i) => l && (i === 0 ? l.spineNode === 'all' : l.spineNode !== 'all')));
+  const spineUsed = new Set(LL.map((l) => (l ? l.spineNode : undefined)).filter((n) => n && n !== 'all'));
+  check('lesson_spine_nodes_used', spineUsed.size >= 5, `got ${spineUsed.size}`);
+  const unreachable = [];
+  LL.forEach((l) => {
+    if (!l || !l.id) return;
+    const seen = new Set([l.id]);
+    const queue = [l.id];
+    let reached = l.id === 'L01';
+    while (!reached && queue.length) {
+      const cur = queue.shift();
+      const node = LL.find((x) => x && x.id === cur);
+      for (const dep of arr(node && node.buildsOn)) {
+        if (seen.has(dep)) continue;
+        if (dep === 'L01') { reached = true; break; }
+        seen.add(dep);
+        queue.push(dep);
+      }
+    }
+    if (!reached) unreachable.push(l.id);
+  });
+  check('lesson_reaches_L01', unreachable.length === 0, `unreachable: [${unreachable.join(', ')}]`);
 
   const stages = new Set(LL.map((l) => (l ? l.stage : undefined)));
   const missingStages = [1, 2, 3, 4].filter((s) => !stages.has(s));

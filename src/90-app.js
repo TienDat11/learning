@@ -34,6 +34,18 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     SRC.forEach(function (s) { if (s && s.key) SRC_BY_KEY[s.key] = s; });
     var Q_BY_ID = {};
     QS.forEach(function (q) { if (q && q.id) Q_BY_ID[q.id] = q; });
+    var LESSON_BY_ID = {};
+    LESSONSARR.forEach(function (l) { if (l && l.id) LESSON_BY_ID[l.id] = l; });
+    // The L01 backbone: every later bài hangs off exactly one of these nodes.
+    var LESSON_NODES = [['client', 'Trình duyệt'], ['gateway', 'API Gateway'], ['compute', 'Lambda / code'], ['data', 'DB / S3'], ['queue', 'SQS / worker']];
+    var shortLessonTitle = function (t) {
+      t = str(t);
+      if (t.length <= 40) return t;
+      var cut = t.slice(0, 40);
+      var sp = cut.lastIndexOf(' ');
+      if (sp > 20) cut = cut.slice(0, sp);
+      return cut + '…';
+    };
 
     var VIEWS = ['learn', 'intro', 'questions', 'flashcard', 'quiz', 'mock', 'plan', 'case', 'sources'];
     var PR = { P0: 0, P1: 1, P2: 2 };
@@ -669,8 +681,45 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     };
 
     // ---- learning path (lessons) ----
-    var lessonCard = function (l) {
+    // BFS over buildsOn parent edges from every lesson back to the L01 anchor.
+    // Computed ONCE per renderLearn pass (id -> ordered path of ids), never per card.
+    var buildChainMap = function () {
+      var map = {};
+      LESSONSARR.forEach(function (raw) {
+        var l = obj(raw);
+        if (!l || !l.id) return;
+        var id = str(l.id);
+        var queue = [[id]];
+        var seen = {};
+        seen[id] = true;
+        while (queue.length) {
+          var path = queue.shift();
+          var last = path[path.length - 1];
+          if (last === 'L01') { map[id] = path; return; }
+          var node = obj(LESSON_BY_ID[last]);
+          arr(node && node.buildsOn).forEach(function (dep) {
+            var d = str(dep);
+            if (seen[d] || !obj(LESSON_BY_ID[d])) return;
+            seen[d] = true;
+            queue.push(path.concat([d]));
+          });
+        }
+        // no path found — leave undefined; never invent edges
+      });
+      return map;
+    };
+
+    var lessonCard = function (l, idx, chainMap) {
       l = obj(l) || {};
+      chainMap = obj(chainMap) || {};
+      if (typeof idx !== 'number' || idx < 0) {
+        idx = 0;
+        for (var k = 0; k < LESSONSARR.length; k++) {
+          var cand = obj(LESSONSARR[k]);
+          if (cand && cand.id === l.id) { idx = k; break; }
+        }
+      }
+      var total = LESSONSARR.length || 22;
       var say = arr(l.sayIt).map(function (s) { return '<li>' + esc(str(s)) + '</li>'; }).join('');
       var qbtns = arr(l.qids).map(function (id) {
         var q = obj(Q_BY_ID[str(id)]);
@@ -678,7 +727,44 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
           (q ? ' · ' + esc(str(q.topic)) : '') + '</button>';
       }).join(' ');
       var refs = arr(l.refs).map(str).join(' · ');
+      var bridgeHead = idx === 0 ? 'Bắt đầu từ đây' : 'Nối tiếp bài trước';
+      var builds = arr(l.buildsOn).map(function (id) {
+        var t = obj(LESSON_BY_ID[str(id)]);
+        var label = t ? shortLessonTitle(t.title) : '';
+        return '<button type="button" class="lesson-link" data-lesson="' + esc(str(id)) + '">' + esc(str(id)) +
+          (label ? ' · ' + esc(label) : '') + '</button>';
+      }).join(' ');
+      var prev = LESSONSARR[idx - 1] ? obj(LESSONSARR[idx - 1]) : null;
+      var next = LESSONSARR[idx + 1] ? obj(LESSONSARR[idx + 1]) : null;
+      var navBtns = (prev && prev.id
+        ? '<button type="button" class="btn lesson-link" data-lesson="' + esc(str(prev.id)) + '">← Bài trước: ' + esc(str(prev.id)) + '</button>'
+        : '') +
+        (next && next.id
+        ? '<button type="button" class="btn lesson-link" data-lesson="' + esc(str(next.id)) + '">Bài sau: ' + esc(str(next.id)) + ' →</button>'
+        : '');
+      var node = str(l.spineNode);
+      var isAll = node === 'all';
+      var pathItems = LESSON_NODES.map(function (n) {
+        var on = isAll || node === n[0];
+        return '<li class="spine-node' + (on ? ' is-on' : '') + '"' + (on ? ' aria-current="true"' : '') + '>' +
+          esc(n[1]) + (on ? '<span class="sr-only"> (bài này)</span>' : '') + '</li>';
+      }).join('');
+      var chain = chainMap[str(l.id)];
+      var chainHtml = (str(l.id) !== 'L01' && arr(chain).length)
+        ? '<div class="spine-chain"><span class="lb-h">Đường về L01</span>' +
+          arr(chain).map(function (cid) {
+            return '<button type="button" class="lesson-link" data-lesson="' + esc(str(cid)) + '">' + esc(str(cid)) + '</button>';
+          }).join('<span class="chain-sep">→</span>') + '</div>'
+        : '';
+      var spineHtml = '<div class="lesson-spine"><div class="lb-h">Sợi chỉ từ L01</div>' +
+        '<ol class="spine-path">' + pathItems + '</ol>' +
+        when(l.spine, '<p class="spine-say">' + esc(str(l.spine)) + '</p>') +
+        chainHtml + '</div>';
       return '<article class="lesson" id="lesson-' + esc(str(l.id)) + '" data-lesson="' + esc(str(l.id)) + '">' +
+        '<div class="lesson-head"><span class="lesson-idx">Bài ' + (idx + 1) + '/' + total + '</span>' +
+        '<span class="lesson-id">' + esc(str(l.id)) + '</span></div>' +
+        when(l.bridge, '<p class="lesson-bridge"><span class="lb-h">' + bridgeHead + '</span>' + esc(str(l.bridge)) + '</p>') +
+        spineHtml +
         '<h4 class="lesson-h">' + esc(str(l.title)) + '</h4>' +
         '<p class="lesson-goal">' + esc(str(l.goal)) + '</p>' +
         '<div class="deep">' + sanitize(l.body) + '</div>' +
@@ -686,8 +772,10 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         when(l.codeNote, '<p class="small">' + esc(str(l.codeNote)) + '</p>') +
         flowFigure(l.flow) +
         when(say, '<div class="sayit"><div class="sc-h">Bạn phải nói được</div><ul class="tight">' + say + '</ul></div>') +
+        when(builds, '<div class="lesson-builds"><span class="lb-h">Dùng lại</span>' + builds + '</div>') +
         when(qbtns, '<p class="lesson-qids">Luyện ngay: ' + qbtns + '</p>') +
         when(refs, '<span class="status-note">Nguồn: ' + esc(refs) + '</span>') +
+        when(navBtns, '<div class="lesson-nav">' + navBtns + '</div>') +
         '</article>';
     };
 
@@ -698,6 +786,11 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         body.innerHTML = '<p class="stat-line">Chưa có bài học.</p>';
         return;
       }
+      var pos = {};
+      LESSONSARR.forEach(function (raw, i) {
+        var ll = obj(raw);
+        if (ll && ll.id) pos[str(ll.id)] = i;
+      });
       var byStage = {};
       LESSONSARR.forEach(function (raw) {
         var l = obj(raw) || {};
@@ -706,13 +799,40 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         byStage[n].items.push(l);
       });
       var order = Object.keys(byStage).map(Number).sort(function (a, b) { return a - b; });
-      body.innerHTML = order.map(function (n) {
+      var chains = buildChainMap();
+      // Most frequent spineNode among a stage's lessons; ties -> first in LESSON_NODES order; 'all' ignored.
+      var dominantNode = function (items) {
+        var counts = {};
+        items.forEach(function (l) {
+          var n = str(l.spineNode);
+          if (!n || n === 'all') return;
+          counts[n] = (counts[n] || 0) + 1;
+        });
+        var best = '';
+        var bestN = 0;
+        LESSON_NODES.forEach(function (nd) {
+          var c = counts[nd[0]] || 0;
+          if (c > bestN) { bestN = c; best = nd[1]; }
+        });
+        return best;
+      };
+      var thread = '<div class="lesson-thread"><div class="lb-h">Đường dây ' + LESSONSARR.length + ' bài</div>' +
+        order.map(function (n) {
+          var st = byStage[n];
+          var dom = dominantNode(st.items);
+          return '<div class="thread-stage"><span class="thread-stage-t">Chặng ' + esc(str(st.n)) + '</span>' +
+            st.items.map(function (l) {
+              return '<button type="button" class="lesson-link" data-lesson="' + esc(str(l.id)) + '">' + esc(str(l.id)) + '</button>';
+            }).join('') +
+            when(dom, '<span class="thread-stage-n">' + esc(dom) + '</span>') + '</div>';
+        }).join('') + '</div>';
+      body.innerHTML = thread + order.map(function (n) {
         var st = byStage[n];
         // lesson data may already open the title with "Chặng N — "; number shows once
         var title = st.title.replace(/^\s*Chặng\s*\d+\s*[—–:.\-]?\s*/i, '');
         return '<h3 class="sub learn-stage">Chặng ' + esc(st.n + '. ' + title) + '</h3>' +
           when(st.intro, '<div class="deep">' + sanitize(st.intro) + '</div>') +
-          st.items.map(lessonCard).join('');
+          st.items.map(function (l) { return lessonCard(l, pos[str(l.id)], chains); }).join('');
       }).join('');
     };
 
@@ -735,12 +855,23 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       setTimeout(function () { card.classList.remove('flash-hi'); }, 1600);
     };
 
+    var jumpToLesson = function (id) {
+      showView('learn');
+      var card = doc.querySelector('#lesson-' + id);
+      if (!card) return;
+      card.scrollIntoView({ block: 'start' });
+      card.classList.add('flash-hi');
+      setTimeout(function () { card.classList.remove('flash-hi'); }, 1600);
+    };
+
     var wireLearn = function () {
       on($('learn-body'), 'click', function (ev) {
         var t = ev.target;
         if (!t || !t.closest) return;
-        var btn = t.closest('[data-qid]');
-        if (btn) jumpToQuestion(btn.getAttribute('data-qid'));
+        var qbtn = t.closest('[data-qid]');
+        if (qbtn) { jumpToQuestion(qbtn.getAttribute('data-qid')); return; }
+        var lbtn = t.closest('button[data-lesson]');
+        if (lbtn) jumpToLesson(lbtn.getAttribute('data-lesson'));
       });
     };
 
