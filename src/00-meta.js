@@ -27,7 +27,7 @@ SOURCES.push(
   { key: 'vue-reactivity', name: 'Vue — Reactivity API', url: 'https://vuejs.org/api/reactivity-core.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-computed', name: 'Vue — Computed API', url: 'https://vuejs.org/api/reactivity-core.html#computed', checked: '2026-10-01', group: 'C' },
   { key: 'vue-watchers', name: 'Vue — Watchers', url: 'https://vuejs.org/guide/essentials/watchers.html', checked: '2026-10-01', group: 'C' },
-  { key: 'vue-components', name: 'Vue — Component Basics', url: 'https://vuejs.org/guide/essentials/components.html', checked: '2026-10-01', group: 'C' },
+  { key: 'vue-components', name: 'Vue — Component Basics', url: 'https://vuejs.org/guide/essentials/component-basics.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-lifecycle', name: 'Vue — Lifecycle Hooks', url: 'https://vuejs.org/api/composition-api-lifecycle.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-composables', name: 'Vue — Composable Functions', url: 'https://vuejs.org/guide/reusability/composables.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-router', name: 'Vue Router', url: 'https://vuejs.org/guide/scaling-up/routing.html', checked: '2026-10-01', group: 'C' },

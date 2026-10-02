@@ -617,7 +617,7 @@ SOURCES.push(
   { key: 'vue-reactivity', name: 'Vue — Reactivity API', url: 'https://vuejs.org/api/reactivity-core.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-computed', name: 'Vue — Computed API', url: 'https://vuejs.org/api/reactivity-core.html#computed', checked: '2026-10-01', group: 'C' },
   { key: 'vue-watchers', name: 'Vue — Watchers', url: 'https://vuejs.org/guide/essentials/watchers.html', checked: '2026-10-01', group: 'C' },
-  { key: 'vue-components', name: 'Vue — Component Basics', url: 'https://vuejs.org/guide/essentials/components.html', checked: '2026-10-01', group: 'C' },
+  { key: 'vue-components', name: 'Vue — Component Basics', url: 'https://vuejs.org/guide/essentials/component-basics.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-lifecycle', name: 'Vue — Lifecycle Hooks', url: 'https://vuejs.org/api/composition-api-lifecycle.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-composables', name: 'Vue — Composable Functions', url: 'https://vuejs.org/guide/reusability/composables.html', checked: '2026-10-01', group: 'C' },
   { key: 'vue-router', name: 'Vue Router', url: 'https://vuejs.org/guide/scaling-up/routing.html', checked: '2026-10-01', group: 'C' },
@@ -5628,6 +5628,12 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         'Hai chỗ cần dựng lại: <strong>AWS</strong> — đường đi của một request qua API Gateway → Lambda/IAM → RDS hoặc DynamoDB → CloudWatch, và khi nào tách việc nặng sang SQS; ' +
         '<strong>Vue 3</strong> — reactivity, computed so với watch, composable, SFC, và cách trả lời khi được hỏi Vue so với React. ' +
         'Đừng để phỏng vấn viên phát hiện chỗ này: trả lời thẳng “phần này tôi mới ôn sâu gần đây”, rồi nói rõ bạn đã học bằng cách nào và sẽ làm gì với nó trong dự án thật.</div>' +
+        '<h3 class="sub">Tài liệu này là gì và không là gì</h3>' +
+        '<div class="note"><ul class="tight">' +
+        '<li>Đây là bộ câu hỏi luyện tập do tôi tự soạn để ôn cho vị trí Fullstack Engineer, không phải bộ câu hỏi phỏng vấn thật của HiTechCloud. Tôi không có và không khẳng định có đề phỏng vấn hay quy trình tuyển dụng nội bộ của công ty.</li>' +
+        '<li>Ba lớp nội dung, đừng gộp chúng làm một. (a) Yêu cầu trong JD: Python tối thiểu 2 năm, thành thạo VueJS, TypeScript là điểm cộng, AWS Lambda/API Gateway/S3/RDS hoặc DynamoDB, Docker, phát hành tự động, theo dõi logs/metrics/chi phí và xử lý lỗi production. (b) Kiến thức nền tảng: Python, JavaScript/TypeScript, HTTP, SQL, Vue, FastAPI/Django — đúng với mọi công ty, không riêng gì đây. (c) Câu hỏi luyện tập trong tài liệu này: tôi viết để tự kiểm tra, có thể khác hẳn đề thật.</li>' +
+        '<li>Vì vậy: học để hiểu cơ chế, không học để đoán đề. Câu nào thuộc lớp (a) thì bám sát đúng chữ trong JD; câu nào thuộc lớp (b) thì trả lời bằng cơ chế và tradeoff; và nếu phỏng vấn hỏi thứ không có trong này thì cứ nói thẳng là mình chưa gặp, rồi phân tích từ nền tảng.</li>' +
+        '</ul></div>' +
         when(rows, '<h3 class="sub">Mười nhóm kiến thức</h3>' +
           '<table><thead><tr><th>Nhóm</th><th>Vì sao phải biết</th><th>P0</th><th>Số câu</th></tr></thead>' +
           '<tbody>' + rows + '</tbody></table>');
