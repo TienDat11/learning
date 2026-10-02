@@ -816,6 +816,34 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         });
         return best;
       };
+      // Whole-path attention map: one row per backbone node, origin first. Single pass
+      // over LESSONSARR into per-node id lists; buttons reuse the delegated handler.
+      var byNode = {};
+      LESSON_NODES.forEach(function (nd) { byNode[nd[0]] = []; });
+      var originIds = [];
+      LESSONSARR.forEach(function (raw) {
+        var l = obj(raw) || {};
+        var id = str(l.id);
+        if (!id) return;
+        var n = str(l.spineNode);
+        if (n === 'all') { originIds.push(id); return; }
+        if (byNode[n]) byNode[n].push(id);
+      });
+      var mapBtn = function (id) {
+        return '<button type="button" class="lesson-link" data-lesson="' + esc(id) + '">' + esc(id) + '</button>';
+      };
+      var spineMap = '<div class="spine-map"><div class="lb-h">Bản đồ sợi chỉ L01</div>' +
+        '<p class="spine-map-note">Bài 1 dựng cả đường đi một request; hai mươi mốt bài sau mỗi bài bám vào đúng một khớp của đường đó, và mọi bài đều có đường quay về L01. Bấm một mã để nhảy tới bài.</p>' +
+        '<ol class="spine-map-list">' +
+        '<li class="sm-row sm-origin"><span class="sm-node">L01 · cả đường đi</span><span class="sm-links">' +
+        originIds.map(mapBtn).join('') + '</span><span class="sm-count">' + originIds.length + ' bài</span></li>' +
+        LESSON_NODES.map(function (nd) {
+          var ids = arr(byNode[nd[0]]);
+          return '<li class="sm-row"><span class="sm-node">' + esc(nd[1]) + '</span><span class="sm-links">' +
+            ids.map(mapBtn).join('') +
+            when(!ids.length, '<span class="sm-none">chưa có bài</span>') +
+            '</span><span class="sm-count">' + ids.length + ' bài</span></li>';
+        }).join('') + '</ol></div>';
       var thread = '<div class="lesson-thread"><div class="lb-h">Đường dây ' + LESSONSARR.length + ' bài</div>' +
         order.map(function (n) {
           var st = byStage[n];
@@ -826,7 +854,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
             }).join('') +
             when(dom, '<span class="thread-stage-n">' + esc(dom) + '</span>') + '</div>';
         }).join('') + '</div>';
-      body.innerHTML = thread + order.map(function (n) {
+      body.innerHTML = spineMap + thread + order.map(function (n) {
         var st = byStage[n];
         // lesson data may already open the title with "Chặng N — "; number shows once
         var title = st.title.replace(/^\s*Chặng\s*\d+\s*[—–:.\-]?\s*/i, '');

@@ -323,6 +323,16 @@ th { background: var(--bg-sunken); font-weight: 600; }
 .spine-say { margin: 8px 0 0; color: var(--fg-soft); font-size: 14.5px; }
 .spine-chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 0; }
 .chain-sep { color: var(--fg-faint); font-weight: 700; }
+.spine-map { background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 0 0 16px; }
+.spine-map-note { margin: 8px 0; color: var(--fg-soft); font-size: 14.5px; }
+.spine-map-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.sm-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.sm-row:last-child { border-bottom: 0; }
+.sm-node { min-width: 140px; font-weight: 700; font-size: 14px; color: var(--fg); }
+.sm-origin .sm-node { color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 10px; min-width: 0; }
+.sm-links { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sm-count { font-size: 13px; color: var(--fg-faint); margin-left: auto; }
+.sm-none { font-size: 13px; color: var(--fg-faint); font-style: italic; }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap; border: 0;
@@ -331,7 +341,7 @@ th { background: var(--bg-sunken); font-weight: 600; }
 /* ---------- print ---------- */
 @media print {
   .side, .mobile-bar, .filterbar, .mark-btns, .qfoot, .btn, .progress-box { display: none !important; }
-  .lesson-nav, .lesson-builds, .lesson-thread, .spine-chain { display: none !important; }
+  .lesson-nav, .lesson-builds, .lesson-thread, .spine-chain, .spine-map { display: none !important; }
   /* .lesson-spine and .lesson-bridge stay visible: they are the L01 content. */
   .wrap { display: block; }
   body { background: #fff; color: #000; font-size: 12pt; }
@@ -5759,6 +5769,34 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         });
         return best;
       };
+      // Whole-path attention map: one row per backbone node, origin first. Single pass
+      // over LESSONSARR into per-node id lists; buttons reuse the delegated handler.
+      var byNode = {};
+      LESSON_NODES.forEach(function (nd) { byNode[nd[0]] = []; });
+      var originIds = [];
+      LESSONSARR.forEach(function (raw) {
+        var l = obj(raw) || {};
+        var id = str(l.id);
+        if (!id) return;
+        var n = str(l.spineNode);
+        if (n === 'all') { originIds.push(id); return; }
+        if (byNode[n]) byNode[n].push(id);
+      });
+      var mapBtn = function (id) {
+        return '<button type="button" class="lesson-link" data-lesson="' + esc(id) + '">' + esc(id) + '</button>';
+      };
+      var spineMap = '<div class="spine-map"><div class="lb-h">Bản đồ sợi chỉ L01</div>' +
+        '<p class="spine-map-note">Bài 1 dựng cả đường đi một request; hai mươi mốt bài sau mỗi bài bám vào đúng một khớp của đường đó, và mọi bài đều có đường quay về L01. Bấm một mã để nhảy tới bài.</p>' +
+        '<ol class="spine-map-list">' +
+        '<li class="sm-row sm-origin"><span class="sm-node">L01 · cả đường đi</span><span class="sm-links">' +
+        originIds.map(mapBtn).join('') + '</span><span class="sm-count">' + originIds.length + ' bài</span></li>' +
+        LESSON_NODES.map(function (nd) {
+          var ids = arr(byNode[nd[0]]);
+          return '<li class="sm-row"><span class="sm-node">' + esc(nd[1]) + '</span><span class="sm-links">' +
+            ids.map(mapBtn).join('') +
+            when(!ids.length, '<span class="sm-none">chưa có bài</span>') +
+            '</span><span class="sm-count">' + ids.length + ' bài</span></li>';
+        }).join('') + '</ol></div>';
       var thread = '<div class="lesson-thread"><div class="lb-h">Đường dây ' + LESSONSARR.length + ' bài</div>' +
         order.map(function (n) {
           var st = byStage[n];
@@ -5769,7 +5807,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
             }).join('') +
             when(dom, '<span class="thread-stage-n">' + esc(dom) + '</span>') + '</div>';
         }).join('') + '</div>';
-      body.innerHTML = thread + order.map(function (n) {
+      body.innerHTML = spineMap + thread + order.map(function (n) {
         var st = byStage[n];
         // lesson data may already open the title with "Chặng N — "; number shows once
         var title = st.title.replace(/^\s*Chặng\s*\d+\s*[—–:.\-]?\s*/i, '');
