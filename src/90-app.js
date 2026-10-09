@@ -169,16 +169,94 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       return '<span class="status-note">Nguồn: ' + esc(refs.join(' · ')) + '</span>';
     };
 
+    // ---- pedagogical blocks (lessons + questions) ----
+    // A block is { h, body } or { h, body, code, out }. `code` is raw text; `out` is
+    // authored as HTML (the contract types `naiveOut` as an HTML string), so it goes
+    // through sanitize() like `body` — escaping it showed literal `</code>` to the reader.
+    var blockBox = function (cls, h, body, code, out) {
+      var inner = sanitize(str(body));
+      if (!inner && !code) return '';
+      return '<div class="' + cls + '">' +
+        when(h, '<div class="pb-h">' + esc(str(h)) + '</div>') +
+        when(inner, '<div class="deep">' + inner + '</div>') +
+        when(code, '<pre><code>' + esc(str(code)) + '</code></pre>') +
+        when(out, '<div class="pb-out"><span class="pb-out-h">Quan sát được</span>' + sanitize(str(out)) + '</div>') +
+        '</div>';
+    };
+    var predictBox = function (p) {
+      p = obj(p) || {};
+      if (!str(p.q).trim()) return '';
+      // The prompt stays visible so the learner commits to an answer; only the
+      // answer is hidden. Hiding both together would remove the retrieval step.
+      return '<div class="predict"><div class="pb-h">Thử đoán trước khi đọc tiếp</div>' +
+        '<p class="predict-q">' + sanitize(str(p.q)) + '</p>' +
+        (str(p.a).trim()
+          ? '<details class="predict-ans"><summary>Xem kết quả và giải thích</summary>' +
+            '<div class="ans-body">' + sanitize(str(p.a)) + '</div></details>'
+          : '') +
+        '</div>';
+    };
+    var asksBox = function (list) {
+      list = arr(list).filter(function (s) { return str(s).trim().length > 0; });
+      if (!list.length) return '';
+      return '<div class="asks"><div class="pb-h">Tự hỏi trước khi đọc phần giải thích</div><ol>' +
+        list.map(function (s) { return '<li>' + esc(str(s)) + '</li>'; }).join('') + '</ol></div>';
+    };
+    var attacksBox = function (list) {
+      list = arr(list).filter(function (a) {
+        a = obj(a) || {};
+        return str(a.q).trim().length > 0 || str(a.a).trim().length > 0;
+      });
+      if (!list.length) return '';
+      return '<div class="attacks"><div class="pb-h">Interviewer sẽ đào tiếp</div>' +
+        list.map(function (a) {
+          a = obj(a) || {};
+          return '<div class="atk"><p class="fq">' + sanitize(str(a.q)) + '</p>' +
+            '<p class="fa">' + sanitize(str(a.a)) + '</p></div>';
+        }).join('') + '</div>';
+    };
+    var spokenBox = function (t, cls, text) {
+      if (!str(text).trim()) return '';
+      return '<div class="spoken ' + cls + '"><div class="pb-h">' + esc(t) + '</div>' +
+        '<p>' + esc(str(text)) + '</p></div>';
+    };
+    var anchorBox = function (text) {
+      if (!str(text).trim()) return '';
+      return '<p class="anchor"><span class="pb-h">Câu neo</span>' + esc(str(text)) + '</p>';
+    };
+    var timelineBox = function (rows) {
+      rows = arr(rows).filter(function (r) { return Array.isArray(r) && r.length >= 2; });
+      if (!rows.length) return '';
+      return '<table class="timeline"><thead><tr><th>Thời điểm</th><th>Chuyện gì xảy ra</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr><td class="tl-when">' + esc(str(r[0])) + '</td><td>' + sanitize(str(r[1])) + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    };
+
     // ---- questions view ----
     var qCard = function (q) {
+      // New pedagogical fields are optional; when present they lead, the classic
+      // answer blocks follow. Old questions render exactly as before.
+      var lead = when(q.incident, blockBox('pb pb-incident', 'Tình huống', q.incident)) +
+        asksBox(q.askFirst) + predictBox(q.predict) +
+        when(q.naive, blockBox('pb pb-naive', 'Cách làm ngây thơ', q.naive, q.naiveCode, q.naiveOut)) +
+        when(q.rootCause, blockBox('pb pb-root', 'Nguyên nhân gốc', q.rootCause));
+      var tail = when(q.tradeoff, blockBox('pb pb-tradeoff', 'Đánh đổi', q.tradeoff)) +
+        when(q.alternatives, blockBox('pb pb-alt', 'Lựa chọn thay thế', q.alternatives)) +
+        when(q.observe, blockBox('pb pb-observe', 'Quan sát trên production', q.observe)) +
+        attacksBox(q.attacks) + anchorBox(q.anchor) +
+        spokenBox('Trả lời 30 giây', 'spoken-30', q.say30) +
+        spokenBox('Trả lời 90 giây', 'spoken-90', q.say90);
       return '<article class="card" data-id="' + esc(str(q.id)) + '">' +
         '<div class="qhead"><span class="qid">' + esc(str(q.id)) + '</span><span class="chips">' +
         prioChip(q.prio) + chip(q.group) + chip(q.level) + chip(q.type, 't') + chip(q.topic) +
         '</span></div>' +
         '<p class="qtext">' + esc(str(q.q)) + '</p>' +
+        lead +
         '<details class="ans"><summary>Xem đáp án, ví dụ và chuỗi hỏi đào sâu</summary><div class="ans-body">' +
         oralBlock(q) + deepBlock(q) + codeBlock(q) + expectedBlock(q) + fuBlock(q) + pitBlock(q) + scBlock(q) +
         '</div></details>' +
+        tail +
         '<div class="qfoot"><div class="mark-btns">' + markBtns(q.id) + '</div>' + refsNote(q) + '</div>' +
         '</article>';
     };
@@ -379,14 +457,35 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     };
 
     // ---- quiz ----
+    // Options are stored in the data with the correct answer first, so rendering them in
+    // array order let a learner score 28/28 by always picking the top option. Shuffle
+    // deterministically per question id: the order is stable across reloads (the page is
+    // offline and must look the same on every open) but the answer is not always first.
+    var seedFrom = function (s) {
+      var h = 2166136261;
+      for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return h >>> 0;
+    };
+    var orderFor = function (id, n) {
+      var order = [];
+      for (var i = 0; i < n; i++) order.push(i);
+      var seed = seedFrom(str(id)) || 1;
+      for (var k = n - 1; k > 0; k--) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        var j = seed % (k + 1);
+        var t = order[k]; order[k] = order[j]; order[j] = t;
+      }
+      return order;
+    };
     var renderQuiz = function () {
       var list = $('quiz-list');
       if (list) {
         list.innerHTML = QUIZSET.map(function (q, i) {
           q = obj(q) || {};
-          var opts = arr(q.options).map(function (o, j) {
+          var raw = arr(q.options);
+          var opts = orderFor(q.id, raw.length).map(function (j) {
             return '<label class="opt"><input type="radio" name="qz-' + esc(str(q.id)) + '" value="' + j + '">' +
-              esc(str(o)) + '</label>';
+              esc(str(raw[j])) + '</label>';
           }).join('');
           return '<div class="quiz-item" data-quiz="' + esc(str(q.id)) + '">' +
             '<p class="qq">' + (i + 1) + '. ' + esc(str(q.q)) + '</p>' + opts +
@@ -431,8 +530,11 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
           if (!q) continue;
           var labels = item.querySelectorAll('.opt');
           var chosen = answers[id];
-          if (labels[q.answer]) labels[q.answer].classList.add('correct');
-          if (chosen != null && chosen !== q.answer && labels[chosen]) labels[chosen].classList.add('wrong');
+          var domOf = orderFor(q.id, arr(q.options).length);
+          var correctPos = domOf.indexOf(Number(q.answer));
+          var chosenPos = domOf.indexOf(chosen);
+          if (correctPos >= 0 && labels[correctPos]) labels[correctPos].classList.add('correct');
+          if (chosen != null && chosen !== q.answer && chosenPos >= 0 && labels[chosenPos]) labels[chosenPos].classList.add('wrong');
           var exp = item.querySelector('.quiz-exp');
           if (exp) {
             exp.hidden = false;
@@ -491,16 +593,30 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     };
 
     var renderMockQuestion = function () {
-      var q = mockState.qs[mockState.i];
+      var q = obj(mockState.qs[mockState.i]);
       var qEl = $('mock-question');
       var aEl = $('mock-answer');
       var next = $('mock-next');
       if (qEl) qEl.textContent = (mockState.i + 1) + '. ' + str(q && q.q);
       if (aEl) {
-        aEl.innerHTML = q
-          ? '<div class="block">' + lbl('Gợi ý đáp án — trả lời miệng trước khi đọc') +
-            '<p class="oral">' + esc(str(q.oral)) + '</p></div>'
-          : '';
+        // The answer is collapsed behind a disclosure. Printing `oral` straight into the
+        // panel put the model answer on screen under a label that told the learner to
+        // answer out loud first — the retrieval step the mock exists for never happened.
+        // The reveal also carries `attacks`, so a mock question drills the follow-ups a
+        // real interviewer asks next instead of stopping at the 30-second answer.
+        var body = '';
+        if (q) {
+          if (str(q.oral)) {
+            body += '<div class="block">' + lbl('Trả lời miệng 30–60 giây') +
+              '<p class="oral">' + esc(str(q.oral)) + '</p></div>';
+          }
+          body += anchorBox(q.anchor) + attacksBox(q.attacks);
+        }
+        aEl.innerHTML = body
+          ? '<details class="mock-reveal"><summary>Đã trả lời xong — mở gợi ý và các câu hỏi đào tiếp</summary>' +
+            '<div class="mock-reveal-body">' + body + '</div></details>'
+          : '<p class="small">Câu này chưa có gợi ý đáp án. Trả lời theo khung: vấn đề → cách làm đầu tiên → ' +
+            'chỗ hỏng → nguyên nhân gốc → đánh đổi → khi nào không dùng.</p>';
       }
       if (next) next.disabled = mockState.i >= mockState.qs.length - 1;
     };
@@ -766,6 +882,25 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         '<ol class="spine-path">' + pathItems + '</ol>' +
         when(l.spine, '<p class="spine-say">' + esc(str(l.spine)) + '</p>') +
         chainHtml + '</div>';
+      // Causal teaching chain. Every field is optional: a lesson that has none of
+      // them renders exactly like before, and a lesson that has them reads as an
+      // incident solved step by step instead of a definition dump.
+      var chain = '';
+      chain += when(l.incident, blockBox('pb pb-incident', 'Sự cố', l.incident));
+      chain += asksBox(l.askFirst);
+      chain += predictBox(l.predict);
+      chain += when(l.naive, blockBox('pb pb-naive', 'Cách làm ngây thơ và vì sao nó có vẻ hợp lý',
+        l.naive, l.naiveCode, l.naiveOut));
+      chain += timelineBox(l.timeline);
+      chain += when(l.rootCause, blockBox('pb pb-root', 'Nguyên nhân gốc', l.rootCause));
+      chain += when(l.concept, blockBox('pb pb-concept', 'Bây giờ mới gọi tên khái niệm', l.concept));
+      chain += when(l.mechanism, blockBox('pb pb-mech', 'Cơ chế bên trong', l.mechanism));
+      chain += when(l.failureModes, blockBox('pb pb-fail', 'Những kiểu hỏng mới mà cách sửa này tạo ra', l.failureModes));
+      chain += when(l.tradeoff, blockBox('pb pb-tradeoff', 'Đánh đổi', l.tradeoff));
+      chain += when(l.alternatives, blockBox('pb pb-alt', 'Lựa chọn thay thế', l.alternatives));
+      chain += when(l.observe, blockBox('pb pb-observe', 'Quan sát và gỡ lỗi trên production', l.observe));
+      chain += attacksBox(l.attacks);
+      chain += anchorBox(l.anchor);
       return '<article class="lesson" id="lesson-' + esc(str(l.id)) + '" data-lesson="' + esc(str(l.id)) + '">' +
         '<div class="lesson-head"><span class="lesson-idx">Bài ' + (idx + 1) + '/' + total + '</span>' +
         '<span class="lesson-id">' + esc(str(l.id)) + '</span></div>' +
@@ -773,11 +908,14 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         spineHtml +
         '<h4 class="lesson-h">' + esc(str(l.title)) + '</h4>' +
         '<p class="lesson-goal">' + esc(str(l.goal)) + '</p>' +
+        chain +
         '<div class="deep">' + sanitize(l.body) + '</div>' +
         when(l.code, '<pre><code>' + esc(str(l.code)) + '</code></pre>') +
-        when(l.codeNote, '<p class="small">' + esc(str(l.codeNote)) + '</p>') +
+        when(l.codeNote, '<p class="small">' + sanitize(str(l.codeNote)) + '</p>') +
         flowFigure(l.flow) +
         when(say, '<div class="sayit"><div class="sc-h">Bạn phải nói được</div><ul class="tight">' + say + '</ul></div>') +
+        spokenBox('Trả lời 30 giây', 'spoken-30', l.say30) +
+        spokenBox('Trả lời 90 giây', 'spoken-90', l.say90) +
         when(builds, '<div class="lesson-builds"><span class="lb-h">Dùng lại</span>' + builds + '</div>') +
         when(qbtns, '<p class="lesson-qids">Luyện ngay: ' + qbtns + '</p>') +
         when(refs, '<span class="status-note">Nguồn: ' + esc(refs) + '</span>') +

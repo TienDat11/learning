@@ -1,0 +1,19 @@
+﻿=== ADVERSARIAL RE-PROBE (post-edit) ===
+
+PASS  A04    ✓ __kwdefaults__  ✓ có  ✓ mặc định
+PASS  A04    ✓ co_consts  ✓ quy luật chung
+PASS  A10    ✓ nuốt  ✓ giá trị đúng
+PASS  C05    ✓ reactivity  ✓ race
+MISS  B08    ✓ controller  ✗ lần chạy này
+PASS  F04    ✓ tỉ lệ dòng khớp  ✓ hai trăm nghìn
+PASS  F05    ✓ visibility map
+PASS  F07    ✓ snapshot isolation
+PASS  L11    ✓ hai mươi tư request
+PASS  L12    ✓ effect()  ✓ scheduler
+PASS  A05    ✓ bytecode  ✓ factory function
+MISS  A08    ✗ im lặng  ✓ StopIteration
+PASS  A11    ✓ cùng một cơ chế
+PASS  A14    ✓ free-threaded  ✓ py_gil_disabled
+PASS  A03    ✓ va chạm băm
+
+13 pass, 2 miss

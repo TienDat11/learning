@@ -1,0 +1,289 @@
+{
+  "meta": {
+    "auditor": "backend-auditor (AUDIT C)",
+    "task": "task-3",
+    "target": "D:\\research\\hitechcloud-interview-prep.html",
+    "target_lines": 7259,
+    "read_only_respected": true,
+    "only_write_path": "D:\\research\\audit\\backend.json",
+    "scope": [
+      "question groups C (C01-C12, lines ~1860-2133)",
+      "question groups E (E01-E12, lines ~2431-2689)",
+      "lessons L07-L11 (lines ~4916-4924)",
+      "flow-request-lifecycle / flow-cors-preflight (lines ~6066-6076)",
+      "quiz items QZ13-QZ15 (lines ~4276-4310)"
+    ],
+    "environment_verified": {
+      "python": "3.13.12 (D:\\research\\.scratch\\e-venv\\Scripts\\python.exe)",
+      "fastapi": "0.142.2",
+      "pydantic": "2.13.5",
+      "pydantic-core": "2.46.5",
+      "starlette": "1.7.0",
+      "anyio": "4.15.1",
+      "httpx": "0.28.1",
+      "email-validator": "2.3.0",
+      "sqlalchemy": "2.1.3",
+      "django": "6.1.2",
+      "djangorestframework": "3.18.3",
+      "uvicorn": "MISSING",
+      "boto3": "MISSING",
+      "botocore": "MISSING",
+      "note": "pip is not installed in the venv (No module named pip); versions obtained via importlib.metadata. The doc's cited versions FastAPI 0.142.2 / Pydantic 2.13.5 / Starlette 1.7.0 match the installed set exactly."
+    },
+    "doc_urls_checked": [
+      "https://fastapi.tiangolo.com/async/",
+      "https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/",
+      "https://raw.githubusercontent.com/encode/starlette/master/docs/middleware.md",
+      "https://docs.djangoproject.com/en/stable/topics/async/ (Django 6.1)"
+    ],
+    "web_search_status": "unavailable (DeepSeek search backend has no API key); authoritative docs fetched directly via web_fetch",
+    "headline": "The eight defects asserted by the commissioning prompt were checked independently and did NOT reproduce. The backend content is unusually accurate: every quantitative claim I could execute reproduced within tolerance, including the verbatim SQLAlchemy QueuePool error string, the anyio 40-token limiter, the DRF router/permission output, and the assert-vs--O trap. Three real but low-severity precision/clarity defects were found (BE-1..BE-3)."
+  },
+  "findings": [
+    {
+      "id": "BE-1",
+      "severity": "minor",
+      "lines": [2497],
+      "kind": "imprecise_claim_threadpool_default",
+      "quote": "anyio đặt mặc định 40 token cho mỗi event loop, và vì một worker process thường có một event loop, hiệu quả là 40 việc đồng bộ chạy song song trong mỗi tiến trình. Nghĩa là tối đa 40 việc đồng bộ chạy song song; việc thứ 41 phải chờ.",
+      "why": "Substantively CORRECT and it does hedge with 'thường có một event loop', but it never states that the 40 is a configurable default rather than a fixed constant. anyio exposes the limiter as a mutable object (`to_thread.current_default_thread_limiter().total_tokens`), so a reader can leave believing 40 is a hard ceiling. Confirmed by execution: default is exactly 40 and is writable to any value. This is a hardening note, not an error.",
+      "evidence": "EXECUTED (anyio 4.15.1): anyio_default_thread_limiter_tokens = 40; anyio_limiter_configurable = [40, 7] (setting total_tokens=7 succeeded). Also measured: asyncio.run(gather(200 x to_thread.run_sync(time.sleep, 0.2))) = 1.1 s, i.e. 200/40 = 5 waves x 0.2 s, matching the doc's model. Doc: https://fastapi.tiangolo.com/async/",
+      "fix": "Thay câu trong mục <strong>Con số cụ thể của threadpool:</strong> bằng: \"FastAPI/Starlette đẩy endpoint <code>def</code> và dependency đồng bộ xuống threadpool của anyio; anyio mặc định đặt 40 token cho mỗi event loop, và vì một worker process thường có một event loop, hiệu quả là 40 việc đồng bộ chạy song song trong mỗi tiến trình. Con số 40 là giá trị mặc định có thể cấu hình lại, không phải trần cứng của hệ thống: bạn đổi được bằng cách gán <code>anyio.to_thread.current_default_thread_limiter().total_tokens = N</code> lúc khởi động. Nghĩa là tối đa 40 việc đồng bộ chạy song song theo mặc định; việc thứ 41 phải chờ. Nếu bạn có 20 worker process thì trần lý thuyết là 20 nhân 40, nhưng pool database thường cạn trước con số đó.\""
+    },
+    {
+      "id": "BE-2",
+      "severity": "minor",
+      "lines": [4280],
+      "kind": "cleanup_timing_imprecision_yield_dependency",
+      "quote": "FastAPI dùng contextmanager cho dependency yield: phần trước yield chạy trước handler, phần sau yield chạy sau khi response gửi xong, nên đây là chỗ đúng để đóng session DB hoặc HTTP client.",
+      "why": "The conclusion is RIGHT (post-yield teardown is the correct place to close a session). The timing wording 'sau khi response gửi xong' (after the response has been fully sent) is looser than what actually happens. Executed instrumentation shows the teardown fires after the response OBJECT is produced but before the body bytes reach the client for a normal JSON response, and only after the body is fully consumed for a StreamingResponse. This matters operationally: it means the connection is held for the whole streaming duration, which is the exact mechanism the L08 lesson teaches. The same loose phrasing recurs at lines 2496/4920 ('sau khi response xong'), where it is harmless. FastAPI's own docs use the loose 'after the response' wording, so this is a precision improvement, not a contradiction.",
+      "evidence": "EXECUTED (FastAPI 0.142.2 + Starlette 1.7.0, TestClient). JSON endpoint event order: ['mw:in', 'dep:open', 'handler:json', 'mw:got-response-object', 'dep:close'] -> dep:close runs BEFORE the response object is returned through middleware. Streaming endpoint event order: ['mw:in', 'dep:open', 'handler:stream', 'mw:got-response-object', 'stream:first-chunk', 'stream:after-first-chunk', 'dep:close'] -> dep:close runs only AFTER the whole body is consumed. Doc: https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/",
+      "fix": "Thay câu explain của QZ13 bằng: \"FastAPI dùng contextmanager cho dependency yield: phần trước yield chạy trước handler, phần sau yield chạy sau khi response đã được sinh ra, và chạy kể cả khi handler ném lỗi, nên đây là chỗ đúng để đóng session DB hoặc HTTP client. Lưu ý về thời điểm chính xác: với response thường, phần sau yield chạy ngay sau khi đối tượng response được tạo và TRƯỚC khi byte đi tới client; với StreamingResponse, phần sau yield chỉ chạy SAU khi toàn bộ body đã được tiêu thụ — nghĩa là kết nối bị giữ suốt thời gian stream. Dạng return chỉ chạy một lần trước handler và không có điểm đóng.\""
+    },
+    {
+      "id": "BE-3",
+      "severity": "minor",
+      "lines": [2605, 2606],
+      "kind": "django_async_version_attribution",
+      "quote": "Django KHÔNG còn là WSGI-only: từ Django 3.0 bạn chạy được ASGI, và tới Django 3.1 mới có <code>async def</code> view, async middleware và async test client.",
+      "why": "The Django-is-not-inherently-WSGI correction is PRESENT and CORRECT — this is the opposite of the asserted defect, and it is handled well in three places (lines 2605, 2606, 4919). One factual nuance: the doc says async middleware arrived in 3.1. Django 3.1 introduced async views and async middleware, but the bundled middleware only became fully async-capable later; Django's own 6.1 async docs state that synchronous middleware sitting between an ASGI server and an async view is adapted by running it in its own thread. The doc's line-4919 sibling statement is more accurate ('Django 3.1 thêm view async def và middleware bất đồng bộ'), so this is only a light over-claim about middleware coverage. No change is required for the asserted defect; this is an optional precision note.",
+      "evidence": "Django 6.1 async docs: 'Django has support for writing asynchronous (async) views, along with an entirely async-enabled request stack if you are running under ASGI. ... A fully asynchronous request stack requires async middleware end-to-end. Where a piece of synchronous middleware sits between an ASGI server and an async view, Django adapts it by running it in its own thread.' Also confirms: 'All QuerySet methods that cause an SQL query to occur have an a-prefixed asynchronous variant', 'async for is supported on all QuerySets', 'Transactions do not yet work in async mode', 'Persistent database connections, set via CONN_MAX_AGE, should also be disabled in async mode'. Django 6.1.2 is the installed version. Doc: https://docs.djangoproject.com/en/stable/topics/async/",
+      "fix": "Thay 'và tới Django 3.1 mới có <code>async def</code> view, async middleware và async test client' bằng: 'và tới Django 3.1 mới có <code>async def</code> view, middleware bất đồng bộ và async test client. Nhưng một request stack bất đồng bộ hoàn toàn đòi hỏi middleware bất đồng bộ từ đầu tới cuối: chỗ nào còn middleware đồng bộ nằm giữa server ASGI và view async thì Django phải tự chạy nó trong một luồng riêng, và chính chi phí chuyển ngữ cảnh đó là thứ giới hạn khả năng đồng thời.'"
+    }
+  ],
+  "asserted_defects_verified_negative": [
+    {
+      "assertion": "1. The doc implies Django is inherently WSGI / synchronous.",
+      "verdict": "NOT PRESENT — the file is already correct here.",
+      "lines": [2605, 2606, 2609, 4919, 4920],
+      "evidence": "Line 2605: 'Cần nói rõ là Django không còn chỉ chạy WSGI: từ Django 3.0 đã có ASGI, nhưng phải tới 3.1 mới có async view, async middleware và async test client; ORM và phần lớn thư viện vẫn đồng bộ nên code chặn vẫn phải có chỗ chạy đúng.' Line 2606: 'Django KHÔNG còn là WSGI-only ... phải bọc qua sync_to_async hoặc để Django tự đẩy xuống threadpool. Vì vậy câu trả lời đúng không phải Django là WSGI, mà là Django chạy được cả hai.' Line 4919 (L07 attacks): 'Django hỗ trợ async thật, không còn thuần WSGI như cách nói cũ. Django 3.0 thêm ASGI, Django 3.1 thêm view async def và middleware bất đồng bộ, và Django 4.1 thêm giao diện ORM bất đồng bộ (aget, acreate) cùng handler bất đồng bộ cho class-based view.' Also correctly states under ASGI sync views run in a thread pool, and correctly cites sync_to_async / async_to_sync / disabling CONN_MAX_AGE under async. All of this matches https://docs.djangoproject.com/en/stable/topics/async/ verbatim in substance."
+    },
+    {
+      "assertion": "2. def vs async def handling is wrong, and/or threadpool size stated as a hard number.",
+      "verdict": "NOT PRESENT (only the unqualified-40 nit is real, filed as BE-1).",
+      "lines": [2497, 2498, 2499, 2500, 2448, 4920],
+      "evidence": "Line 2497: 'FastAPI chạy <code>def</code> thường trên threadpool nên truy vấn đồng bộ không chặn loop.' Line 2499: 'Sửa đúng là hoặc đổi endpoint sang def thường để FastAPI đẩy xuống threadpool, hoặc giữ async nhưng dùng driver async và await thật sự.' Line 2500: 'Endpoint def thường được FastAPI đẩy xuống threadpool của anyio nên mã chặn không giữ event loop, đổi lại tốn thread và chuyển ngữ cảnh.' This is exactly the correct FastAPI semantics. EXECUTED confirmation that def really does leave the loop thread: a def endpoint ran on thread id 25412 while the async-def endpoint ran on 2380, neither on main thread 22692. EXECUTED L07's own numbers: 200 concurrent to_thread.run_sync(time.sleep, 0.2) took 1.1 s (5 waves of 40) versus asyncio.gather(200 x asyncio.sleep(0.2)) at 0.21 s — the doc's 1.55 s / 0.64 s / 41.77 s model is directionally exact. Blocking sleep inside a coroutine serialises: gather(20 x blocking time.sleep(0.05)) = 1.01 s (= 20 x 0.05), and an event-loop ticker froze at 4 ticks across 0.5 s of blocking sleep."
+    },
+    {
+      "assertion": "3. Starlette middleware ordering (added LAST is OUTERMOST).",
+      "verdict": "CORRECT — the doc states it right and the demonstration is right.",
+      "lines": [2443, 2447, 2449],
+      "evidence": "Line 2443 (predict): 'Middleware khai báo sau nằm ngoài cùng, nên log cho thêm dòng mw2-in trước mw-in; khi response đi ra thứ tự đảo ngược.' Line 2447 (deep): 'middleware bao ngoài cùng theo thứ tự NGƯỢC với thứ tự đăng ký: cái đăng ký sau cùng nằm ngoài cùng và chạy trước trên đường request.' EXECUTED and confirmed exactly: registering log_time then second produced ['mw2-in', 'mw-in', 'dep', 'endpoint', 'mw-out', 'mw2-out'] — mw2 (added last) is outermost and runs first inbound, last outbound. Starlette docs corroborate the general principle that middleware is evaluated from the outer layer inward and that ServerErrorMiddleware is always outermost."
+    },
+    {
+      "assertion": "4. yield-dependencies, cleanup in finally, per-request caching, session-per-request, commit/rollback, pool exhaustion.",
+      "verdict": "CORRECT — comprehensive and quantitatively accurate.",
+      "lines": [2444, 2497, 4920],
+      "evidence": "Line 4920 (L08) states the whole model correctly: every line before yield runs before the handler, every line after yield runs even when the handler raises, so rollback+close there are guaranteed; dependency values are cached per request so the auth layer and business layer share exactly one session; nested yield dependencies unwind LIFO via AsyncExitStack; the pool is a semaphore whose ceiling is pool_size + max_overflow. EXECUTED: a shared dependency referenced by two branches ran exactly 1 time in one request (E01_shared_dep_calls_per_request = 1), confirming per-request caching. EXECUTED pool exhaust: with pool_size=20, max_overflow=10, the 31st connection raised sqlalchemy.exc.TimeoutError with the message 'QueuePool limit of size 20 overflow 10 reached, connection timed out, timeout 1.00' — the doc's quoted string 'QueuePool limit of size 20 overflow 10 reached, connection timed out, timeout 30.00' is verbatim correct apart from the configured timeout value. EXECUTED pool defaults: SQLAlchemy 2.1.3 default pool size = 5, matching the doc's 'Mặc định của SQLAlchemy là 5'."
+    },
+    {
+      "assertion": "5. Pydantic v2 lax vs strict, field_validator, Field(gt=...), EmailStr, assert-vs--O trap.",
+      "verdict": "CORRECT — the -O trap is reproduced exactly.",
+      "lines": [2468, 2471, 2474, 2481],
+      "evidence": "EXECUTED and confirmed point by point. Lax coercion: qty='3' on an int field returned 200 with qty=3; ConfigDict(strict=True) produced 422 with type 'int_type', msg 'Input should be a valid integer'. Field(gt=0) on qty=-1 produced 422 type 'greater_than', msg 'Input should be greater than 0'. A field_validator raising ValueError produced 422 type 'value_error', msg 'Value error, qty vuot tran cho phep'. Missing email produced 422 type 'missing'; bad email produced 422 'value is not a valid email address'. THE CENTRAL TRAP: a field_validator using `assert v > 0` raised type 'assertion_error' under plain python, and under BOTH python -O and python -OO the value -1 was ACCEPTED with value -1 — the doc's claim 'assert_validator qty=-1 lọt qua với giá trị -1' is exactly right, and it correctly notes both -O and -OO. The doc's statement that EmailStr requires the email-validator package is correct (email-validator 2.3.0 is installed here). The v1-shim claim is also correct: @validator emitted PydanticDeprecatedSince20 'Deprecated in Pydantic V2.0 to be removed in V3.0'."
+    },
+    {
+      "assertion": "6. Security checks must never use assert; 401 vs 403; IDOR; CSRF for cookie auth.",
+      "verdict": "CORRECT — and the doc goes further than required by documenting the None == None fail-open trap.",
+      "lines": [2280, 2551, 2496, 2276, 2277, 2278],
+      "evidence": "Line 2276 code comment: 'KHONG dung assert: python -O / PYTHONOPTIMIZE se loai assert khoi bytecode ... fail-closed: neu ca cookie lan header deu vang thi None != None la False, guard kieu cu se cho lot. Phai kiem tra thieu TRUOC khi so sanh.' The actual code is `if not c or not h or h != c: raise HTTPException(status_code=403, detail=\"csrf mismatch\")` — correct fail-closed ordering. Line 2278: 'assert — đó là lý do đoạn code trong bài viết bằng if và raise thay vì assert.' The doc honestly reports the snippet is buggy as printed (issue_cookies signature omits csrf_token) and that it fixed it. 401 vs 403: line 2551 pitfalls 'Nhầm 401 với 403 nên client hết hạn token lại hiện trang cấm thay vì đăng nhập lại'; line 2551 also flags the IDOR gap 'Chỉ kiểm tra đăng nhập mà quên kiểm tra chủ sở hữu'. EXECUTED E05's exact claims: no token -> 401 {'detail': 'Not authenticated'} with WWW-Authenticate: Bearer; bad token -> 401 {'detail': 'het han'}; role=user on DELETE -> 403 {'detail': 'cam'}; role=admin -> 200 {'deleted': true}. All five assertions match."
+    },
+    {
+      "assertion": "7. BackgroundTasks semantics (in-process, after response, NOT durable) vs a real queue; any HTTP 202 without genuine persistence.",
+      "verdict": "CORRECT — and no naked HTTP 202 was found anywhere in the backend scope.",
+      "lines": [2621, 2623, 2624, 2625, 4922],
+      "evidence": "Line 2625 (E09 expected): 'Hàm trả về order ngay, còn send_mail chạy SAU khi response được gửi. Ba hệ quả cần nhớ: (1) task chạy trong chính process đó nên nếu process restart hay bị kill, email mất vĩnh viễn, không có retry; (2) task chạy sau response nên client không biết nó thành công hay thất bại ...; (3) nếu send_mail là hàm chặn (SMTP đồng bộ), nó chiếm một luồng trong threadpool của tiến trình (mặc định 40 luồng), không phải một worker tiến trình riêng.' Line 2623 correctly separates BackgroundTasks from durable queue (ack, retry, delay, monitoring). Line 4922 (L10) correctly calls out that a BackgroundTask dies with the process on deploy. I searched the whole file for status 202 usage: the only '202' matches are inside the date string '2026-10-01' in the SOURCES list — there is NO HTTP 202 anywhere, and therefore no unsupported 202. The claim cannot fail because the pattern is absent."
+    },
+    {
+      "assertion": "8. Every FastAPI/Pydantic snippet runnable, current API, correct stated output.",
+      "verdict": "CORRECT for all snippets I could execute. Skill/credential-dependent ones are honestly marked as not executed by the doc itself.",
+      "lines": [2226, 2227, 2448, 2449, 2497, 2498, 2507, 2624, 2632, 2633, 4920, 4922, 4923],
+      "evidence": "E01 endpoint (line 2448) executed verbatim: GET /orders -> 200 {'user': {'id': 1}} with order ['mw2-in','mw-in','dep','endpoint','mw-out','mw2-out'] exactly as the doc's expected text states. E02 model (line 2481) executed verbatim: every status code, loc, type and msg in the doc's expected string reproduced exactly. E05 auth snippet (line 2531) executed with all five outcomes matching. E10's claim that dependency_overrides is looked up per-request, not at TestClient construction, is CORRECT and I confirmed it: setting app.dependency_overrides after constructing the client still returned the override (200 {'user': {'id': 9, 'role': 'user'}}). E12 DRF snippet executed on the installed Django 6.1.2 + DRF 3.18.3: get_permissions across list/create/retrieve/update/partial_update returned ['IsAuthenticated'] five times and ['IsAdminUser'] for destroy; DefaultRouter produced ^orders/$ -> order-list and ^orders/(?P<pk>[^/.]+)/$ -> order-detail plus format-suffix variants and api-root; AnonRateThrottle 2/min yielded num_requests=2, duration=60 and the default message 'Request was throttled.' Line 2227's stated SQLite port results for the allowlist/ORDER BY injection demo and the offset-vs-cursor pagination argument are internally consistent and the injection reasoning (ORDER BY as a blind read channel via CASE WHEN + substr) is sound Python/DB technique. Line 2497's snippet is corrected inline by the doc in 2498, which is the right pedagogy."
+    }
+  ],
+  "executed_snippets": [
+    {
+      "script": "D:\\research\\.scratch\\be_verify_1.py",
+      "covers": "E01 middleware order, E01 per-request dependency caching, E02 Pydantic v2 lax/strict/gt/field_validator/EmailStr",
+      "raw_output": {
+        "versions": {"python": "3.13.12", "fastapi": "0.142.2", "pydantic": "2.13.5", "starlette": "1.7.0", "anyio": "4.15.1"},
+        "E01_orders_status": 200,
+        "E01_orders_body": {"user": {"id": 1}},
+        "E01_order_observed": ["mw2-in", "mw-in", "dep", "endpoint", "mw-out", "mw2-out"],
+        "E01_shared_dep_calls_per_request": 1,
+        "E02": {
+          "qty3": [200, {"email": "a@b.c", "qty": 3, "id": 7}],
+          "qty_neg1": [422, [{"type": "greater_than", "loc": ["body", "qty"], "msg": "Input should be greater than 0", "ctx": {"gt": 0}}]],
+          "qty_10001": [422, [{"type": "value_error", "loc": ["body", "qty"], "msg": "Value error, qty vuot tran cho phep"}]],
+          "no_email": [422, [{"type": "missing", "loc": ["body", "email"], "msg": "Field required"}]],
+          "bad_email": [422, "value is not a valid email address: An email address must have an @-sign."],
+          "qty_str_3_lax": [200, {"email": "a@b.c", "qty": 3, "id": 7}]
+        },
+        "E02_strict_str3": [{"type": "int_type", "loc": ["qty"], "msg": "Input should be a valid integer"}],
+        "E02_1_0_lax_to_int": 1,
+        "E02_True_lax_to_int": 1
+      },
+      "matches_doc_expected": true,
+      "note": "Starlette emitted a deprecation notice: 'Using httpx with starlette.testclient is deprecated; install httpx2 instead.' This is an environment artifact of Starlette 1.7.0 + httpx 0.28.1 and does not invalidate any doc claim."
+    },
+    {
+      "script": "D:\\research\\.scratch\\be_verify_assert.py",
+      "covers": "assert-vs--O trap in a Pydantic field_validator; anyio limiter default and configurability",
+      "raw_output": {
+        "no_O": {"optimize_flag": 0, "assert_validator_qty_neg1": {"accepted": false, "error": "assertion_error"}, "anyio_default_thread_limiter_tokens": 40, "anyio_limiter_configurable": [40, 7]},
+        "with_O": {"optimize_flag": 1, "assert_validator_qty_neg1": {"accepted": true, "value": -1}},
+        "with_OO": {"optimize_flag": 2, "assert_validator_qty_neg1": {"accepted": true, "value": -1}}
+      },
+      "matches_doc_expected": true,
+      "note": "Doc claims BOTH -O and -OO silently accept; confirmed both. Doc claims the 40 is the anyio default; confirmed exactly 40 and confirmed it is writable (BE-1)."
+    },
+    {
+      "script": "D:\\research\\.scratch\\be_verify_auth.py",
+      "covers": "E05 401 vs 403 separation, OAuth2PasswordBearer behaviour, E10 dependency_overrides lookup timing",
+      "raw_output": {
+        "me_no_token": [401, {"detail": "Not authenticated"}, "Bearer"],
+        "me_bogus_token": [401, {"detail": "het han"}],
+        "me_user_token": [200, {"id": 1, "role": "user"}],
+        "del_user_token_role_user": [403, {"detail": "cam"}],
+        "del_user_token_role_admin": [200, {"deleted": true}],
+        "E10_override_after_client_creation": [200, {"user": {"id": 9, "role": "user"}}],
+        "drf_version": "3.18.3",
+        "django_version": "6.1.2"
+      },
+      "matches_doc_expected": true
+    },
+    {
+      "script": "D:\\research\\.scratch\\be_verify_threadpool.py",
+      "covers": "L07 threadpool model: def off-loop, 40-token concurrency, blocking sleep starvation",
+      "raw_output": {
+        "anyio_to_thread_200x_sleep_0.2": 1.1,
+        "asyncio_gather_200x_sleep_0.2": 0.21,
+        "asyncio_gather_20x_BLOCKING_sleep_0.05": 1.01,
+        "event_loop_starvation": {"ticks_before_blocking": 4, "ticks_after_0.5s_of_blocking": 4},
+        "def_endpoint_thread": {"is_main": false},
+        "async_endpoint_thread": {"is_main": false}
+      },
+      "matches_doc_expected": true,
+      "note": "200 sync sleeps at 0.2 s in 1.1 s is exactly 5 waves x 40 tokens, matching the doc's 1.55 s model. 20 blocking sleeps of 0.05 s inside a coroutine took 1.01 s = perfectly serialised. The event loop ticker froze completely during blocking, proving the doc's starvation claim."
+    },
+    {
+      "script": "D:\\research\\.scratch\\be_verify_yield.py",
+      "covers": "yield-dependency teardown timing relative to response emission",
+      "raw_output": {
+        "json_events": ["mw:in", "dep:open", "handler:json", "mw:got-response-object", "dep:close"],
+        "stream_events": ["mw:in", "dep:open", "handler:stream", "mw:got-response-object", "stream:first-chunk", "stream:after-first-chunk", "dep:close"]
+      },
+      "matches_doc_expected": "partially — see BE-2",
+      "note": "Teardown completes before the response object leaves the middleware stack for a normal response, but only after the full body for a StreamingResponse. The doc's 'sau khi response gửi xong' is looser than reality; its conclusion about where to put close() remains correct."
+    },
+    {
+      "script": "D:\\research\\.scratch\\be_verify_pool.py",
+      "covers": "L07/L08 SQLAlchemy default pool sizing and the verbatim QueuePool exhaustion message",
+      "raw_output": {
+        "sqlalchemy": "2.1.3",
+        "default_pool_size": 5,
+        "31st_connection": "sqlalchemy.exc.TimeoutError",
+        "31st_message": "QueuePool limit of size 20 overflow 10 reached, connection timed out, timeout 1.00",
+        "31st_wait_seconds": 1.0,
+        "checkedout_before_close": 30,
+        "checkedout_after_one_close": 29,
+        "pool_status": "Pool size: 20  Connections in pool: 1 Current Overflow: 10 Current Checked out connections: 29"
+      },
+      "matches_doc_expected": true,
+      "note": "The doc's quoted error string is verbatim correct; only the timeout value differs because I set pool_timeout=1 for test speed. Default pool_size=5 matches. Connections are returned only on close() — checkedout went 30 -> 29 — which is the mechanism the doc's whole L08 lesson rests on."
+    },
+    {
+      "script": "D:\\research\\.scratch\\be_verify_drf.py",
+      "covers": "E12 DRF viewset permission-per-action, DefaultRouter URL generation, throttle semantics",
+      "raw_output": {
+        "action_permissions": {
+          "list": ["IsAuthenticated"], "create": ["IsAuthenticated"], "retrieve": ["IsAuthenticated"],
+          "update": ["IsAuthenticated"], "partial_update": ["IsAuthenticated"], "destroy": ["IsAdminUser"]
+        },
+        "router_patterns": [["^orders/$", "order-list"], ["^orders/(?P<pk>[^/.]+)/$", "order-detail"], ["", "api-root"]],
+        "throttle_num_requests": 2,
+        "throttle_duration": 60,
+        "throttle_wait_default_msg": "Request was throttled.",
+        "drf": "3.18.3",
+        "django": "6.1.2"
+      },
+      "matches_doc_expected": true
+    },
+    {
+      "script": "D:\\research\\.scratch\\be_verify_pyd_v1shim.py",
+      "covers": "E02 claim that Pydantic v1 style validators still run but emit PydanticDeprecatedSince20 and are slated for removal in v3",
+      "raw_output": {
+        "warning_1": "PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. ... Deprecated in Pydantic V2.0 to be removed in V3.0.",
+        "warning_2": "PydanticDeprecatedSince20: Pydantic V1 style `@root_validator` validators are deprecated. ... Deprecated in Pydantic V2.0 to be removed in V3.0.",
+        "strict_error_type": "int_type",
+        "strict_error_msg": "Input should be a valid integer"
+      },
+      "matches_doc_expected": true,
+      "note": "The exact warning class name the doc cites (PydanticDeprecatedSince20) and the 'removed in V3.0' horizon are both confirmed."
+    }
+  ],
+  "unverified": [
+    {
+      "item": "L07 predict block timings (A = 1,55 giây, C = 0,64 giây, B = 41,77 giây for 200 concurrent requests at 0.2 s each)",
+      "lines": [4919],
+      "reason": "I verified the underlying concurrency MODEL exactly (200 to_thread sleeps = 1.1 s here vs 1.55 s claimed; gather = 0.21 s here vs 0.64 s claimed; blocking = perfectly serialised, consistent with 200 x 0.2 = 40 s vs the 41.77 s claimed) but did not reproduce the exact wall-clock figures, which depend on machine, worker count and TestClient-vs-real-uvicorn differences. The direction and mechanism are confirmed; the absolute numbers are plausible but are machine-specific.",
+      "recommendation": "Optionally label the three timings as 'đo trên máy tác giả' so a reader does not treat 1,55 / 0,64 / 41,77 as universal constants."
+    },
+    {
+      "item": "L09 botocore claims (max_attempts in legacy mode means retries not total calls; total_max_attempts means total calls; standard mode reinterprets max_attempts; Config(retries={'max_attempts': 3}).retries output at botocore 1.43.108)",
+      "lines": [4921],
+      "reason": "boto3 and botocore are NOT installed in the provided venv, so I could not execute Config(...) and confirm the stated 3-vs-4 semantics or the printed retries dict. The claim is consistent with published botocore behaviour (legacy mode counts retries, standard/total_max_attempts counts total attempts) but is asserted here from reasoning, not execution.",
+      "recommendation": "Install botocore into the scratch venv and re-run before treating the botocore 1.43.108 output strings as verified."
+    },
+    {
+      "item": "E04 expected text (line 2507-2510) full content",
+      "lines": [2507],
+      "reason": "I read the E04 code, deep and predict blocks and they are accurate on service/repository layering tradeoffs, but I only partially captured the trailing 'expected' field before output truncation. E04 contains no FastAPI API claims that would change a verdict; the layer-tradeoff reasoning is conceptual and correct.",
+      "recommendation": "No action."
+    },
+    {
+      "item": "Line 4922/L10 lambda timeout and DLQ re-delivery numbers (900 s cut, 3 receives, 4 duplicate reports)",
+      "lines": [4922],
+      "reason": "AWS Lambda and SQS behaviour cannot be executed here; the 'at least once, not exactly once' reasoning and the maxReceiveCount-3 default are standard and consistent, but they are platform claims, not locally verifiable.",
+      "recommendation": "No action; the reasoning is sound and correctly hedged ('thường được đặt là 3')."
+    },
+    {
+      "item": "Line 4923/L11 lost-update reproduction (24 orders accepted vs 10 stock decrements, over-sell 14; fixed path 10/0)",
+      "lines": [4923],
+      "reason": "The claim is explicitly described in the doc as a simulation of READ COMMITTED semantics rather than a real PostgreSQL run ('mô phỏng đúng ngữ nghĩa đó với kho 10 món và 100 người mua cùng lúc'). No PostgreSQL instance was available in the scratch environment, so I could not reproduce it on real Postgres. The SQL technique itself is correct: `UPDATE stock SET qty = qty - 1 WHERE sku = :sku AND qty >= 1` re-evaluates its WHERE on the latest row version under READ COMMITTED, and rowcount=0 correctly signals out-of-stock.",
+      "recommendation": "The doc already labels this as a simulation; that labelling is honest and sufficient."
+    }
+  ],
+  "severity_summary": {
+    "critical": 0,
+    "major": 0,
+    "minor": 3,
+    "note": "No critical or major backend defect was found in the audited scope. The three minor findings are precision/hardening improvements, not errors: BE-1 (state that 40 is configurable), BE-2 (tighten yield-teardown timing wording), BE-3 (light over-claim about Django 3.1 middleware coverage)."
+  },
+  "top_defects": [
+    "BE-1 (minor, line 2497): anyio's 40-token threadpool limiter is presented as a default but never flagged as configurable; a reader can mistake it for a hard ceiling.",
+    "BE-2 (minor, line 4280): QZ13 explain says post-yield teardown runs 'sau khi response gửi xong'; execution shows it completes before the response object leaves the middleware for normal responses, and only after the full body for StreamingResponse.",
+    "BE-3 (minor, lines 2605-2606): 'Django 3.1 mới có ... async middleware' slightly over-claims middleware coverage; Django still adapts synchronous middleware in its own thread under ASGI.",
+    "(no major or critical defects found in groups C/E, lessons L07-L11, or the two flow definitions)"
+  ]
+}

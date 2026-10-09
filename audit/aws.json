@@ -1,0 +1,177 @@
+{
+  "audit": "B — AWS / distributed systems",
+  "target": "D:\\research\\hitechcloud-interview-prep.html",
+  "auditor": "aws-auditor",
+  "read_only_target": true,
+  "method": "Manual read of G/H/I/J question groups, lessons L01-L22, flow definitions; every quota/timeout/retry/pricing claim cross-checked against the AWS documentation URL listed in evidence, fetched during this audit. web_search was unavailable in this session (no API key) — all verification was done with web_fetch against docs.aws.amazon.com and aws.amazon.com.",
+  "verification_legend": {
+    "hard_limit": "cannot be changed by the customer",
+    "raisable_quota": "default value that can be increased via Service Quotas",
+    "default_config": "a default that the customer configures, not a platform limit"
+  },
+
+  "headline": {
+    "verdict": "The six defects asserted by the commissioning prompt are substantially NOT present. The file already separates the three Lambda invocation-retry modes correctly (L03, line 4708), already names container images as the reason unusual system libraries are NOT a disqualifier (line 4722), already covers reserved vs provisioned concurrency plus downstream saturation (G14, L03), and the single HTTP 202 in sample code (line 5728) is backed by a genuinely committed transaction. The lazy-init helper (line 4723) is described accurately. The real defects are different from the ones asserted: one internal self-contradiction on a hard platform limit, one factually wrong 'fix' in a quiz distractor, one wrong numeric cap in the same quiz, two over-statements about S3 presigned URL semantics, and an outdated Lambda limit block that ignores Lambda Managed Instances.",
+    "asserted_by_prompt_true": [],
+    "asserted_by_prompt_false": ["1 (retry semantics — already correct)", "2 (when not to use Lambda — already correct)", "3 (concurrency — already covered)", "5 (lazy-init helper — already accurate)"],
+    "asserted_by_prompt_partly_true": ["4 (202 — genuine, but the sample code has a narrower real bug on a different line)", "6 (teaching-through-incident is consistently present; the one CloudWatch 'server is slow' framing also exists but is not the primary framing)"]
+  },
+
+  "findings": [
+    {
+      "id": "AWS-1",
+      "severity": "critical",
+      "lines": [4367, 4789],
+      "kind": "internal-contradiction / hard-limit vs raisable-quota confusion",
+      "quote": "4367: 'Do API Gateway timeout, xử lý bằng cách tăng timeout của integration lên 29 giây'  ||  4789: 'Gateway có trần thời gian tích hợp khoảng hai mươi chín giây và trần kích thước payload, nên chờ hàm lâu hoặc đẩy file lớn qua nó là sai từ đầu.'",
+      "why": "Two lines in the same file say opposite things about the same number. Line 4789 states correctly that 29 seconds is a CEILING (trần). Line 4367, a quiz distracter, presents 'tăng timeout của integration lên 29 giây' (raise the integration timeout to 29 seconds) as a plausible remediation — i.e. it treats 29 s as a value you would raise a too-low timeout TO, implying it is adjustable and implying values above 29 s might exist. For REST APIs the integration timeout is a HARD limit, not a raisable quota: the default is 29 seconds and 29 seconds is also the maximum. A candidate who memorises line 4367 walks into an interview believing 29 s is a tuning target. Line 4367 is a distracter so it is not marked wrong, but the wrongness is invisible: nothing in the surrounding text tells the reader why option 2 is false, and a reader who skips the explanation retains the wrong fact. Note also that HTTP APIs have a different integration-timeout ceiling than REST APIs, and the file never distinguishes the two API types anywhere — G05 and L05 both say 'API Gateway' generically.",
+      "evidence": "https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html (REST API integration timeout: default 29 s, maximum 29 s — hard limit). Cross-reference: the account-level throttle quota on the same page IS raisable (10,000 RPS default, 'Can be increased: Yes'), which is the contrast the file needs but never draws.",
+      "fix": "Line 4367 — replace the option text:\n'Do API Gateway timeout, xử lý bằng cách tăng timeout của integration lên 29 giây (nhưng 29 giây là trần cứng của REST API, không tăng được)'\n\nAnd add one clarifying clause to line 4789 sayIt entry:\n'Gateway có trần thời gian tích hợp 29 giây với REST API — đây là trần cứng, không phải hạn mức xin tăng được, và HTTP API có trần khác — cùng trần kích thước payload, nên chờ hàm lâu hoặc đẩy file lớn qua nó là sai từ đầu.'"
+    },
+    {
+      "id": "AWS-2",
+      "severity": "major",
+      "lines": [4922],
+      "kind": "wrong-number / unverified specific",
+      "quote": "predict.a: 'Với cấu hình mặc định của hàng đợi, số lần nhận trước khi vào DLQ thường được đặt là 3, nên job chạy ba lần và bị cắt ba lần.'",
+      "why": "There is no default maxReceiveCount. A standard SQS queue has NO redrive policy and therefore NO DLQ by default — nothing is ever moved to a dead-letter queue until an operator creates the DLQ and sets a redrive policy. 'Thường được đặt là 3' presents a convention as a platform default, and the whole teaching point of L10 depends on a specific number (three timed-out runs, four reports). A learner who repeats 'mặc định là 3' in an interview is stating a false platform default. The mechanism is right; the attribution is wrong.",
+      "evidence": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html (DLQ and maxReceiveCount are customer configuration; SQS queues have no DLQ unless a redrive policy is configured). Visibility-timeout semantics confirmed at https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+      "fix": "Replace that sentence in the predict.a field of line 4922:\n'Với cấu hình của hàng đợi trong ví dụ này, redrive policy đặt maxReceiveCount bằng 3, nên job chạy ba lần và bị cắt ba lần. Lưu ý đây là con số do người vận hành cấu hình, không phải mặc định của SQS: hàng đợi chuẩn không có DLQ và không có maxReceiveCount cho tới khi bạn tự tạo DLQ và gắn redrive policy.'"
+    },
+    {
+      "id": "AWS-3",
+      "severity": "major",
+      "lines": [4722, 4922],
+      "kind": "outdated-limit / missing alternative",
+      "quote": "4722 body: 'Khi một lần xử lý cần hơn 15 phút...' || 4922 mechanism: 'Thời gian chạy tối đa một lần gọi: 900 giây.' || 4922 alternatives: 'Lambda Managed Instances là lựa chọn mới cho phép thời gian chạy dài hơn nhiều so với 900 giây... giới hạn cụ thể cần kiểm tra lại tài liệu hiện hành'",
+      "why": "The 15-minute figure is stated flatly as the Lambda ceiling in the mechanism and body blocks, and the same lesson's alternatives block then says a newer mode goes far beyond it. The two statements are in tension for a reader: the mechanism block reads as the authoritative limit table, and a reader who stops there concludes 900 s is absolute. In current documentation the 900-second ceiling is the ceiling for Lambda (default) functions, while Lambda Managed Instances support 5,400 seconds (90 minutes) for asynchronous invocation and for event source mapping invocation except Amazon MQ and Amazon DocumentDB. The file is careful enough to hedge (it says to check current docs), which is why this is major and not critical — but the limit block itself should carry the qualifier rather than leaving it to a later paragraph.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html — 'Code can run for up to 15 minutes in a single invocation (up to 90 minutes for Lambda Managed Instances functions invoked asynchronously or through any event source mapping except Amazon MQ and Amazon DocumentDB)'; the same page also states the function-timeout quota as '900 seconds (15 minutes)... For functions using AWS Lambda Managed Instances, asynchronous invocations and event source mapping invocations (except Amazon MQ and Amazon DocumentDB) support a maximum allowed value of 5,400 seconds (90 minutes).'",
+      "fix": "In the mechanism limit list of line 4922, replace the first bullet:\n'Thời gian chạy tối đa một lần gọi: 900 giây cho hàm Lambda thông thường (15 phút). Với Lambda Managed Instances, gọi bất đồng bộ và event source mapping được tới 5.400 giây (90 phút), trừ Amazon MQ và Amazon DocumentDB.'\n\nAnd in the body block of line 4722, replace:\n'<strong>Khi nào không dùng.</strong> Khi một lần xử lý cần hơn 15 phút (mốc 900 giây của hàm Lambda thông thường; Lambda Managed Instances cho phép tới 90 phút cho gọi bất đồng bộ);'"
+    },
+    {
+      "id": "AWS-4",
+      "severity": "major",
+      "lines": [5598, 5607, 5608],
+      "kind": "over-statement / missing-constraint",
+      "quote": "5608: 'URL có hạn 10 phút vì tôi không thu hồi riêng từng URL được, dù vẫn chặn được bằng cách gỡ quyền của danh tính đã ký'  ||  5598/5607: claim a 10-minute signed URL is the operative lifetime",
+      "why": "A presigned URL lives for the SHORTER of its configured expiry and the lifetime of the credentials that signed it. When a Lambda execution role signs the URL, those are temporary role credentials that rotate — so a URL configured for 600 seconds can become useless well before 600 seconds if the credentials underlying it are revoked, rotated or expired. The file states the 10-minute window as if it were guaranteed and presents credential-revocation only as a manual remediation. In practice this is the most common real-world cause of 'my presigned URL stopped working' and it is the failure mode a candidate is most likely to be asked about. The file also never mentions the hard expiry ceilings (console 1 minute to 12 hours; CLI/SDK up to 7 days; role credentials capped by the role session).",
+      "evidence": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html — 'A presigned URL expires at either its configured expiration time or when its associated credentials expire, whichever occurs first'; 'IAM role credentials – The presigned URL expires when the role session expires, even if you specify a longer expiration time'; Console expiry 1 minute to 12 hours, CLI/SDK up to 7 days.",
+      "fix": "Append to the sayIt entry on line 5608, after the existing text:\n'Và hạn thật của URL là mốc NGẮN HƠN giữa thời gian tôi cấu hình và vòng đời của chứng chỉ đã ký nó: hàm Lambda ký bằng chứng chỉ tạm thời của execution role, nên khi chứng chỉ đó bị xoay hoặc hết hạn thì URL chết theo dù tôi để hạn 10 phút. Đây là nguyên nhân phổ biến nhất của lỗi 403 trên URL còn hạn, và cũng là lý do tôi không cấu hình hạn dài hơn vòng đời chứng chỉ.'\n\nAnd in the body block of line 5600, add after the sentence about the three light requests:\n'<p><strong>Hạn của URL là mốc ngắn hơn.</strong> URL hết hạn theo cấu hình hoặc theo vòng đời chứng chỉ đã ký, cái nào tới trước. Với execution role của Lambda, chứng chỉ tạm thời được xoay định kỳ nên URL có thể chết sớm hơn hạn ghi trên giấy; gỡ quyền của danh tính đã ký là cách thu hồi duy nhất, vì bản thân từng URL không thu hồi riêng được.</p>'"
+    },
+    {
+      "id": "AWS-5",
+      "severity": "minor",
+      "lines": [5598, 5607, 5609],
+      "kind": "missing-security-boundary",
+      "quote": "5609: 'Loại tệp tôi chặn ngay ở bước cấp URL với lỗi 415... Ở bước xác nhận tôi sniff magic bytes'",
+      "why": "The file correctly treats the presigned URL as a bearer capability and correctly pins VersionId, but it never states the containment rule that follows from 'URL is a capability': the anti-virus scan result is bound to a VersionId, and a client that still holds a live URL can overwrite the same key with new bytes after the scan passed. The file does mention VersionId pinning (line 5598, 5602) — good — but it does not state the operational consequence for reads, which is the part an interviewer probes: serving must read by pinned VersionId, never by key alone, or scanned bytes and served bytes can differ. Line 5598 does say this ('Tôi ghim VersionId từ lúc head_object tới lúc ký lệnh đọc'), so the gap is narrower than it first appears: what is missing is the explicit statement that the write path stays open until expiry, which is what makes the pin necessary.",
+      "evidence": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html — 'If an object with the same key already exists in the bucket as specified in the presigned URL, Amazon S3 replaces the existing object with the uploaded object'; 'You can use the presigned URL multiple times, up to the expiration date and time.'",
+      "fix": "Add to the body block of line 5600, immediately after the VersionId discussion:\n'<p><strong>Cửa ghi vẫn mở cho tới lúc URL hết hạn.</strong> Presigned PUT dùng lại được nhiều lần trong hạn, và S3 thay thế object cùng khoá. Nghĩa là sau khi quét xong một phiên bản, người giữ URL vẫn ghi đè được khoá đó cho tới phút thứ mười. Vì vậy kết quả quét phải gắn với VersionId, và mọi lệnh đọc khi phục vụ phải đọc theo đúng VersionId đó chứ không đọc theo khoá — nếu không, byte đã quét và byte được phục vụ có thể là hai object khác nhau.'"
+    },
+    {
+      "id": "AWS-6",
+      "severity": "minor",
+      "lines": [4720, 4721, 4722],
+      "kind": "imprecise-number / raisable-quota-vs-hard-limit",
+      "quote": "4720: 'mặc định 1.000 suất chia sẻ cho cả Region'  ||  4721: 'function-level reserve tối đa bằng hạn mức tài khoản trừ 100, giữ lại 100 suất unreserved cho phần còn lại'",
+      "why": "Both statements are true as DEFAULTS, and the file does say 'mặc định' on line 4720 — so this is a precision gap rather than an error. What is missing is that 1,000 is a raisable quota, not a ceiling: the default is 1,000 concurrent executions per Region and it can be increased to tens of thousands. The file also omits the requests-per-second coupling, which is the non-obvious half of the limit: accounts are capped at 10x the concurrency quota in requests per second, so a function with 50 ms duration can be throttled by the RPS cap while its concurrency still looks fine. Line 4721 says 'AWS không công bố ngưỡng cụ thể, hướng dẫn chính thức dùng 70%...' — the 70% target is accurate for the Application Auto Scaling target-tracking example, and the file correctly attributes it to official guidance, but the 10-90% band it cites is the allowed TargetValue range, not a 'reasonable range' recommendation, which the file implies.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html — 'By default, your account has a concurrency limit of 1,000 concurrent executions across all functions in a Region'; 'Across all functions in your account, Lambda enforces a requests per second limit that's equal to 10 times your account concurrency'; 'you can reserve up to 900 units of concurrency across all your functions by default. Regardless of your total account concurrency limit, Lambda always reserves 100 units'. Provisioned-concurrency 70% example and the 10%-90% band: https://docs.aws.amazon.com/lambda/latest/dg/provisioned-concurrency.html ('keep utilization near 70 percent, but you can apply any value between 10% and 90%').",
+      "fix": "Line 4720 — replace 'mặc định 1.000 suất chia sẻ cho cả Region' with:\n'mặc định 1.000 suất chia sẻ cho cả Region, và đây là hạn mức xin tăng được chứ không phải trần cứng; kèm theo đó là trần 10 lần hạn mức concurrency tính theo request mỗi giây, nên hàm rất ngắn vẫn có thể bị chặn bởi trần RPS dù concurrency còn thừa.'\n\nLine 4721 — replace the provisioned-concurrency clause with:\n'AWS không công bố ngưỡng cứng, nhưng ví dụ chính thức của Application Auto Scaling dùng mức sử dụng mục tiêu 70%, và TargetValue cho phép đặt trong khoảng 10 đến 90 phần trăm; số này phải đo thực tế chứ không ước lượng.'"
+    },
+    {
+      "id": "AWS-7",
+      "severity": "minor",
+      "lines": [3340, 3341],
+      "kind": "cost/scaling arithmetic missing",
+      "quote": "3340 code: CloudFormation template sets 'VisibilityTimeout: 60' and 'maxReceiveCount: 5'  ||  3341 expected: 'VisibilityTimeout: 60 phải lớn hơn timeout xử lý thực tế của consumer'",
+      "why": "The template is taught as a fix and the expected text states the visibility-timeout rule, but no arithmetic connects the two numbers to the Lambda function that consumes the queue. The queue's visibility timeout must be at least the consumer function's timeout, plus margin; and the DLQ retention must exceed the retry window. With maxReceiveCount 5 and the Lambda retry behaviour taught in L03, the worst-case message lifetime is bounded by roughly 5 visibility windows plus backoff — a number an interviewer will ask for and the file never derives. L10 and L14 derive numbers well elsewhere, so this is an inconsistency rather than a house style.",
+      "evidence": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html — 'Setting the visibility timeout to match the maximum time your application typically needs to process and delete a message'; maximum visibility-timeout window is 12 hours from first receipt and extending does not reset that 12-hour clock.",
+      "fix": "Append to the expected field of line 3341:\n'Con số cần tính: visibility timeout phải lớn hơn timeout của hàm consumer cộng biên (nếu hàm đặt 30 giây thì 60 giây là hợp lý), và tổng thời gian sống xấu nhất của một message xấp xỉ maxReceiveCount nhân visibility timeout cộng các khoảng chờ backoff — với 5 lần nhận và 60 giây thì trần đó khoảng 5 phút, phải nhỏ hơn thời gian lưu của DLQ. Ngoài ra thời gian ẩn tối đa là 12 giờ tính từ lần nhận đầu và gia hạn không làm mới mốc 12 giờ đó.'"
+    },
+    {
+      "id": "AWS-8",
+      "severity": "minor",
+      "lines": [4371],
+      "kind": "imprecise-fix-guidance",
+      "quote": "4371 explain: 'tăng memory cũng rút ngắn thời gian init, còn dependency nặng nên nạp ở biến module scope thay vì trong handler.'",
+      "why": "This is the canonical AWS guidance and it is correct. The imprecision is that the file never states the counter-case, which is the interesting interview follow-up: AWS's own provisioned-concurrency documentation explicitly says that for functions where a heavy client is used on only some execution paths, deferring initialisation INTO the handler can reduce latency, because module-scope init runs on every cold start whether or not that path is taken. The file teaches module-scope init as a universal rule in L03, G03, G14 and QZ20, and never presents the conditional exception.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html — 'you might have large numbers of objects that are only used in certain execution paths in your function. In this case, you can lazily load variables in the global scope to reduce the static initialization duration.' Also https://docs.aws.amazon.com/lambda/latest/dg/provisioned-concurrency.html (the CLIENT_A control-flow example).",
+      "fix": "Append to the explain field of line 4371:\n'Ngoại lệ đáng nhớ: nếu client nặng chỉ dùng ở một nhánh xử lý hiếm gặp, đặt nó ở cấp module lại làm mọi cold start trả giá cho nhánh đó — khi ấy khởi tạo lười bên trong handler (có kiểm tra rỗng) mới đúng. Quy tắc là chọn theo tần suất nhánh, không áp máy móc.'"
+    },
+    {
+      "id": "AWS-9",
+      "severity": "minor",
+      "lines": [3104, 3113, 3115],
+      "kind": "missing-alternative / cost arithmetic",
+      "quote": "3113: 'dùng lớp gộp kết nối cho mọi workload Lambda tới RDS'  ||  3115: 'đặt RDS Proxy hoặc pgbouncer giữa Lambda và RDS'",
+      "why": "The content is correct and the diagnosis mechanism (connections scale with concurrent execution environments, not with request count) is exactly right. Two things are missing. First, RDS Proxy itself has a connection quota to the target database and its own pricing — presenting it as an unconditional fix without a cost note is the kind of thing an interviewer probes ('what does the proxy cost you?'). Second, the correct C21 supplement is to cap the consumer side with Lambda reserved concurrency, which AWS documents explicitly as a way to protect downstream resources such as database connections. The file teaches reserved concurrency for blast-radius control in L03 but never connects it to the RDS-exhaustion scenario it teaches in G14, so the two correct ideas sit unreconciled in the same document.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/provisioned-concurrency.html — 'reserved concurrency can be used for limiting concurrency to prevent overwhelming downstream resources, like database connections.' https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html — reserved concurrency 'acts as both a lower and upper bound'.",
+      "fix": "Append to the expected field of line 3115:\n'Hai điều cần nói kèm: thứ nhất, đặt reserved concurrency cho hàm Lambda để chặn trần số môi trường chạy song song — đây chính là cách AWS tài liệu hoá việc bảo vệ tài nguyên hạ nguồn như kết nối cơ sở dữ liệu; thứ hai, RDS Proxy không miễn phí và bản thân nó cũng có hạn mức kết nối tới cơ sở dữ liệu đích, nên phải tính cả chi phí lẫn trần đó trước khi coi nó là lời giải duy nhất.'"
+    },
+    {
+      "id": "AWS-10",
+      "severity": "minor",
+      "lines": [2991, 3000, 4722],
+      "kind": "default-config-vs-limit",
+      "quote": "4722 body: 'sáu phút (mức mặc định) là 3 giây'  ||  4922 say30: 'mặc định timeout là 3 giây nếu tôi không đặt'",
+      "why": "Both lines correctly label 3 seconds as a default rather than a limit, which is right — Lambda's default function timeout is 3 seconds and it is configurable up to 900 seconds. This is recorded as a pass, not a defect: it is exactly the hard-limit-versus-default distinction the audit was asked to check, and the file gets it right in two independent places. It is listed only so the Lead can see the check was performed rather than skipped.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html — function timeout quota '900 seconds (15 minutes)'; the 3-second value is the console/API creation default, not a limit.",
+      "fix": "No change required. The file is already correct here."
+    }
+  ],
+
+  "verified_correct_no_change": [
+    {
+      "check": "1 — Lambda retry semantics separated into three modes",
+      "lines": [4692, 4708, 4714, 4722, 4731, 3219],
+      "verdict": "CORRECT, not vague. Line 4708 explicitly opens the topic with 'ba chế độ gọi hành xử khác nhau, và đây là chỗ hay bị nói gộp thành một câu \"async thì retry\"' and then lists: synchronous RequestResponse with no automatic Lambda retry and the gateway passing the error straight through; asynchronous Event with 'Lambda tự thử lại tối đa hai lần (mặc định)... rồi mới chuyển event hỏng sang nơi xử lý lỗi'; and event source mapping with per-source semantics — SQS ApproximateReceiveCount and redrive-policy maxReceiveCount to DLQ, Kinesis and DynamoDB Streams blocking the shard with BisectBatchOnFunctionError and IteratorAge. Line 4722 repeats all four branches in the revision block, line 4714 is a dedicated attack question on exactly the async-versus-ESM confusion, and G11 line 3219 covers it a third time. The prompt's asserted defect is not present.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-error-handling.html — 'by default Lambda attempts to run it two more times, with a one-minute wait between the first two attempts, and two minutes between the second and third attempts' (2 retries = 3 total attempts, matching the file)."
+    },
+    {
+      "check": "2 — 'When not to use Lambda' and the unusual-libraries false claim",
+      "lines": [4722, 4922],
+      "verdict": "CORRECT and explicitly disclaimed. Line 4722 contains the exact sentence the prompt worried about, and it says the opposite: 'Cần thư viện hệ thống lạ <em>không</em> phải lý do loại Lambda — container image xử lý được, miễn là vẫn nằm trong giới hạn của nền tảng.' Line 4922's decision table says the same: 'Cần thư viện hệ thống nặng hoặc nhị phân riêng: cả hai đều được, nhưng ảnh container dễ kiểm soát hơn.' The correct disqualifiers the prompt listed are all present at line 4722: over 15 minutes per invocation, need for a continuously running process or in-memory state across requests, need for a stable connection pool to a relational database, steady continuous traffic where per-hour is cheaper than per-invocation, and no GPU. The prompt's asserted defect is not present.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html — container image code package size '10 GB (maximum uncompressed image size, including all layers)'; deployment package 250 MB unzipped for .zip including layers and custom runtimes."
+    },
+    {
+      "check": "3 — Concurrency: reserved vs provisioned, account limit, scaling, downstream saturation",
+      "lines": [2997, 3006, 3104, 3113, 4712, 4721],
+      "verdict": "CORRECT. The two controls are distinguished by purpose at line 4721 (reserved for blast-radius and to guarantee a floor, provisioned to remove cold start and paid for while idle). Account-level sharing of the default 1,000 across all functions in a Region is at lines 3006 and 4720. Scaling behaviour is at line 4700 and in L10's mechanism. Downstream saturation is a full question group: G14 (lines 3104-3115) diagnoses RDS connection exhaustion as connections scaling with execution-environment count rather than request count, and names DatabaseConnections alongside low CPU as the confirming CloudWatch signal. Line 4712 adds ConcurrentExecutions and Duration p99 as the function-level signals.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html — reserved concurrency 'sets both the maximum and minimum number of concurrent instances'; provisioned concurrency 'pre-initialize a number of environment instances'; scaling rate '1,000 execution environment instances every 10 seconds'."
+    },
+    {
+      "check": "4 — HTTP 202 accepted AND persisted",
+      "lines": [5728, 5733, 5727],
+      "verdict": "CORRECT — and this was the single most important code check. The only 202 in sample code is at line 5728, FastAPI, '@app.post(\"/uploads\", status_code=202)'. Before that 202 is emitted the handler opens 'with db.atomic()' and inserts three rows in ONE transaction: the idempotency row keyed on the Idempotency-Key header with a unique primary key, the business uploads row with state 'pending', and the outbox row. The commit happens at the end of the atomic block. The presigned URL and the SQS call both happen strictly AFTER the commit, which the comment states explicitly ('Chi SAU khi commit moi goi dich vu ngoai: neu tien trinh chet o day, outbox van con nguyen'). So the work is genuinely durably accepted before 202 is returned — a restart or crash cannot lose it, because the outbox row is already committed and a sweeper re-sends. Line 5733 justifies the choice of 202 over 200 and 201 correctly. The earlier presign sample at line 5601 returns 200 for a synchronous URL-issuance call, which is the right code for that contract. The prompt's asserted defect is not present.",
+      "evidence": "Reviewed against the file itself plus the transaction semantics the file teaches in L22; persistence-before-202 is a correctness property of the shown code, not an AWS quota."
+    },
+    {
+      "check": "5 — Lazy-initialisation helper described accurately",
+      "lines": [3001, 3002, 4723, 4724],
+      "verdict": "CORRECT. Line 3001 defines '_heavy_client = None' at module scope with a '_get_client()' guard that constructs on first call. Line 3002 describes it precisely: 'khai báo ở cấp module và chỉ khởi tạo một lần: execution environment được tái sử dụng cho các lần gọi ấm nên client nặng dùng lại được, còn lần gọi cold start phải trả giá khởi tạo'. It does NOT claim the client initialises at module load — it says the variable is declared at module scope and initialised on first call, which is exactly what the code does. Line 4723's L03 version is the opposite pattern (eager module-scope construction) and line 4724 labels it accurately as running in the INIT phase. The prompt's asserted defect is not present.",
+      "evidence": "https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html — Init phase 'Run the function's static code (Function init)'; reused environments keep objects declared outside the handler initialised."
+    },
+    {
+      "check": "6 — Services taught through incidents rather than as a catalogue",
+      "lines": [2963, 3019, 3047, 3076, 3104, 3160, 4898, 5583],
+      "verdict": "SUBSTANTIALLY CORRECT. Every service in the audit scope is introduced by a concrete failure, not a definition. IAM through AccessDenied: line 2963 is an over-broad execution role that deletes 3,000 report files, and line 3019 is a two-layer AccessDenied incident that distinguishes missing invoke permission (no logs at all) from missing execution-role permission (logs stop at the denied call) — this is a genuinely good teaching sequence. SQS through backpressure and worker failure: lines 4897-4909 cover visibility timeout expiring mid-work, an un-retryable message blocking the queue, DLQ versus backoff as two different layers, and a worker that dies holding a database connection. S3 presigned through the problem of proxying bytes: line 5600 states the core reason plainly — 'Nếu bạn nhận multipart form trong FastAPI rồi đẩy lên S3 từ trong server, bạn trả tiền băng thông hai lần cho mỗi byte, và trần kích thước body của API Gateway trở thành trần kích thước tệp của bạn.' API Gateway through exposing and throttling: G05 line 3047 is a CORS preflight failure and line 3062 contrasts gateway throttling with Lambda concurrency. CloudWatch: G13 line 3257 frames logs/metrics/alarms around reconstructing one request across services with a correlation ID, which is the right framing and is NOT merely 'the server is slow'.",
+      "evidence": "Structural review of the file against the requested teaching pattern; no external source required."
+    }
+  ],
+
+  "unverified": [
+    "Whether the cadence of Lambda Managed Instances limits (90-minute timeout, ARM64-only per the quotas page) will still hold at interview time — the file already hedges on this and the audit recommends keeping that hedge rather than replacing it with a number.",
+    "The precise default value a learner's own AWS account will show for account concurrency: new accounts receive reduced concurrency quotas that AWS raises automatically based on usage, so the '1,000' figure is the documented default for an established account, not a universal constant.",
+    "Whether x-amz-checksum-* headers can be used to constrain object size for a presigned PUT in the way the file implies size cannot be constrained in PUT. The file's core claim (Content-Length is a forbidden request header and therefore not signable for browser PUT) is correct, and its recommended alternative (presigned POST with content-length-range) is correct, but the checksum-header route was not verified in this session and should not be added without checking current S3 documentation.",
+    "API Gateway integration-timeout value for HTTP APIs specifically: the audit verified the REST API figure (29 s default and maximum) from the quotas page, but the HTTP API value was not independently fetched, so the recommended fix text deliberately tells the reader the API type matters without asserting a second number.",
+    "Cost-arithmetic claims in the pricing-adjacent lessons (L10 GB-second versus task-hour comparisons, NAT gateway data processing) were reviewed for structure only, not recomputed against the AWS Pricing Calculator, which was not consulted in this session."
+  ],
+
+  "coverage_notes": {
+    "regions_read": "G01-G17 (lines 2929-3350), L01-L22 (lines 4553-5790), flow definitions (lines 6066-6126), quiz bank around lines 4350-4400, case study and schedule references.",
+    "grep_sweeps_run": ["Lambda", "code:", "incident:", "expected:", "202", "presigned", "throttl", "AccessDenied", "Content-Length", "provisioned", "reserved", "IteratorAge", "BisectBatch", "DestinationConfig", "maxReceiveCount", "15 phút", "1.000", "10 GB", "29 giây"],
+    "asserted_defects_that_did_not_survive_verification": 4,
+    "asserted_defects_partly_confirmed": 2,
+    "new_defects_found": 9
+  }
+}

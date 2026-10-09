@@ -1,0 +1,136 @@
+﻿total: 148 { skip: 102, ok: 38, error: 8 }
+
+=== EXECUTED (ok) ===
+--- A02 [py] D:\research\.scratch\exec2\A02-code.py
+{'db': {'pool': 50}, 'tags': ['a', 'b']}
+99
+--- A04 [py] D:\research\.scratch\exec2\A04-code.py
+['a']
+['a', 'b']
+--- A05 [py] D:\research\.scratch\exec2\A05-code.py
+[2, 2, 2]
+[2, 2, 2]
+[0, 1, 2]
+--- A06 [py] D:\research\.scratch\exec2\A06-code.py
+(1, 5)
+(2, 10)
+2
+--- A07 [py] D:\research\.scratch\exec2\A07-code.py
+ok
+[('a', 1), ('b', 2)]
+--- A08 [py] D:\research\.scratch\exec2\A08-code.py
+[[0, 1, 2], [3, 4, 5]]
+3
+--- A09 [py] D:\research\.scratch\exec2\A09-code.py
+8080
+invalid: out of range
+--- A10 [py] D:\research\.scratch\exec2\A10-code.py
+DB-ready
+['open:db', 'close:db']
+--- A11 [py] D:\research\.scratch\exec2\A11-code.py
+base ['a', 'b'] ['a', 'b']
+[<class '__main__.Child'>, <class '__main__.Base'>, <class 'object'>]
+True True
+--- A12 [py] D:\research\.scratch\exec2\A12-code.py
+Point(x=1, y=2, tags=()) True
+api
+True
+--- A13 [py] D:\research\.scratch\exec2\A13-code.py
+2
+None
+--- A14 [py] D:\research\.scratch\exec2\A14-code.py
+serial 0.235s  two_threads 0.389s  ratio 1.66
+Neu that su song song thi ratio phai quanh 0.5; GIL giu no quanh 1.0 tro len.
+--- A15 [py] D:\research\.scratch\exec2\A15-code.py
+['a', 'b']
+timeout
+cancelled
+--- A16 [py] D:\research\.scratch\exec2\A16-code.py
+serial True
+parallel True
+[0, 1, 2, 3]
+--- A17 [py] D:\research\.scratch\exec2\A17-code.py
+(no output)
+--- A18 [py] D:\research\.scratch\exec2\A18-code.py
+cpu True
+['a', 'b']
+--- B01 [js] D:\research\.scratch\exec2\B01-code.mjs
+solar
+true
+--- B02 [js] D:\research\.scratch\exec2\B02-code.mjs
+undefined
+ReferenceError
+3,3,3
+--- B03 [js] D:\research\.scratch\exec2\B03-code.mjs
+true
+true
+false
+true object
+--- B05 [js] D:\research\.scratch\exec2\B05-code.mjs
+true true Not Found HttpError
+[ 'name', 'status' ]
+--- B06 [js] D:\research\.scratch\exec2\B06-code.mjs
+A
+D
+F
+C
+E
+B
+--- B07 [js] D:\research\.scratch\exec2\B07-code.mjs
+all: boom
+race: boom
+settled: fulfilled,rejected
+any: slow
+--- B08 [js] D:\research\.scratch\exec2\B08-code.mjs
+(no output)
+--- B13 [js] D:\research\.scratch\exec2\B13-code.mjs
+false false
+null null when,items,inf,nan
+true false
+Infinity NaN true
+--- D08 [py] D:\research\.scratch\exec2\D08-code.py
+(no output)
+--- D10 [js] D:\research\.scratch\exec2\D10-code.mjs
+(no output)
+--- G03 [py] D:\research\.scratch\exec2\G03-code.py
+(no output)
+--- G13 [py] D:\research\.scratch\exec2\G13-code.py
+(no output)
+--- I02 [py] D:\research\.scratch\exec2\I02-code.py
+[3, 1, 2, 4]
+{3: 2, 1: 2, 2: 2, 4: 1}
+--- I03 [py] D:\research\.scratch\exec2\I03-code.py
+{'web': ['An', 'Chi'], 'api': ['Binh']}
+--- I04 [js] D:\research\.scratch\exec2\I04-code.mjs
+[ 4, 5, 6 ]
+--- I06 [py] D:\research\.scratch\exec2\I06-code.py
+(no output)
+--- I07 [js] D:\research\.scratch\exec2\I07-code.mjs
+(no output)
+--- L01 [py] D:\research\.scratch\exec2\L01-code.py
+(no output)
+--- L06 [py] D:\research\.scratch\exec2\L06-naiveCode.py
+(no output)
+--- L12 [js] D:\research\.scratch\exec2\L12-naiveCode.mjs
+(no output)
+--- L21 [py] D:\research\.scratch\exec2\L21-naiveCode.py
+(no output)
+--- L22 [js] D:\research\.scratch\exec2\L22-naiveCode.mjs
+(no output)
+
+=== ERRORS ===
+--- B04 [js]: 
+ | Node.js v24.18.1
+--- B10 [js]: 
+ | Node.js v24.18.1
+--- B11 [js]: 
+ | Node.js v24.18.1
+--- B12 [js]: spawnSync C:\Program Files\nodejs\node.exe ETIMEDOUT
+--- B14 [js]: 
+ | Node.js v24.18.1
+--- E06 [py]:              ^^^^^^^
+ | NameError: name 'session' is not defined
+--- L04 [py]:   File "<frozen os>", line 717, in __getitem__
+ | KeyError: 'FRONTEND_ORIGIN'
+--- L19 [js]: 
+ | Node.js v24.18.1

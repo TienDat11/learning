@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hướng dẫn bàn giao — Gdata Cloud VPS (Windows 11)</title>
+<!-- Font: system stack (Segoe UI Variable / Cascadia Code / Consolas) — yêu cầu offline self-contained, không tải font ngoài. -->
+<style>
+:root{
+  --bg:#0f1216; --panel:#161b22; --panel2:#1c2330; --code-bg:#11151c;
+  --border:#2b3340; --text:#d5dbe4; --text2:#98a2b3; --accent:#4cc2ff;
+  --warn:#ffb857; --ok:#58d68d; --err:#ff7a7a; --radius:8px;
+  --mono:'Cascadia Code','Consolas','SF Mono',monospace;
+  --sans:'Segoe UI Variable','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.65 var(--sans);min-height:100dvh}
+a{color:var(--accent);text-decoration:none}
+::selection{background:#1f4e6b;color:#fff}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#3d4a5d}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+/* layout */
+#layout{display:grid;grid-template-columns:250px 1fr;min-height:100dvh}
+#sidebar{position:sticky;top:0;height:100dvh;overflow-y:auto;padding:18px 12px;border-right:1px solid var(--border);background:var(--panel)}
+#sidebar h1{font-size:15px;color:var(--text);margin:0 0 4px}
+#sidebar .sub{font-size:12px;color:var(--text2);margin:0 0 14px}
+#search{width:100%;padding:7px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;margin-bottom:12px}
+#search::placeholder{color:var(--text2)}
+#nav{list-style:none;margin:0;padding:0}
+#nav a{display:block;padding:7px 10px;margin:2px 0;color:var(--text2);font-size:13.5px;border-left:3px solid transparent;border-radius:0 var(--radius) var(--radius) 0}
+#nav a:hover{color:var(--text);background:var(--panel2)}
+#nav a.active{color:var(--accent);border-left-color:var(--accent);background:var(--panel2)}
+#main{padding:34px 38px 80px;max-width:960px}
+section{scroll-margin-top:24px;margin-bottom:48px}
+h2{font-size:21px;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);color:#fff}
+h3{font-size:16px;margin:22px 0 10px;color:#fff}
+p{margin:10px 0}
+ul,ol{margin:10px 0;padding-left:24px}
+li{margin:5px 0}
+kbd{background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:var(--mono);font-size:12.5px}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:12px 0}
+thead{position:sticky;top:0;z-index:1}
+th,td{padding:8px 10px;text-align:left;vertical-align:top}
+thead th{background:var(--panel2);color:#fff;font-weight:600;border-bottom:2px solid var(--accent);border-top:1px solid var(--border)}
+td{border-bottom:1px solid var(--border);color:var(--text)}
+tbody tr:hover{background:rgba(76,194,255,.05)}
+
+/* code */
+.codewrap{position:relative;margin:12px 0}
+.codehead{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--border);border-bottom:none;border-radius:var(--radius) var(--radius) 0 0;padding:5px 10px;font-size:11.5px;color:var(--text2);letter-spacing:.5px;text-transform:uppercase}
+.copybtn{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 10px;font-size:11.5px;cursor:pointer;opacity:0;transition:opacity .15s,color .15s,border-color .15s}
+.codewrap:hover .copybtn,.copybtn:focus-visible{opacity:1}
+@media (hover:none){.copybtn{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+.copybtn:hover,.copybtn:focus-visible{color:var(--accent);border-color:var(--accent)}
+.copybtn.copied{color:var(--ok);border-color:var(--ok)}
+pre{margin:0;background:var(--code-bg);border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);padding:13px 15px;overflow-x:auto;font:13px/1.55 var(--mono);color:#dbe4f0}
+code{font-family:var(--mono);font-size:.92em;background:var(--panel2);padding:1px 5px;border-radius:4px}
+pre code{background:none;padding:0;font-size:13px}
+
+/* callouts */
+.callout{display:flex;gap:12px;padding:14px 16px;margin:14px 0;border:1px solid;border-radius:var(--radius);background:var(--panel);font-size:14px}
+.callout svg{flex-shrink:0;width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+.callout.warn{border-color:var(--warn);color:#ffd9a0}
+.callout.danger{border-color:var(--err);color:#ffb3b3}
+.callout.info{border-color:var(--accent);color:#b7e6ff}
+.callout strong{display:block;margin-bottom:3px;font-size:14.5px}
+.callout p{margin:0}
+
+/* checklist */
+.checklist{list-style:none;padding:0;counter-reset:ck}
+.checklist>li{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;margin:6px 0;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:border-color .15s}
+.checklist>li.done{border-color:var(--ok);opacity:.75}
+.checklist>li.done .cktext{text-decoration:line-through;color:var(--text2)}
+.checklist input{width:17px;height:17px;margin-top:3px;accent-color:var(--ok);cursor:pointer}
+.cktext{font-size:14px}
+.progress{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin:10px 0}
+.progress>div{height:100%;width:0;background:var(--ok);transition:width .25s}
+#ckCount{font-size:13px;color:var(--text2);font-family:var(--mono)}
+#ckReset{margin-top:10px;background:transparent;border:1px solid var(--border);color:var(--text2);padding:7px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px}
+#ckReset:hover{color:var(--err);border-color:var(--err)}
+
+.search-hidden{display:none}
+#noResults{display:none;padding:20px;color:var(--text2);text-align:center}
+</style>
+</head>
+<body>
+<div id="layout">
+<aside id="sidebar">
+  <h1>Gdata Cloud VPS</h1>
+  <p class="sub">Bàn giao từ Windows 11</p>
+  <input id="search" type="search" placeholder="Tìm (Gdata VPS)…" aria-label="Tìm trong trang">
+  <nav aria-label="Điều hướng">
+  <ul id="nav">
+    <li><a href="#hero">1 · Tổng quan</a></li>
+    <li><a href="#routing">2 · Định tuyến gcloud</a></li>
+    <li><a href="#concepts">3 · Kiến thức nền</a></li>
+    <li><a href="#prereq">4 · Điều kiện tiên quyết</a></li>
+    <li><a href="#local">5 · Setup Windows</a></li>
+    <li><a href="#bootstrap">6 · Bootstrap server</a></li>
+    <li><a href="#deploy">7 · Deploy</a></li>
+    <li><a href="#trouble">8 · Troubleshooting</a></li>
+    <li><a href="#cheat">9 · Cheat sheet</a></li>
+    <li><a href="#checklist">10 · Checklist bàn giao</a></li>
+    <li><a href="#sources">11 · Nguồn</a></li>
+  </ul>
+  </nav>
+</aside>
+<main id="main">
+
+<section id="hero">
+<h2>Tổng quan</h2>
+<p>Đây là hướng dẫn bàn giao để bạn (Justin, fullstack dev) dùng <strong>VPS Linux của Gdata Cloud</strong> (gdata.com.vn) từ máy Windows 11, sau khi skill <code>gdata-vps</code> đã được cài tại <code>C:\Users\ADMIN\.omp\agent\skills\gdata-vps\</code> và bật trong <code>skills.includeSkills</code>. Skill tự load khi bạn nhắc <code>gcloud</code>, <code>gdata</code> hay <code>gdata-vps</code> — trong ngữ cảnh của bạn, "gcloud" nghĩa là <strong>Gdata VPS</strong>.</p>
+<div class="callout danger">
+<svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+<div><strong>Gdata Cloud không phải Google Cloud.</strong><p>Gdata là VPS Linux trên hạ tầng OpenStack, không có CLI/API chính thức. Google Cloud (GCP) là nền tảng hoàn toàn khác, dùng <code>gcloud</code> CLI. Hai thứ không liên quan — nhầm lẫn hai cái là sai lệnh ngay từ đầu.</p></div>
+</div>
+<p>Trong hội thoại với agent, từ <code>gcloud</code> mặc định trỏ vào <strong>Gdata VPS</strong> (nhánh SSH), trừ khi ngữ cảnh nói rõ Google (GCP, Cloud Run, App Engine, service account, project ID).</p>
+</section>
+
+<section id="routing">
+<h2>Định tuyến: Gdata VPS hay Google Cloud?</h2>
+<p>Trước khi chạy bất kỳ lệnh nào, xác định nhánh:</p>
+<table>
+<thead><tr><th>Dấu hiệu trong ngữ cảnh</th><th>Nhánh</th><th>Hành động</th></tr></thead>
+<tbody>
+<tr><td>Gdata, VPS, floating IP, <code>cloud-dashboard.gdata.com.vn</code>, <code>gdata.com.vn</code>, portal, Security Group, SNAT, VLAN</td><td><strong>Gdata VPS</strong></td><td>SSH + git/scp/rsync. <strong>Không</strong> chạy lệnh <code>gcloud</code>.</td></tr>
+<tr><td>GCP, Google Cloud, Cloud Run, App Engine, service account, project ID, billing account, <code>gcloud auth</code>, GKE, Terraform</td><td><strong>Google Cloud</strong></td><td>Cài Google Cloud SDK, chạy lệnh <code>gcloud</code>. Xem mục "Nguồn" — nhánh này có tài liệu riêng.</td></tr>
+<tr><td>Chỉ "gcloud" mà không rõ</td><td><strong>Hỏi lại</strong></td><td>"Bạn muốn làm gì với Google Cloud (GCP) hay Gdata VPS?"</td></tr>
+</tbody>
+</table>
+<div class="callout info">
+<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01"/></svg>
+<div><strong>Nhớ:</strong><p>Nhánh Google không bao giờ chạy lệnh <code>gcloud</code> lên máy Gdata; nhánh Gdata không bao giờ chạy <code>gcloud</code> — Gdata không có CLI. Nếu bắt gặp <code>gcloud</code> trong ngữ cảnh Gdata, đó là cách gọi tắt của skill này.</p></div>
+</div>
+</section>
+
+<section id="concepts">
+<h2>Kiến thức nền: 8 khái niệm Gdata (AWS/GCP không có hoặc gọi khác)</h2>
+<p>Gdata là VPS OpenStack. Không có CLI/API/Terraform — mọi thao tác mạng chạy trong <strong>portal</strong> (trình duyệt). Đọc bảng này trước khi đụng portal.</p>
+<table>
+<thead><tr><th>Khái niệm</th><th>Định nghĩa</th><th>Tương đương AWS/GCP</th><th>Gotcha</th></tr></thead>
+<tbody>
+<tr><td><strong>Network</strong></td><td>Dải IP private + Subnet, ví dụ <code>192.168.100.0/24</code>, tạo trước khi tạo Server.</td><td>VPC Subnet (AWS) / VPC Network (GCP)</td><td>Tránh trùng dải với LAN local (<code>192.168.1.0/24</code>, <code>10.0.0.0/8</code>). Gateway <code>192.168.100.1</code> portal tự điền.</td></tr>
+<tr><td><strong>Router + External Network</strong></td><td>Router gắn Network vào VLAN public (ví dụ <code>Public-VLAN909</code>); External Gateway tạo SNAT ra Internet.</td><td>Router Internet Gateway (AWS) / Cloud Router + NAT (GCP)</td><td>Thiếu External Gateway → Floating IP Active vẫn <strong>không ra Internet</strong>. Kiểm tra chi tiết Router, mục External Gateway phải hiển thị tên VLAN public.</td></tr>
+<tr><td><strong>Floating IP</strong></td><td>IP public gán vào server (Associate) để SSH/HTTP từ ngoài.</td><td>Elastic IP (AWS) / External IP (GCP)</td><td>Trạng thái <strong>DOWN</strong> = chưa Associate hoặc server chưa ACTIVE. FIP không phải IP trên interface — là SNAT qua router, nên <code>ip a</code> chỉ thấy private IP.</td></tr>
+<tr><td><strong>Security Group</strong></td><td>Firewall tầng portal, rule inbound/outbound theo port + CIDR.</td><td>Security Group (AWS) / Firewall Rule (GCP)</td><td>SG <code>default</code> chỉ allow <strong>outbound</strong> — mặc định không cho SSH vào. Phải thêm rule inbound port 22 (hoặc SG riêng).</td></tr>
+<tr><td><strong>SSH Key</strong></td><td>Cặp key; portal sinh hoặc import public key. Private key gửi email một lần.</td><td>Key Pair (AWS) / OS Login SSH key (GCP)</td><td>Xóa key trên portal <strong>không</strong> gỡ khỏi server — phải sửa <code>/root/.ssh/authorized_keys</code>. Mất email = mất key vĩnh viễn.</td></tr>
+<tr><td><strong>Image</strong></td><td>OS cài lên VPS: Ubuntu 24.04, Debian 12, Rocky 9…</td><td>AMI (AWS) / Image (GCP)</td><td>Chỉ chọn image có sẵn trong portal; kiểm tra đúng bằng <code>uname -a</code> sau khi vào.</td></tr>
+<tr><td><strong>Flavor</strong></td><td>Cấu hình CPU/RAM/SSD của VPS. CPU và RAM đều phải là số <strong>chẵn</strong> (2, 4, 8, 16 vCPU / GB).</td><td>Instance Type (AWS) / Machine Type (GCP)</td><td>Ràng buộc Gdata: không chọn RAM lẻ, không chọn CPU lẻ. SSD nên tròn chục/trăm GB; IOPS do portal tính theo dung lượng disk. Bôi "Không xóa volume root khi xóa server" để giữ đĩa cứu dữ liệu.</td></tr>
+<tr><td><strong>Console</strong></td><td>Bàn phím web trong portal — cứu máy khi mất SSH hoàn toàn.</td><td>SSM Console (AWS) / Serial Console (GCP)</td><td>Chỉ dùng được password (nếu đã đặt khi tạo server) hoặc key còn sống. Đây là đường thoát duy nhất khi lockout.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="prereq">
+<h2>Điều kiện tiên quyết</h2>
+<p>Kiểm tra trước khi bắt đầu. Thiếu mục nào thì chỉ xử lý đúng mục đó.</p>
+<ul>
+<li>Floating IP đã <strong>Associate</strong> (trạng thái Active trên portal).</li>
+<li>Port 22 đã mở trong <strong>Security Group</strong> của Gdata.</li>
+<li>File private key đã nhận qua email tiêu đề <strong>"Tạo SSH Key thành công"</strong>.</li>
+<li>Biết <strong>Floating IP</strong> và <strong>username</strong> (<code>root</code>).</li>
+</ul>
+<p>Chưa có VPS? Xem portal: <a href="https://cloud-dashboard.gdata.com.vn/" target="_blank" rel="noopener">cloud-dashboard.gdata.com.vn</a> → menu <code>Cloud Server &gt; Server &gt; Tạo Server</code>. Chưa có kết nối từ máy Windows? → Mục 5.</p>
+
+<h3>Kiểm tra sau khi SSH vào</h3>
+<table>
+<thead><tr><th>Lệnh</th><th>Kết quả mong đợi</th></tr></thead>
+<tbody>
+<tr><td><code>hostname</code></td><td>Tên host do portal/OS đặt.</td></tr>
+<tr><td><code>ip a</code></td><td>Có <code>192.168.100.x</code> trên <code>eth0</code>/<code>enp*</code> (private). FIP không hiện trên interface — FIP là SNAT qua router.</td></tr>
+<tr><td><code>whoami</code></td><td><code>root</code> (hoặc <code>deploy</code>).</td></tr>
+<tr><td><code>uname -a</code></td><td>Kernel + OS image (xác nhận đúng Ubuntu/Debian/CentOS đã chọn).</td></tr>
+<tr><td><code>ss -tlnp</code></td><td>Có <code>:22</code> đang listen. Nếu thiếu: <code>systemctl status sshd</code>.</td></tr>
+</tbody>
+</table>
+<p>Cần mở thêm port (80, 443, 3306…)? Tạo thêm Security Group rule tương tự mục 7 trong portal <strong>trước</strong> khi mở ứng dụng.</p>
+</section>
+
+<section id="local">
+<h2>Setup local (Windows 11)</h2>
+
+<h3>Bước 1 — Nhận và lưu private key</h3>
+<p>Email tiêu đề <strong>"Tạo SSH Key thành công"</strong> kèm 2 file: <code>id_rsa</code> (private, giữ riêng) và <code>id_rsa.pub</code> (public, đã import). Lưu <code>id_rsa</code> về <code>C:\Users\ADMIN\.ssh\</code> (đổi tên thành <code>gdata_id_rsa</code> để tách biệt):</p>
+<div class="codewrap"><div class="codehead"><span>powershell</span><button class="copybtn">Copy</button></div><pre><code>mkdir -Force $env:USERPROFILE\.ssh | Out-Null
+Copy-Item "$env:USERPROFILE\Downloads\id_rsa" "$env:USERPROFILE\.ssh\gdata_id_rsa"</code></pre></div>
+
+<h3>Bước 2 — Siết quyền file key (icacls)</h3>
+<p>OpenSSH Windows từ chối key nếu ACL quá mở (lỗi <code>UNPROTECTED PRIVATE KEY FILE</code>). Chỉ user hiện tại được đọc:</p>
+<div class="codewrap"><div class="codehead"><span>powershell</span><button class="copybtn">Copy</button></div><pre><code>icacls "$env:USERPROFILE\.ssh\gdata_id_rsa" /inheritance:r /grant "$($env:USERNAME):R"
+icacls "$env:USERPROFILE\.ssh" /inheritance:r /grant "$($env:USERNAME):RX"
+# Xác minh:
+icacls "$env:USERPROFILE\.ssh\gdata_id_rsa"</code></pre></div>
+<p>Output phải chỉ hiện user hiện tại (và tối đa <code>BUILTIN\Administrators</code>) ở quyền <code>R</code>, không có <code>Users</code>/<code>Everyone</code>.</p>
+
+<h3>Bước 3 — Block <code>Host gdata-vps</code> trong <code>~/.ssh/config</code></h3>
+<p>Mở <code>C:\Users\ADMIN\.ssh\config</code> (tạo mới nếu chưa có), thêm block:</p>
+<div class="codewrap"><div class="codehead"><span>text</span><button class="copybtn">Copy</button></div><pre><code>Host gdata-vps
+    HostName &lt;FLOATING_IP&gt;
+    User root
+    Port 22
+    IdentityFile ~/.ssh/gdata_id_rsa
+    IdentitiesOnly yes
+    ServerAliveInterval 30
+    StrictHostKeyChecking accept-new</code></pre></div>
+<table>
+<thead><tr><th>Dòng</th><th>Ý nghĩa</th></tr></thead>
+<tbody>
+<tr><td><code>HostName</code></td><td>Floating IP public của VPS.</td></tr>
+<tr><td><code>User root</code></td><td>User Linux Gdata mặc định; đổi <code>deploy</code> nếu đã tạo theo bootstrap.</td></tr>
+<tr><td><code>IdentityFile</code></td><td>Key đã siết quyền; <code>~</code> resolve thành <code>%USERPROFILE%</code>.</td></tr>
+<tr><td><code>IdentitiesOnly yes</code></td><td>Chỉ dùng đúng key này, không thử key khác trong agent (tránh "Permission denied" do key sai).</td></tr>
+<tr><td><code>ServerAliveInterval 30</code></td><td>Keepalive mỗi 30s, chống ngắt kết nối.</td></tr>
+<tr><td><code>StrictHostKeyChecking accept-new</code></td><td>Tự nhận host key mới lần đầu; từ chối nếu host key thay đổi (phòng MITM).</td></tr>
+</tbody>
+</table>
+
+<h3>Bước 4 — Test kết nối</h3>
+<div class="codewrap"><div class="codehead"><span>powershell</span><button class="copybtn">Copy</button></div><pre><code>ssh gdata-vps
+ssh -o BatchMode=yes gdata-vps true; echo "exit=$LASTEXITCODE"</code></pre></div>
+<p><code>BatchMode=yes</code> tắt mọi prompt — kết nối thành công trong chế độ này nghĩa là xác thực hoàn toàn bằng key, exit code <code>0</code>.</p>
+
+<h3>Bước 5 — Chạy <code>setup-ssh.ps1</code> (tự động hoá)</h3>
+<p>Script trong thư mục skill, idempotent, an toàn chạy lại:</p>
+<div class="codewrap"><div class="codehead"><span>powershell</span><button class="copybtn">Copy</button></div><pre><code>powershell -NoProfile -File C:\Users\ADMIN\.omp\agent\skills\gdata-vps\scripts\setup-ssh.ps1 `
+  -KeyPath "$env:USERPROFILE\Downloads\id_rsa" `
+  -HostName &lt;FLOATING_IP&gt;</code></pre></div>
+<table>
+<thead><tr><th>Tham số</th><th>Bắt buộc</th><th>Mặc định</th><th>Ý nghĩa</th></tr></thead>
+<tbody>
+<tr><td><code>-KeyPath</code></td><td><strong>Có</strong></td><td>—</td><td>Đường dẫn file private key nguồn.</td></tr>
+<tr><td><code>-HostName</code></td><td><strong>Có</strong></td><td>—</td><td>Floating IP public của VPS.</td></tr>
+<tr><td><code>-User</code></td><td>Không</td><td><code>root</code></td><td>Username SSH.</td></tr>
+<tr><td><code>-Alias</code></td><td>Không</td><td><code>gdata-vps</code></td><td>Tên Host trong <code>~/.ssh/config</code>.</td></tr>
+<tr><td><code>-Force</code></td><td>Không</td><td>tắt</td><td>Ghi đè block <code>Host &lt;Alias&gt;</code> cũ trong config.</td></tr>
+<tr><td><code>-DryRun</code></td><td>Không</td><td>tắt</td><td>Chỉ in các hành động dự kiến, không ghi gì, không gọi <code>ssh</code>.</td></tr>
+</tbody>
+</table>
+<p>Hành vi: kiểm tra key tồn tại → copy về <code>~/.ssh\</code> → siết quyền bằng <code>icacls</code> → upsert block <code>Host gdata-vps</code> (idempotent) → test <code>ssh -o BatchMode=yes -o ConnectTimeout=10 gdata-vps true</code>, in <code>PASS</code>/<code>FAIL</code> kèm exit code.</p>
+</section>
+
+<section id="bootstrap">
+<h2>Bootstrap server (lần đầu / đổi image)</h2>
+<p>Tất cả lệnh chạy trên server, user <code>root</code>, ngay sau khi SSH vào được. Chạy bằng <code>bootstrap-server.sh</code> (idempotent, có <code>--dry-run</code>):</p>
+<div class="codewrap"><div class="codehead"><span>powershell</span><button class="copybtn">Copy</button></div><pre><code>ssh gdata-vps "bash" &lt; C:\Users\ADMIN\.omp\agent\skills\gdata-vps\scripts\bootstrap-server.sh</code></pre></div>
+<p>Hoặc đăng nhập thủ công, scp script lên rồi <code>bash /tmp/bootstrap-server.sh</code>. Các bước script thực hiện:</p>
+
+<h3>1. Cập nhật hệ thống, timezone, hostname</h3>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>apt-get update && apt-get -y upgrade
+timedatectl set-timezone Asia/Ho_Chi_Minh
+hostnamectl set-hostname vps-app-01</code></pre></div>
+
+<h3>2. Tạo user <code>deploy</code></h3>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>useradd -m -s /bin/bash deploy
+mkdir -p /home/deploy/.ssh
+cp /root/.ssh/authorized_keys /home/deploy/.ssh/authorized_keys
+chown -R deploy:deploy /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authorized_keys
+# sudo NOPASSWD cho deploy (systemctl, docker, ufw, nginx, git, rsync)</code></pre></div>
+<p>Tắt phiên root, đăng nhập lại bằng <code>ssh -i id_rsa deploy@floating-ip</code> để xác nhận <strong>trước khi</strong> hardening.</p>
+
+<h3>Client SSH thay thế (không dùng OpenSSH)</h3>
+<table>
+<thead><tr><th>Client</th><th>Thao tác chính</th></tr></thead>
+<tbody>
+<tr><td>PuTTY</td><td>PuTTYgen → Load file <code>id_rsa</code> (chọn "All Files") → Export <code>.ppk</code> → PuTTY: Host = FIP, Port 22, Key = <code>.ppk</code>.</td></tr>
+<tr><td>MobaXterm</td><td>Sessions → SSH → New session, Host = FIP, user = root. Advanced SSH setup → Private SSH key → chọn file <code>id_rsa</code>. Hỗ trợ thẳng key OpenSSH, không cần convert.</td></tr>
+</tbody>
+</table>
+
+<h3>3. Hardening sshd</h3>
+<div class="codewrap"><div class="codehead"><span>text</span><button class="copybtn">Copy</button></div><pre><code>PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+# Port 2222   # tùy chọn — chỉ đổi sau khi làm bước tiếp</code></pre></div>
+<div class="callout danger">
+<svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+<div><strong>Cảnh báo an toàn — đổi port sshd</strong><p>Nếu đổi port (VD 2222): <strong>(a)</strong> mở port mới trong Security Group Gdata <strong>TRƯỚC khi</strong> đổi (Portal → Cloud Server → Security Group → Rule, TCP, port 2222, CIDR IP của bạn <code>/32</code>). <strong>(b)</strong> Giữ phiên SSH hiện tại (port 22) mở cho tới khi xác nhận đăng nhập phiên mới qua port mới thành công. Tự lockout do đổi port mà chưa mở SG là lý do thường gặp nhất.</p></div>
+</div>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>sshd -t
+systemctl restart ssh</code></pre></div>
+
+<h3>4. Firewall (ufw)</h3>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+ufw status verbose</code></pre></div>
+<p>SG Gdata là lớp 1 (portal), ufw là lớp 2 (OS). Cần cả hai.</p>
+
+<h3>5. Docker Engine + Compose plugin</h3>
+<p>Không dùng gói <code>docker.io</code> của distro — dùng repo Docker chính thức:</p>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+. /etc/os-release
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/$ID $VERSION_CODENAME stable" \
+  &gt; /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
+usermod -aG docker deploy
+docker compose version</code></pre></div>
+
+<h3>6. nginx, git, rsync, curl, fail2ban</h3>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>apt-get -y install nginx git rsync curl fail2ban</code></pre></div>
+<p>Fail2ban jail sshd — <code>/etc/fail2ban/jail.d/ssh.local</code>:</p>
+<div class="codewrap"><div class="codehead"><span>text</span><button class="copybtn">Copy</button></div><pre><code>[sshd]
+enabled = true
+port = 22
+filter = sshd
+mode = normal
+maxretry = 3
+bantime = 1h
+findtime = 10m</code></pre></div>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>systemctl enable --now fail2ban</code></pre></div>
+<p>Nếu đổi port sshd, sửa <code>port</code> trong jail rồi <code>fail2ban-client reload</code>.</p>
+
+<h3>7. Thư mục deploy</h3>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>mkdir -p /srv/app/releases /srv/app/shared
+chown -R deploy:deploy /srv/app
+chmod 755 /srv/app</code></pre></div>
+<p><code>releases/</code> — mỗi lần deploy theo timestamp. <code>shared/</code> — config/đồ dùng chung.</p>
+
+<h3>8. systemd unit cho app</h3>
+<p>Mẫu <code>/etc/systemd/system/&lt;app&gt;.service</code>:</p>
+<div class="codewrap"><div class="codehead"><span>text</span><button class="copybtn">Copy</button></div><pre><code>[Unit]
+Description=&lt;app&gt; service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/app/releases/current
+EnvironmentFile=/srv/app/shared/.env
+ExecStart=/srv/app/shared/start.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target</code></pre></div>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>systemctl daemon-reload
+systemctl enable --now &lt;app&gt;</code></pre></div>
+
+<h3>9. Log rotation</h3>
+<p>Mẫu <code>/etc/logrotate.d/&lt;app&gt;</code>:</p>
+<div class="codewrap"><div class="codehead"><span>text</span><button class="copybtn">Copy</button></div><pre><code>/srv/app/shared/logs/*.log /var/log/&lt;app&gt;/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 deploy deploy
+    copytruncate
+}</code></pre></div>
+
+<h3>10. Kiểm tra sau bootstrap</h3>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code>systemctl status &lt;app&gt; fail2ban docker nginx
+docker run --rm hello-world
+ufw status verbose
+ss -tlnp | grep -E ':(22|2222|80|443)\s'</code></pre></div>
+<p>Xác nhận: <code>hello-world</code> OK, port mong muốn listening, ufw active, services active.</p>
+
+<h3>Rollback khi tự khóa SSH</h3>
+<div class="callout danger">
+<svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+<div><strong>Khôi phục qua Console portal</strong><p>1. Portal Gdata → Cloud Server → Server → chọn server → <strong>Console</strong> (bàn phím web).<br>
+2. Đăng nhập bằng password (nếu đã đặt) hoặc key còn sống.<br>
+3. <code>sed -i 's/^Port 2222/#&amp;/' /etc/ssh/sshd_config</code> rồi <code>sshd -t &amp;&amp; systemctl restart ssh</code>.<br>
+4. Mở lại port cũ trong SG trước khi tắt port mới.<br>
+5. Làm lại hardening đúng thứ tự: mở SG → đổi sshd → giữ phiên cũ → xác nhận phiên mới.</p></div>
+</div>
+</section>
+
+<section id="deploy">
+<h2>Deploy thường ngày</h2>
+
+<h3>Chọn mode</h3>
+<table>
+<thead><tr><th>Repo có</th><th>Mode</th><th>Khi nào dùng</th></tr></thead>
+<tbody>
+<tr><td><code>docker-compose.yml</code> / <code>compose.yaml</code></td><td><code>docker</code></td><td>App chạy trong container.</td></tr>
+<tr><td>systemd unit đã cài</td><td><code>systemd</code></td><td>App native, quản lý bằng systemctl.</td></tr>
+<tr><td><code>ecosystem.config.js</code> / app đã đăng ký pm2</td><td><code>pm2</code></td><td>Node.js, quản lý bằng pm2.</td></tr>
+<tr><td>Build ra thư mục tĩnh (nginx serve)</td><td><code>static</code></td><td>Frontend build, không cần process.</td></tr>
+<tr><td>Chỉ muốn đẩy file, không build/restart</td><td><code>sync</code></td><td>Đẩy file thủ công, không tự động restart.</td></tr>
+<tr><td>Không rõ / để script tự dò</td><td><code>auto</code></td><td>Script dò; dò không ra → báo rõ và yêu cầu truyền <code>-Mode</code>.</td></tr>
+</tbody>
+</table>
+
+<h3>Quy trình</h3>
+<div class="codewrap"><div class="codehead"><span>powershell</span><button class="copybtn">Copy</button></div><pre><code># 1. Thử khô (DryRun) — in kế hoạch, không ghi gì
+powershell -NoProfile -File scripts\deploy.ps1 -Mode auto -RemotePath /srv/app -Service &lt;app&gt; -DryRun
+
+# 2. Deploy thật
+powershell -NoProfile -File scripts\deploy.ps1 -Mode &lt;mode&gt; -RemotePath /srv/app -Service &lt;app&gt;
+
+# 3. Health check (script tự chạy) — service active, curl -fsS trả 200
+
+# 4. Xác nhận trên URL public — mở trình duyệt, kiểm tra đúng phiên bản vừa deploy</code></pre></div>
+<p>Deploy lỗi → script in khối <code>ROLLBACK</code> với lệnh khôi phục; chạy đúng khối đó trước khi thử lại.</p>
+</section>
+
+<section id="trouble">
+<h2>Troubleshooting</h2>
+<table>
+<thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Cách sửa</th></tr></thead>
+<tbody>
+<tr><td><code>Permission denied (publickey)</code></td><td>Sai username; sai key; key chưa import; quyền file key quá rộng</td><td>Dùng <code>root@FLOATING_IP</code>; kiểm tra key portal đã chọn khi tạo server; Linux: <code>chmod 600</code>; Windows: làm lại <code>icacls</code> (mục 5).</td></tr>
+<tr><td><code>Permission denied (publickey,password)</code> (Windows, key không nhận)</td><td>OpenSSH Windows không đọc path key hoặc sai loại key</td><td>Tạo <code>~/.ssh</code> (<code>mkdir %USERPROFILE%\.ssh</code>), copy key vào, <code>ssh root@FLOATING_IP</code> không cần <code>-i</code>.</td></tr>
+<tr><td><code>Connection timed out</code></td><td>Port 22 chưa mở SG; FIP chưa Associate; Router thiếu External Gateway; ufw chặn</td><td>Trạng thái FIP = Active; thêm rule SSH CIDR đúng; xác nhận External Gateway bật; <code>sudo ufw status</code>, mở port 22 nếu bị chặn.</td></tr>
+<tr><td><code>Connection refused</code> (port 22)</td><td>sshd chưa chạy; dùng Private IP thay vì FIP</td><td>Dùng đúng <code>FLOATING_IP</code>; <code>systemctl status sshd</code> qua Console portal, <code>systemctl start sshd</code>.</td></tr>
+<tr><td>SSH vào được nhưng không ra Internet</td><td>Router thiếu External Gateway; pool FIP sai VLAN</td><td>Xác nhận External Gateway = <code>Public-VLAN909</code>; FIP phải cùng pool public.</td></tr>
+<tr><td>Floating IP <code>DOWN</code></td><td>Chưa Associate; server chưa ACTIVE; pool sai</td><td>Server ACTIVE rồi Associate lại.</td></tr>
+<tr><td><code>UNPROTECTED PRIVATE KEY FILE</code></td><td>Quyền file key cho phép nhiều user</td><td>Windows: <code>icacls</code> (mục 5). Linux: <code>chmod 600 ~/.ssh/id_rsa</code>.</td></tr>
+<tr><td><code>docker compose</code> không nhận</td><td>Chỉ cài <code>docker</code>, thiếu compose plugin</td><td>Đảm bảo đã cài <code>docker-compose-plugin</code> (mục bootstrap 5); chạy <code>docker compose version</code>.</td></tr>
+<tr><td>Service không start</td><td>systemd unit sai; app crash; thiếu dependency</td><td><code>journalctl -u &lt;app&gt; -n 50</code>; kiểm tra <code>ExecStart</code> đúng; file .env tồn tại.</td></tr>
+<tr><td>Tự khóa SSH (mất SSH sau đổi port/hardening)</td><td>Thiếu mở SG trước khi đổi sshd port</td><td>Rollback qua Console portal (mục 6). Mở lại port cũ SG trước khi tắt port mới.</td></tr>
+<tr><td>Mất private key</td><td>Key chỉ gửi email 1 lần</td><td>Tạo key mới, import, sửa <code>authorized_keys</code> bằng Console portal hoặc key cũ còn sống.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="cheat">
+<h2>Cheat sheet</h2>
+<h3>Windows (PowerShell)</h3>
+
+<div class="codewrap"><div class="codehead"><span>powershell</span><button class="copybtn">Copy</button></div><pre><code># Kết nối
+ssh gdata-vps
+
+# Setup SSH lần đầu (Windows)
+powershell -NoProfile -File scripts\setup-ssh.ps1 -KeyPath "$env:USERPROFILE\Downloads\id_rsa" -HostName &lt;FLOATING_IP&gt;
+
+# Deploy
+powershell -NoProfile -File scripts\deploy.ps1 -Mode auto -RemotePath /srv/app -Service &lt;app&gt;
+
+# Bootstrap server (lần đầu)
+ssh gdata-vps "bash" &lt; scripts\bootstrap-server.sh
+
+# Kiểm tra service
+ssh gdata-vps "systemctl status &lt;app&gt;"
+
+# Rollback deploy
+ssh gdata-vps "cd /srv/app/releases &amp;&amp; ln -sfn &lt;release-trước&gt; /srv/app/releases/current &amp;&amp; systemctl restart &lt;app&gt;"</code></pre></div>
+
+<h3>Trên server (SSH vào rồi)</h3>
+<div class="codewrap"><div class="codehead"><span>bash</span><button class="copybtn">Copy</button></div><pre><code># Xem status các service
+systemctl status &lt;app&gt; fail2ban docker nginx
+
+# Xem log app (50 dòng gần nhất)
+journalctl -u &lt;app&gt; -n 50 --no-pager
+
+# Xem log theo thời gian thực
+journalctl -u &lt;app&gt; -f
+
+# Chạy lệnh một lần với user deploy
+sudo -u deploy /srv/app/releases/current/bin/migrate
+
+# Docker: xem log container
+docker compose -f /srv/app/releases/current/docker-compose.yml logs -f &lt;service&gt;
+
+# Docker: xem list container
+docker ps -a
+
+# Kiểm tra port đang listen
+ss -tlnp | grep -E ':(22|80|443)\s'
+
+# Kiểm tra ufw
+ufw status verbose
+
+# Kiểm tra disk
+df -h /srv/app
+
+# Đẩy file bằng scp (không cần rsync)
+# (chạy từ Windows)
+# scp C:\Users\ADMIN\project\dist\* deploy@&lt;FLOATING_IP&gt;:/srv/app/releases/current/</code></pre></div>
+
+<h3>Portal Gdata (trình duyệt)</h3>
+<table>
+<thead><tr><th>Thao tác</th><th>Menu</th></tr></thead>
+<tbody>
+<tr><td>Xem trạng thái Server</td><td>Cloud Server &gt; Server</td></tr>
+<tr><td>Xem trạng thái Floating IP</td><td>Cloud Server &gt; Network &gt; Floating IP</td></tr>
+<tr><td>Cấu hình Console (cứu máy)</td><td>Cloud Server &gt; Server &gt; chọn server &gt; Console</td></tr>
+<tr><td>Quản lý Security Group</td><td>Cloud Server &gt; Security Group</td></tr>
+<tr><td>Quản lý SSH Key</td><td>Cloud Server &gt; SSH Key</td></tr>
+</tbody>
+</table>
+
+<h3>Tham số <code>deploy.ps1</code> (nhanh)</h3>
+<table>
+<thead><tr><th>Tham số</th><th>Ý nghĩa</th></tr></thead>
+<tbody>
+<tr><td><code>-Mode</code></td><td>Mode deploy: <code>auto</code> / <code>docker</code> / <code>systemd</code> / <code>pm2</code> / <code>static</code> / <code>sync</code>.</td></tr>
+<tr><td><code>-RemotePath</code></td><td>Thư mục đích trên server, mặc định <code>/srv/app</code>.</td></tr>
+<tr><td><code>-Service</code></td><td>Tên service app (dùng cho health check và systemd/pm2).</td></tr>
+<tr><td><code>-DryRun</code></td><td>Chỉ in kế hoạch, không ghi gì lên server.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="checklist">
+<h2>Checklist bàn giao</h2>
+<p>Tình trạng lưu vào <code>localStorage</code> — đóng tab vẫn giữ. "Đặt lại" xoá toàn bộ.</p>
+<ul class="checklist" id="ckList"></ul>
+<div class="progress"><div id="ckBar"></div></div>
+<div style="display:flex;gap:12px;align-items:center">
+<span id="ckCount">0/0</span>
+<button id="ckReset">Đặt lại</button>
+</div>
+</section>
+
+<section id="sources">
+<h2>Nguồn</h2>
+<ul>
+<li><a href="https://docs.gdata.com.vn/sshkey/huong-dan-tao-va-quan-ly-ssh-key-trong-portal-cloud-gdata">docs.gdata.com.vn — Tạo và quản lý SSH Key trong portal</a></li>
+<li><a href="https://docs.gdata.com.vn/sshkey/huong-dan-su-dung-ssh-key-de-dang-nhap-server-linux">docs.gdata.com.vn — Dùng SSH Key đăng nhập server Linux</a></li>
+<li><a href="https://docs.gdata.com.vn/docs/network/huong-dan-su-dung-floating-ip-trong-portal-cloud-gdata">docs.gdata.com.vn — Dùng Floating IP trong portal</a></li>
+<li><a href="https://docs.gdata.com.vn/docs/network/huong-dan-su-dung-security-group-trong-portal-cloud-gdata">docs.gdata.com.vn — Dùng Security Group trong portal</a></li>
+<li><a href="https://docs.gdata.com.vn/docs/getting-started/tao-may-chu-dau-tien-tren-portal-cloud-gdata">docs.gdata.com.vn — Tạo máy chủ đầu tiên trên portal</a></li>
+<li>Skill: <code>C:\Users\ADMIN\.omp\agent\skills\gdata-vps\</code> — <code>SKILL.md</code>, <code>references/</code>, <code>scripts/</code></li>
+</ul>
+</section>
+
+</main>
+</div>
+
+<script>
+(function(){
+'use strict';
+var LS='gdata-vps-delivery-checklist';
+
+/* checklist items */
+var ITEMS=[
+ ['FIP đã Associate (trạng thái Active trên portal)',[]],
+ ['Port 22 đã mở trong Security Group',[]],
+ ['Private key (id_rsa) đã nhận qua email',[]],
+ ['Biết FLOATING_IP và username (root)',[]],
+ ['Key đã copy về C:\\Users\\ADMIN\\.ssh\\',[]],
+ ['icacls đã siết quyền file key',[]],
+ ['Host gdata-vps đã thêm vào ~/.ssh/config',[]],
+ ['ssh -o BatchMode=yes gdata-vps true → exit 0',[]],
+ ['setup-ssh.ps1 đã chạy PASS',[]],
+ ['bootstrap-server.sh đã chạy (docker run --rm hello-world OK)',[]],
+ ['User deploy đã tạo và login được',[]],
+ ['ufw active, port 22/80/443 mở',[]],
+ ['fail2ban active (jail sshd)',[]],
+ ['nginx, git, rsync, curl đã cài',[]],
+ ['/srv/app/releases và /srv/app/shared đã tạo',[]],
+ ['systemd unit <app> đã enable, service active',[]],
+ ['Logrotate đã cấu hình',[]],
+ ['Deploy DryRun pass',[]],
+ ['Deploy thật — health check PASS (curl trả 200)',[]],
+ ['Xác nhận trên URL public — đúng phiên bản vừa deploy',[]]
+];
+var cl=document.getElementById('ckList');
+var ckBar=document.getElementById('ckBar');
+var ckCount=document.getElementById('ckCount');
+var ckReset=document.getElementById('ckReset');
+
+function loadState(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch(e){return{}}}
+function saveState(s){try{localStorage.setItem(LS,JSON.stringify(s))}catch(e){}}
+
+var saved=loadState();
+ITEMS.forEach(function(item,i){
+  var li=document.createElement('li');
+  var id='ck-'+i;
+  li.innerHTML='<input type="checkbox" id="'+id+'" aria-label="'+item[0]+'"'+(saved[i]?' checked':'')+'><span class="cktext">'+item[0]+'</span>';
+  cl.appendChild(li);
+  if(saved[i])li.classList.add('done');
+});
+
+function refresh(){
+  var total=ITEMS.length,done=0;
+  for(var i=0;i<total;i++){
+    var li=cl.children[i],cb=li.querySelector('input');
+    if(cb.checked)done++;
+    li.classList.toggle('done',cb.checked);
+  }
+  ckBar.style.width=(total?Math.round(done/total*100):0)+'%';
+  ckCount.textContent=done+'/'+total;
+  var s={};for(var j=0;j<total;j++)s[j]=cl.children[j].querySelector('input').checked;
+  saveState(s);
+}
+cl.addEventListener('change',refresh);
+ckReset.addEventListener('click',function(){
+  var s={};try{localStorage.removeItem(LS)}catch(e){}
+  for(var i=0;i<ITEMS.length;i++){cl.children[i].querySelector('input').checked=false;cl.children[i].classList.remove('done')}
+  refresh();
+});
+refresh();
+
+/* copy buttons */
+document.querySelectorAll('.copybtn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var pre=this.closest('.codewrap').querySelector('pre code');
+    var text=pre.textContent;
+    function ok(){btn.textContent='Copied';btn.classList.add('copied');
+      setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied')},1600)}
+    function fallback(){
+      var ta=document.createElement('textarea');
+      ta.value=text;ta.style.cssText='position:fixed;top:-9999px';
+      document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');ok()}catch(e){}
+      document.body.removeChild(ta);
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(ok,fallback);
+    }else fallback();
+  });
+});
+
+/* scroll-spy */
+var sections=Array.prototype.slice.call(document.querySelectorAll('main section'));
+var links=Array.prototype.slice.call(document.querySelectorAll('#nav a'));
+var activeMap={};
+links.forEach(function(a){activeMap[a.getAttribute('href').slice(1)]=a});
+
+var io=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){
+      links.forEach(function(l){l.classList.remove('active')});
+      var id=e.target.id;
+      if(activeMap[id])activeMap[id].classList.add('active');
+    }
+  });
+},{rootMargin:'-10% 0px -80% 0px',threshold:0.1});
+sections.forEach(function(s){io.observe(s)});
+
+/* mobile nav toggle */
+var nav=document.getElementById('nav');
+if(window.innerWidth<1024){
+  var btn=document.createElement('button');
+  btn.textContent='Menu';
+  btn.style.cssText='position:fixed;top:10px;left:10px;z-index:99;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px';
+  document.body.appendChild(btn);
+  btn.addEventListener('click',function(){
+    var open=nav.style.display!=='none';
+    nav.style.display=open?'none':'block';
+    btn.textContent=open?'Menu':'Đóng';
+  });
+}
+
+/* search filter */
+var search=document.getElementById('search');
+search.addEventListener('input',function(){
+  var q=this.value.trim().toLowerCase();
+  if(!q){sections.forEach(function(s){s.classList.remove('search-hidden')});document.getElementById('noResults').style.display='none';return}
+  var any=false;
+  sections.forEach(function(s){
+    var text=s.textContent.toLowerCase();
+    var head=s.querySelector('h2')?s.querySelector('h2').textContent.toLowerCase():'';
+    if(text.includes(q)||head.includes(q)){s.classList.remove('search-hidden');any=true}
+    else s.classList.add('search-hidden');
+  });
+  document.getElementById('noResults').style.display=any?'none':'block';
+});
+})();
+</script>
+<div id="noResults">Không tìm thấy mục nào khớp.</div>
+</body>
+</html>

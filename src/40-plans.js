@@ -7,7 +7,7 @@ STUDY_PLANS.six_hours = {
   blocks: [
     {
       what: 'AWS P0: Lambda, API Gateway, S3, IAM, RDS/DynamoDB — phần bạn yếu nhất, phải trả lời được không cần mở tài liệu.',
-      how: '80 phút, 10 câu P0 nhóm G, mỗi câu 6 phút: đọc q, trả lời miệng 60 giây không nhìn `oral`, mới mở `oral` để đối chiếu, câu nào sai hoặc nói ổng định dánh đỏ. 10 phút cuối: chép lại 3 dòng cốt lõi (cold start + memory, presigned URL hết hạn, least privilege) vào một mảnh giấy, đó là phần bạn sẽ nói sai nhiều nhất dưới áp lực.',
+      how: '80 phút, 10 câu P0 nhóm G, mỗi câu 6 phút: đọc q, trả lời miệng 60 giây không nhìn `oral`, mới mở `oral` để đối chiếu, câu nào sai hoặc nói ấp úng thì đánh đỏ. 10 phút cuối: chép lại 3 dòng cốt lõi (cold start + memory, presigned URL hết hạn, least privilege) vào một mảnh giấy, đó là phần bạn sẽ nói sai nhiều nhất dưới áp lực.',
       pick: [{ group: 'G', prio: 'P0', limit: 8 }]
     },
     {
