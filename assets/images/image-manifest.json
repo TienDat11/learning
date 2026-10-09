@@ -1,0 +1,232 @@
+[
+  {
+    "id": "L01",
+    "title": "Đọc một kiến trúc serverless từ trái sang phải",
+    "caption": "Trình duyệt gọi API Gateway, rồi Lambda. Từ Lambda, dữ liệu và công việc nền đi theo hai nhánh riêng.",
+    "file": "L01-v2.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "49516EFA5682E902CC812DECC9DEAF32FA955B4027A99E1300372ACE795E2DF1",
+    "bytes": 1625528
+  },
+  {
+    "id": "L02",
+    "title": "IAM: hai lớp quyền của một hệ thống serverless",
+    "caption": "Quyền gọi Lambda và quyền Lambda truy cập tài nguyên là hai lớp kiểm tra độc lập.",
+    "file": "L02-v2.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "BEF63F2E8A0A4484D04BF1DF38382100B04A77C1C7C24805C78F490AE62DD49F",
+    "bytes": 1609221
+  },
+  {
+    "id": "L03",
+    "title": "Lambda: handler, cold start, concurrency và retry",
+    "caption": "Cold start chỉ xảy ra khi cần môi trường mới. Concurrency, timeout và cơ chế retry giới hạn quá trình xử lý.",
+    "file": "L03.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "F3FB425BFDE74814D8C63A4DA33B7984C9F4B7EEAF16AA67DF7E5F205477B50E",
+    "bytes": 1660023
+  },
+  {
+    "id": "L04",
+    "title": "API Gateway: cổng vào và nơi chặn request rác",
+    "caption": "Route, auth và throttle bảo vệ cổng vào. CORS là cơ chế kiểm soát truy cập của trình duyệt.",
+    "file": "L04.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "A9065DE94D93D0C1D5A1E32BFBBC800AC2C486064EB9BEDA994758C0E19A358F",
+    "bytes": 1668339
+  },
+  {
+    "id": "L05",
+    "title": "S3 presigned URL và DynamoDB: dữ liệu to, truy vấn rẻ",
+    "caption": "API cấp URL ký; trình duyệt tải file trực tiếp lên S3. Keyed read và full scan là hai cách đọc khác nhau.",
+    "file": "L05.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "490D1A7758645B8425110601531C76C336C207B2D941A44401CE272435707867",
+    "bytes": 1638223
+  },
+  {
+    "id": "L06",
+    "title": "SQS, worker, DLQ và cách biết hệ thống đang chết dần",
+    "caption": "Message đang xử lý được ẩn tạm thời. Worker dùng connection pool; lỗi lặp lại đi theo nhánh riêng vào DLQ.",
+    "file": "L06.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "23849D264C650B7E64A82B71E4825AF8E1A98FAB3F5C8954DA980C56FDA018F1",
+    "bytes": 1637551
+  },
+  {
+    "id": "L07",
+    "title": "Vòng đời một request trong FastAPI: từ khoá def quyết định số phận event loop",
+    "caption": "Một lệnh blocking trong async handler có thể chặn event loop. Handler đồng bộ được xử lý qua thread pool.",
+    "file": "L07.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "2A2BAEB8D89A0D447737E41D1BE1142823D0245D66C1837E1A6006CCAE6CD6B0",
+    "bytes": 1702619
+  },
+  {
+    "id": "L08",
+    "title": "Dependency injection cho auth và DB session: connection pool bị biến thành hàng đợi",
+    "caption": "Session giữ kết nối quá lâu làm pool cạn và các request sau phải chờ.",
+    "file": "L08.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "2924E150884FFC842155FE28F330149DCE43A02B1E8883EB5EF1F1BF44F74694",
+    "bytes": 1628042
+  },
+  {
+    "id": "L09",
+    "title": "Backend Python gọi AWS: credential, timeout, retry và idempotency",
+    "caption": "Backend cần chọn đúng credential, giới hạn timeout, retry có kiểm soát và dùng khóa idempotency.",
+    "file": "L09.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "AED36D1ABBA6F32C37A264E8439CE2CDD72444FCD9AC1E3C6EDE0CE9AAD3DEAA",
+    "bytes": 1557059
+  },
+  {
+    "id": "L10",
+    "title": "Lambda hay container/ECS: chọn theo vòng đời công việc, không theo mức độ hiện đại",
+    "caption": "Chọn Lambda hoặc container/ECS dựa trên vòng đời và đặc điểm công việc.",
+    "file": "L10.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "3BC58B14DE2384956DDB478B6BDFD01FAE6765760DF8A91A6BCA3536A2DBD755",
+    "bytes": 1606283
+  },
+  {
+    "id": "L11",
+    "title": "Đo lường và sự cố: log, metric, alarm, transaction và một dòng UPDATE thua cuộc",
+    "caption": "Log và metric kỹ thuật chưa đủ: cần theo dõi invariant nghiệp vụ và kết quả của UPDATE.",
+    "file": "L11.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "7D3F9A24E049E4751E1CE0C69E24406A7FB767D2D186C403AECEB5B64AD43B03",
+    "bytes": 1536831
+  },
+  {
+    "id": "L12",
+    "title": "Reactivity: ref, reactive và cái Proxy",
+    "caption": "ref và reactive theo dõi đọc/ghi qua hai cơ chế track và trigger; tách giá trị có thể mất liên kết phản ứng.",
+    "file": "L12.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "CB4AE47EE11CE9ED9D5F717A03577863F666A7947C6B21F0C026739ADC93C5A3",
+    "bytes": 1637332
+  },
+  {
+    "id": "L13",
+    "title": "computed, watch và watchEffect: dependency, caching, side effect",
+    "caption": "computed lưu kết quả dẫn xuất; watch chạy side effect. Phản hồi cũ đến muộn có thể ghi đè phản hồi mới.",
+    "file": "L13.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "B1D8F40CBE185C47640910AD7A841EBF007AEEC497B64DC3D63EE566AB694514",
+    "bytes": 1564999
+  },
+  {
+    "id": "L14",
+    "title": "Component: SFC, script setup, props và emits",
+    "caption": "Props đi vào component, emits đi ra. Key ổn định giữ đúng danh tính phần tử trong danh sách.",
+    "file": "L14.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "2BEBE9131C59F36F6511FC58373B67E5DB7D4BCA91DDE9FF9C52888787B07150",
+    "bytes": 1636196
+  },
+  {
+    "id": "L15",
+    "title": "Composable, provide/inject và Pinia: tách logic hay chia sẻ trạng thái",
+    "caption": "Composable có thể tạo state riêng; provide/inject chia sẻ theo cây; Pinia chia sẻ qua store.",
+    "file": "L15.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "5507A186DEB365272F4A687697BE3F564BB9F1039AD73C714BA3F7B24F6506DC",
+    "bytes": 1613487
+  },
+  {
+    "id": "L16",
+    "title": "Vue Router: route params, navigation guard và lazy loading",
+    "caption": "Đổi route param có thể tái sử dụng component. Navigation guard không thay thế phân quyền backend.",
+    "file": "L16.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "1DED71A97EE21F28B4C0DECFC2127E72C0832D9150627238F4E304776CA8BA4F",
+    "bytes": 1715903
+  },
+  {
+    "id": "L17",
+    "title": "Form, trạng thái và chuyển kiến thức từ React sang Vue",
+    "caption": "Khóa nút khi đang gửi chỉ bảo vệ giao diện. Dùng lại một khóa idempotency cho hai payload khác nhau có thể trả sai kết quả.",
+    "file": "L17.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "3DBF358DC1123150D2727EF949A1E19FFA2165CBE5EEB62510CF4D52F6251E8E",
+    "bytes": 1591154
+  },
+  {
+    "id": "L18",
+    "title": "Hợp đồng API giữa Vue và FastAPI",
+    "caption": "Vue và FastAPI trao đổi qua một hợp đồng dữ liệu rõ ràng; schema giúp kiểm tra payload hợp lệ.",
+    "file": "L18.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "303E7519238A4DF8E2E50CE398279FBCDAE97EF649C49AC0516E18EFC1B7FA56",
+    "bytes": 1572858
+  },
+  {
+    "id": "L19",
+    "title": "Auth xuyên hai phía: token, nơi lưu, interceptor, và ai quyết định quyền",
+    "caption": "Backend quyết định quyền. Access/refresh token và cookie/localStorage có vai trò, đặc tính khác nhau.",
+    "file": "L19.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "8CA423467942F34A940BD5D15B55620606A2AB66C72BE55B5E40BC5DA4778C06",
+    "bytes": 1656526
+  },
+  {
+    "id": "L20",
+    "title": "Upload file: từ ô chọn file tới S3",
+    "caption": "Xin URL ký từ API, nhận URL ở trình duyệt, rồi upload thẳng lên S3. PostgreSQL lưu metadata.",
+    "file": "L20.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "B893F193646D3D806E212E129C4400D5F067AE72C2537FFBBF02261C2E4D6BFD",
+    "bytes": 1592556
+  },
+  {
+    "id": "L21",
+    "title": "Đẩy việc nặng sang SQS và worker",
+    "caption": "Ghi dữ liệu nghiệp vụ và outbox trong cùng transaction; sau commit mới chuyển message sang hàng đợi.",
+    "file": "L21.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "786A270C86043973F8C1EC8BFF77F998D98B3802AB1F274498CAF5678D31B267",
+    "bytes": 1593391
+  },
+  {
+    "id": "L22",
+    "title": "Một tính năng end-to-end: từ ô nhập tới hàng trong DB, kèm ba chỗ hỏng",
+    "caption": "Tách đường metadata, đường file và đường xử lý nền; nhận diện double press, orphan pending và worker death.",
+    "file": "L22.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "9F987DEA4797053F8311B0C8D3857BADECEE244D378CB13704E4CA11192C84B8",
+    "bytes": 1625944
+  },
+  {
+    "id": "L23",
+    "title": "DDoS: tấn công bị hấp thụ ở biên, người dùng thật đi qua",
+    "caption": "Chặn lưu lượng rác tại biên, cho người dùng hợp lệ đi qua các lớp kiểm tra và đặt trần tài nguyên phía sau.",
+    "file": "L23.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "A53A7ED101C88D7A2CE7C98F8F071B9E2F28BA208556C7F4FA4FD31E8E743A8D",
+    "bytes": 1600599
+  }
+]

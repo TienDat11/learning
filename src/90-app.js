@@ -27,7 +27,9 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var FLOWS = arr(typeof FLOW_SVGS === 'undefined' ? [] : FLOW_SVGS);
     var CHECKED = typeof SOURCE_CHECKED === 'undefined' ? '' : SOURCE_CHECKED;
     var LESSONSARR = arr(typeof LESSONS === 'undefined' ? [] : LESSONS);
-
+    var LESSON_IMAGES_ARR = arr(typeof LESSON_IMAGES === 'undefined' ? [] : LESSON_IMAGES);
+    var LESSON_IMAGE_BY_ID = {};
+    LESSON_IMAGES_ARR.forEach(function (e) { if (e && e.id) LESSON_IMAGE_BY_ID[e.id] = e; });
     var FLOW_BY_ID = {};
     FLOWS.forEach(function (f) { if (f && f.id) FLOW_BY_ID[f.id] = f; });
     var SRC_BY_KEY = {};
@@ -718,6 +720,14 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       return '<figure class="svg-wrap">' + sanitize(f.svg) +
         '<figcaption>' + esc(str(f.caption)) + '</figcaption></figure>';
     };
+    var LESSON_IMAGE_RE = /^data:image\/webp;base64,[A-Za-z0-9+/]+=*$/;
+    var lessonFig = function (id) {
+      var e = obj(LESSON_IMAGE_BY_ID[id]);
+      if (!e || typeof e.src !== 'string' || !LESSON_IMAGE_RE.test(e.src)) return '';
+      return '<figure class="lesson-fig"><img src="' + e.src + '" width="' + e.w + '" height="' + e.h +
+        '" alt="' + esc(str(e.alt)) + '" loading="lazy" decoding="async">' +
+        '<figcaption><span class="fig-id">' + esc(str(e.id)) + '</span>' + esc(str(e.caption)) + '</figcaption></figure>';
+    };
 
     var renderCase = function () {
       var body = $('case-body');
@@ -901,6 +911,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       chain += when(l.observe, blockBox('pb pb-observe', 'Quan sát và gỡ lỗi trên production', l.observe));
       chain += attacksBox(l.attacks);
       chain += anchorBox(l.anchor);
+      chain = '<div class="lesson-rail">' + chain + '</div>';
       return '<article class="lesson" id="lesson-' + esc(str(l.id)) + '" data-lesson="' + esc(str(l.id)) + '">' +
         '<div class="lesson-head"><span class="lesson-idx">Bài ' + (idx + 1) + '/' + total + '</span>' +
         '<span class="lesson-id">' + esc(str(l.id)) + '</span></div>' +
@@ -908,6 +919,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         spineHtml +
         '<h4 class="lesson-h">' + esc(str(l.title)) + '</h4>' +
         '<p class="lesson-goal">' + esc(str(l.goal)) + '</p>' +
+        lessonFig(str(l.id)) +
         chain +
         '<div class="deep">' + sanitize(l.body) + '</div>' +
         when(l.code, '<pre><code>' + esc(str(l.code)) + '</code></pre>') +
@@ -977,7 +989,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         return '<button type="button" class="lesson-link" data-lesson="' + esc(id) + '">' + esc(id) + '</button>';
       };
       var spineMap = '<div class="spine-map"><div class="lb-h">Bản đồ sợi chỉ L01</div>' +
-        '<p class="spine-map-note">Bài 1 dựng cả đường đi một request; hai mươi mốt bài sau mỗi bài bám vào đúng một khớp của đường đó, và mọi bài đều có đường quay về L01. Bấm một mã để nhảy tới bài.</p>' +
+        '<p class="spine-map-note">Bài 1 dựng cả đường đi một request; ' + (LESSONSARR.length - 1) + ' bài sau mỗi bài bám vào một khớp của đường đó, và mọi bài đều có đường quay về L01. Bấm một mã để nhảy tới bài.</p>' +
         '<ol class="spine-map-list">' +
         '<li class="sm-row sm-origin"><span class="sm-node">L01 · cả đường đi</span><span class="sm-links">' +
         originIds.map(mapBtn).join('') + '</span><span class="sm-count">' + originIds.length + ' bài</span></li>' +
@@ -1046,6 +1058,60 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         if (lbtn) jumpToLesson(lbtn.getAttribute('data-lesson'));
       });
     };
+    var posBar = null, posId = null, posT = null, posN = null, posBarEl = null;
+    var updateLessonPos = function (id) {
+      if (!posBar) posBar = $('lesson-pos');
+      if (!posId) posId = $('lp-id');
+      if (!posT) posT = $('lp-t');
+      if (!posN) posN = $('lp-n');
+      if (!posBarEl) posBarEl = $('lp-bar');
+      if (!posBar) return;
+      var idx = -1;
+      for (var k = 0; k < LESSONSARR.length; k++) {
+        var cand = obj(LESSONSARR[k]);
+        if (cand && cand.id === id) { idx = k; break; }
+      }
+      if (idx < 0) return;
+      var l = obj(LESSONSARR[idx]) || {};
+      if (posId) posId.textContent = id;
+      if (posT) posT.textContent = shortLessonTitle(l.title);
+      if (posN) posN.textContent = (idx + 1) + '/' + LESSONSARR.length;
+      if (posBarEl) {
+        var fill = posBarEl.querySelector('i');
+        if (fill) fill.style.width = ((idx + 1) / LESSONSARR.length * 100) + '%';
+        posBarEl.setAttribute('aria-valuenow', String(Math.round((idx + 1) / LESSONSARR.length * 100)));
+      }
+      posBar.removeAttribute('hidden');
+    };
+    var lessonPosRefresh = null;
+    var hideLessonPos = function () {
+      if (!posBar) posBar = $('lesson-pos');
+      if (posBar) posBar.setAttribute('hidden', '');
+    };
+    var wireLessonPos = function () {
+      if (typeof IntersectionObserver === 'undefined') return;
+      var body = $('learn-body');
+      if (!body || !body.querySelectorAll) return;
+      var cards = body.querySelectorAll('.lesson');
+      var pick = function () {
+        // Observer callbacks fire only on threshold crossings, so entry.boundingClientRect
+        // is stale by the time we choose. Read live geometry instead: the current lesson
+        // is the last one whose top has scrolled up to the sticky bar; before the first
+        // lesson nothing qualifies and the bar stays hidden.
+        var sec = $('view-learn');
+        if (!sec || !sec.classList || !sec.classList.contains('active')) return;
+        var best = null;
+        for (var c = 0; c < cards.length; c++) {
+          if (cards[c].getBoundingClientRect().top <= 56) best = cards[c];
+        }
+        if (best && best.getAttribute) updateLessonPos(best.getAttribute('data-lesson'));
+        else hideLessonPos();
+      };
+      var ob = new IntersectionObserver(pick, { rootMargin: '-56px 0px -70% 0px' });
+      for (var c = 0; c < cards.length; c++) ob.observe(cards[c]);
+      lessonPosRefresh = pick;
+      pick();
+    };
 
     // ---- theme, sidebar, print ----
     var applyTheme = function (t) {
@@ -1088,6 +1154,14 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       for (var i = 0; i < navBtns.length; i++) {
         navBtns[i].setAttribute('aria-current', navBtns[i].getAttribute('data-view') === v ? 'true' : 'false');
       }
+      if (lessonPosRefresh) {
+        if (v === 'learn') {
+          lessonPosRefresh();
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(lessonPosRefresh);
+        } else {
+          hideLessonPos();
+        }
+      }
     };
 
     var renderCounts = function () {
@@ -1125,6 +1199,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       wireLearn();
       renderCounts();
       renderLearn();
+      wireLessonPos();
       renderIntro();
       renderPlans();
       renderCase();

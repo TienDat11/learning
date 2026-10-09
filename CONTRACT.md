@@ -173,6 +173,7 @@ the build rejects them).
 | `00-bootstrap.js` | harness | empty containers; never remove |
 | `00-meta.js` | meta agent | `SOURCES`, `SOURCE_CHECKED`, `GROUP_INTROS` |
 | `05-logic.js` | app agent | `LOGIC` — names/semantics pinned by `tests/smoke.cjs` |
+| `07-lesson-images.js` | generator script `.scratch/gen-lesson-images.mjs` | `LESSON_IMAGES` |
 | `10-q-a.js` … `19-q-j.js` | one per group | that group's questions (ids `A01`…, `B01`…, …) |
 | `20-quiz.js` | quiz agent | `QUIZ` (25–30 items, several situational) |
 | `30-mock.js` | mock agent | `MOCK_SETS` (≥5 sets) |

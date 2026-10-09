@@ -18,7 +18,7 @@ if (!files.length) {
   console.error('FATAL: no src/*.js files');
   process.exit(2);
 }
-for (const required of ['assets/style.css', 'assets/body.html']) {
+for (const required of ['assets/style.css', 'assets/fonts.css', 'assets/body.html']) {
   if (!existsSync(join(root, required))) {
     console.error(`FATAL: missing ${required}`);
     process.exit(2);
@@ -89,7 +89,7 @@ const store = () => {
 };
 
 const EXPORTS = ['QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'CASE_STUDY', 'SOURCES',
-  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LOGIC', 'LESSONS'];
+  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LOGIC', 'LESSONS', 'LESSON_IMAGES'];
 let data;
 try {
   const loader = new Function(
@@ -110,7 +110,7 @@ try {
 }
 
 const { QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, CASE_STUDY, SOURCES, GROUP_INTROS,
-  SOURCE_CHECKED, FLOW_SVGS, LOGIC, LESSONS } = data;
+  SOURCE_CHECKED, FLOW_SVGS, LOGIC, LESSONS, LESSON_IMAGES } = data;
 
 // ---- 3. content validation ---------------------------------------------
 const errors = [];
@@ -383,6 +383,25 @@ for (const l of LESSON_ARR) {
   if (!reached) err(`${l.id}: buildsOn chain does not reach L01`);
 }
 
+// LESSON_IMAGES: one schematic per lesson, ids exactly L01..L23 in ascending order.
+const LESSON_IMAGES_ARR = LESSON_IMAGES || [];
+const LESSON_IMAGE_IDS = Array.from({ length: 23 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
+const LESSON_IMAGE_RE = /^data:image\/webp;base64,[A-Za-z0-9+/]+=*$/;
+if (!Array.isArray(LESSON_IMAGES_ARR) || LESSON_IMAGES_ARR.length !== 23) {
+  err(`LESSON_IMAGES length ${(Array.isArray(LESSON_IMAGES_ARR) ? LESSON_IMAGES_ARR.length : typeof LESSON_IMAGES)} !== 23`);
+} else {
+  LESSON_IMAGES_ARR.forEach((e, i) => {
+    const want = LESSON_IMAGE_IDS[i];
+    if (!e || e.id !== want) err(`LESSON_IMAGES[${i}]: want id ${want}, got ${(e && e.id) || typeof e}`);
+    if (!e || !Number.isInteger(e.w) || e.w <= 0) err(`${(e && e.id) || i}: bad w`);
+    if (!e || !Number.isInteger(e.h) || e.h <= 0) err(`${(e && e.id) || i}: bad h`);
+    if (!e || typeof e.alt !== 'string' || !e.alt.trim()) err(`${(e && e.id) || i}: bad alt`);
+    if (!e || typeof e.caption !== 'string' || !e.caption.trim()) err(`${(e && e.id) || i}: bad caption`);
+    if (!e || typeof e.src !== 'string' || !LESSON_IMAGE_RE.test(e.src)) err(`${(e && e.id) || i}: bad src`);
+    if (typeof (e && e.src) === 'string' && (e.src.includes('<') || /https?:\/\//.test(e.src))) err(`${(e && e.id) || i}: src must be a bare data URI`);
+  });
+}
+
 // ---- 4. self-containment ------------------------------------------------
 const URL_RE = /https?:\/\/(?!www\.w3\.org)[^\s"'<>)]+/g;
 const FORBIDDEN = [
@@ -413,9 +432,11 @@ const REQUIRED_UI_IDS = [
   'quiz-list', 'quiz-submit', 'quiz-result', 'quiz-reset', 'quiz-count',
   'mock-topic', 'mock-minutes', 'mock-start', 'mock-panel', 'mock-timer', 'mock-next', 'mock-result', 'mock-question',
   'plan-body', 'case-body', 'sources-body', 'intro-body', 'nav-list', 'side-body', 'side-toggle',
+  'lesson-pos', 'lp-id', 'lp-t', 'lp-n', 'lp-bar',
 ];
 const BODY = readFileSync(join(root, 'assets', 'body.html'), 'utf8');
 const CSS = readFileSync(join(root, 'assets', 'style.css'), 'utf8');
+const FONTS = readFileSync(join(root, 'assets', 'fonts.css'), 'utf8');
 const missingUi = REQUIRED_UI_IDS.filter((id) => !new RegExp(`id=["']${id}["']`).test(BODY));
 if (missingUi.length) err(`body.html missing DOM ids: ${missingUi.join(', ')}`);
 if (/<script/i.test(CSS)) err('style.css contains <script');
@@ -438,6 +459,7 @@ const html = `<!DOCTYPE html>
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b5fb8'/%3E%3Cpath d='M8 21V11h3.4l4.6 6.2L20.6 11H24v10h-3.2v-4.6L17 21h-2l-3.8-4.6V21z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
+${FONTS}
 ${CSS}
 </style>
 </head>
@@ -480,6 +502,8 @@ const metrics = {
   flow_svgs: (FLOW_SVGS || []).length,
   lessons: (LESSONS || []).length,
   lessons_with_bridge: (LESSONS || []).filter((l) => typeof l.bridge === 'string' && l.bridge.length > 0).length,
+  lesson_images: (LESSON_IMAGES_ARR || []).length,
+  lesson_images_bytes: (LESSON_IMAGES_ARR || []).reduce((n, e) => n + (e && typeof e.src === 'string' ? e.src.length : 0), 0),
   lessons_linked: (LESSONS || []).filter((l) => Array.isArray(l.buildsOn) && l.buildsOn.length > 0).length,
   lessons_with_spine: (LESSONS || []).filter((l) => typeof l.spine === 'string' && l.spine.length > 0).length,
   lessons_with_incident: (LESSONS || []).filter((l) => typeof l.incident === 'string' && l.incident.length > 0).length,

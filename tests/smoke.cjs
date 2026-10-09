@@ -43,7 +43,7 @@ const mem = () => {
 const fails = [];
 let checkCount = 0;
 let crashed = false;
-let LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES;
+let LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES, LESSON_IMAGES;
 
 const check = (name, cond, detail = '') => {
   checkCount++;
@@ -86,7 +86,7 @@ const finish = (fatal) => {
 try {
   let data;
   try {
-    const EXPORTS = ['LOGIC', 'QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'FLOW_SVGS', 'LESSONS', 'SOURCES'];
+    const EXPORTS = ['LOGIC', 'QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'FLOW_SVGS', 'LESSONS', 'SOURCES', 'LESSON_IMAGES'];
     // Same `typeof` guards build.mjs uses: a bundle that has not shipped LOGIC yet must
     // still load, so the missing export is a check failure rather than a fatal error.
     data = new Function('document', 'window', 'localStorage', 'navigator', 'console', '__BUILD_CHECK__', APP + `
@@ -99,7 +99,7 @@ try {
     fails.push('app.js failed to load: ' + (e && e.message ? e.message : String(e)));
     finish(true);
   }
-  ({ LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES } = data || {});
+  ({ LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES, LESSON_IMAGES } = data || {});
 
 // ---- LOGIC must exist and be callable ----------------------------------
 const need = ['normalize', 'stripTags', 'esc', 'haystack', 'matchQuery', 'filterQuestions', 'quizScore', 'resolvePick'];
@@ -221,13 +221,13 @@ try {
   const srcKeySet = new Set(arr(SOURCES).filter((s) => s && s.key).map((s) => s.key));
   const flowIdSet = new Set(FS.filter((f) => f && f.id).map((f) => f.id));
 
-  const EXPECTED_LESSON_IDS = Array.from({ length: 22 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
+  const EXPECTED_LESSON_IDS = Array.from({ length: 23 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
   const gotIds = LL.map((l) => (l ? l.id : undefined));
   const idSet = new Set(gotIds);
   const missingIds = EXPECTED_LESSON_IDS.filter((id) => !idSet.has(id));
   const extraIds = gotIds.filter((id) => !EXPECTED_LESSON_IDS.includes(id));
 
-  check('lessons_complete', Array.isArray(LESSONS) && LL.length === 22, `got ${LL.length}, want exactly 22`);
+  check('lessons_complete', Array.isArray(LESSONS) && LL.length === 23, `got ${LL.length}, want exactly 23`);
   check('lesson_ids_exact', missingIds.length === 0 && extraIds.length === 0,
     `missing [${missingIds.join(', ')}] extra [${extraIds.join(', ')}]`);
   check('lesson_ids_unique', LL.every((l) => l && l.id) && idSet.size === LL.length,
@@ -287,6 +287,14 @@ try {
   const missingStages = [1, 2, 3, 4].filter((s) => !stages.has(s));
   check('lesson_stages_cover', missingStages.length === 0,
     `missing stage(s) [${missingStages.join(', ')}], got [${Array.from(stages).sort((a, b) => a - b).join(', ')}]`);
+  const IM = arr(LESSON_IMAGES);
+  const wantIds = Array.from({ length: 23 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
+  check('lesson_images_complete', IM.length === 23, `got ${IM.length}, want exactly 23`);
+  check('lesson_images_ids_order', IM.map((e) => e && e.id).join(',') === wantIds.join(','),
+    `got [${IM.map((e) => (e && e.id) || '?').join(', ')}]`);
+  check('lesson_images_src', IM.every((e) => e && typeof e.src === 'string' && e.src.startsWith('data:image/webp;base64,')));
+  check('lesson_images_text', IM.every((e) => e && typeof e.alt === 'string' && e.alt.length > 0 && typeof e.caption === 'string' && e.caption.length > 0));
+  check('lesson_images_dims', IM.every((e) => e && Number.isInteger(e.w) && e.w > 0 && Number.isInteger(e.h) && e.h > 0));
 } catch (e) {
   fails.push('data invariants crashed: ' + (e && e.message ? e.message : String(e)));
 }

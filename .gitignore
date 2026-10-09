@@ -16,3 +16,8 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+
+# raw PNG originals for lesson images — the build embeds the optimised webp
+# (see src/07-lesson-images.js and assets/images/webp/); 35 MB of raw source
+# is not needed to publish or to rebuild.
+assets/images/*.png
