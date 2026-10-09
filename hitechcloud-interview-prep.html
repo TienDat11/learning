@@ -557,6 +557,11 @@ table.timeline .tl-when { font-family: var(--mono); font-size: 13px; white-space
   .card, .case-sec { break-inside: avoid; box-shadow: none; border-color: #999; }
   .lesson-fig img { border-color: #999; }
   a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #444; word-break: break-all; }
+  /* The screen rule above turns tables into scroll containers under 900px, and a
+     print page is ~816px wide, so a printed table would be clipped at the page
+     edge. Back to a real table with wrapped cells, so every column is on paper. */
+  .lesson table, .case-sec table, .deep table { display: table !important; overflow-x: visible !important; }
+  .lesson table th, .lesson table td, .case-sec table th, .case-sec table td, .deep table th, .deep table td { overflow-wrap: anywhere; }
   pre { background: #f2f2f2; color: #000; border: 1px solid #ccc; white-space: pre-wrap; }
 }
 
