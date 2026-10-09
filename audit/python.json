@@ -1,0 +1,266 @@
+{
+  "meta": {
+    "auditor": "py-auditor (teammate, task-1)",
+    "target": "D:\\research\\hitechcloud-interview-prep.html",
+    "interpreter": "D:\\research\\.scratch\\e-venv\\Scripts\\python.exe",
+    "python_version": "3.13.12 (main, Feb 12 2026) [MSC v.1944 64 bit (AMD64)]",
+    "scope": "QUESTIONS A01-A18 (lines 1043-1402), QUIZ QZ01-QZ28 (4115-4477), Python question objects in I01-I05 (3636-3764), E-group Python code (2431-2689), lesson Python code (4599-5730)",
+    "method": "Read the raw HTML; extracted every `code:`/`expected:` pair; executed each runnable snippet as-is with the venv interpreter; treated each documented `expected` string as a falsifiable claim.",
+    "read_only_confirmation": "No write was made to hitechcloud-interview-prep.html. Only D:\\research\\audit\\python.json and files under D:\\research\\.scratch\\py\\ were created.",
+    "headline": "The four defects asserted by the commissioning prompt are ALL FALSE. The file is already correct at (a), (b), (c) and (d). Every one of the 21 executed snippets produces exactly the documented output. The real defect class in this artifact is not wrong_core_semantics, it is (1) one visually-mangled Big-O typography bug on a P0 card, (2) missing interview depth on several P0/P1 cards where the mechanism layer is asserted rather than demonstrated, and (3) three version-sensitivity claims that are stated too flatly to survive a sharp interviewer."
+  },
+
+  "commissioned_claims_verdict": [
+    {
+      "claim_id": "a",
+      "assertion": "A closure example near A05 (lines 1140-1162) allegedly claims a second result becomes [0, 1, 2] when it does not.",
+      "verdict": "FALSE — the file is already correct here",
+      "detail": "Lines 1151 and 1157 explicitly and correctly state the opposite. Line 1151 predict answer: 'In ra [2, 2, 2]. ... Cách sửa: [lambda n=i: n for i in range(3)] in ra [0, 1, 2] vì tham số mặc định được đánh giá ngay khi tạo lambda.' Line 1157 expected says of the comprehension variant: 'Dòng 2 cũng in [2, 2, 2]: comprehension trong Python 3 có phạm vi riêng (biến i không rò ra ngoài), nhưng bên trong phạm vi đó vẫn chỉ có MỘT ô i cho toàn bộ vòng lặp của comprehension, nên lambda tạo trong nó vẫn late-bind y hệt.' The claim that the file asserts [0, 1, 2] for the comprehension is not present anywhere. Executed proof below (seed a05).",
+      "bears_on": "PY-5 (this card's real defect is missing bytecode depth, NOT a wrong result)"
+    },
+    {
+      "claim_id": "b",
+      "assertion": "A claim that Python 3 comprehensions avoid closure late binding 'because each iteration creates a new cell' — audit whether the file states this correctly or incorrectly.",
+      "verdict": "FALSE — the file is already correct here, and is in fact better than most references",
+      "detail": "The file states the correct position twice, and explicitly labels the wrong position as a common error. Line 1155 deep: 'Chuyển sang comprehension <em>không</em> sửa được: comprehension trong Python 3 có phạm vi riêng, nhưng cả vòng lặp của nó vẫn dùng chung một ô nhớ, nên lambda tạo bên trong vẫn late-bind y hệt. Phạm vi riêng và ô nhớ riêng cho từng vòng là hai chuyện khác nhau — đây là chỗ rất nhiều tài liệu nói sai.' Line 1158 followup 1 restates it. The phrase 'because each iteration creates a new cell' appears nowhere in the file. Note the correct CPython mechanism, which the prompt's phrasing also gets backwards: a for-loop target is a single cell reused across iterations (the compiler emits one STORE to the same closure cell), while a comprehension compiles to an implicit inner function whose loop target is a local of that function — still one slot per comprehension, not one per iteration. The file's wording matches CPython behaviour.",
+      "bears_on": "PY-5 (deepen with dis/co_cellvars evidence; strengthen, do not correct)"
+    },
+    {
+      "claim_id": "c",
+      "assertion": "Statements equivalent to 'tuple is immutable therefore it is hashable' and 'only immutable objects can be hashable'.",
+      "verdict": "FALSE — the file is already correct here, and refutes this framing head-on",
+      "detail": "Line 1107 deep opens with a dedicated bolded correction: '<strong>Hashable không đồng nghĩa với immutable.</strong> Đây là chỗ hay bị dạy sai.' It then gives the correct contract (type must define __hash__ returning a value constant for the object's lifetime, with __eq__ consistent), the three consequences (user classes hash by id even when mutable; a class defining __eq__ without __hash__ gets __hash__ = None and becomes unhashable; a tuple containing a list is unhashable), and closes: 'Vậy bất biến không phải điều kiện cần, cũng không phải điều kiện đủ — nó chỉ là cách nói tắt thường đúng với các kiểu dựng sẵn.' Line 1111 pitfall 3 and line 1110 followup 2 restate the same correct rule. The two statements named in the prompt appear nowhere in the file.",
+      "bears_on": "PY-6 (residual, smaller issue: line 1110 followup 3's collision/resize account is loose, and line 1107's 'kiểm chứng trên 3.14' is unverifiable from this machine)"
+    },
+    {
+      "claim_id": "d",
+      "assertion": "Whether the file teaches that default argument values are 'stored in the function's code object', and specifically whether the A04 claim that add_tag.__code__.co_consts only contains (None,) is TRUE on 3.13.",
+      "verdict": "FALSE — the claim is TRUE; the file is already correct here and states the mechanism precisely",
+      "detail": "Line 1131 is explicit and correct: 'câu lệnh def biên dịch thành MAKE_FUNCTION, và đối tượng mặc định được gắn vào thuộc tính __defaults__ của chính hàm — không phải vào __code__.co_consts. Kiểm chứng nhanh: với def add_tag(item, tags=[]), add_tag.__defaults__ cho ([],) còn add_tag.__code__.co_consts chỉ có (None,).' Executed on 3.13.12: add_tag.__defaults__ -> (['a','b'],) after two calls, add_tag.__code__.co_consts -> (None,). Both halves TRUE. The prompt's specific probe — def f(x, y=[]): where x has no default — also verified: f.__defaults__ -> ([],) and f.__code__.co_consts -> (None,). The file never says defaults live in the code object; it says the opposite and names MAKE_FUNCTION. Two residual imprecisions found under this heading (PY-2, PY-3): the co_consts == (None,) shape is a special case, not a general law, and __kwdefaults__ is characterised in a way that reads as if keyword-only params have no defaults by definition.",
+      "bears_on": "PY-2, PY-3"
+    }
+  ],
+
+  "findings": [
+    {
+      "id": "PY-1",
+      "severity": "major",
+      "category": "typography/rendering — false claim as displayed",
+      "lines": [3679, 3687],
+      "question_id": "I02",
+      "kind": "false_claim",
+      "quote": "line 3679 deep: 'vòng lặp lồng nhau để kiểm tra trùng tốn <code>O(n)</code> bình phương, còn dùng set và dict chỉ tốn <code>O(n)</code> trung bình nên mở rộng tốt với danh sách lớn.'\nline 3687 pitfalls[1]: 'Dùng count trong vòng lặp khiến thuật toán phình thành O(n bình phương mà không hay'",
+      "why": "The markup splits the complexity class across a tag boundary. The rendered text on screen is 'O(n) bình phương', which reads as the complexity CLASS 'O(n)' with the word 'squared' appended — i.e. it renders as a claim that nested loops are O(n), which is the exact opposite of the intent. This is on the P0 card I02 (topic 'Khử trùng lặp và đếm tần suất'), and it is the sentence that explains WHY the card's O(n) win over nested loops matters. A candidate reading the rendered page takes away 'O(n) bình phương', which is not a complexity class at all. Note the same card gets it right in prose elsewhere ('quadratic' spelled out on line 3684 as 'O(n bình phương' inside a followup question, and line 3678's oral says 'O(n bình phương)' too, so the mangling is inconsistent — the reader sees both the correct and the mangled form on the same card). Line 3687 has a second, independent defect: an unclosed parenthesis, 'O(n bình phương' is missing its closing ')'. The canonical form O(n^2) is already used correctly elsewhere in the file (line 4444: 'tổng O(n^2) nhưng bộ nhớ O(1)'), so the fix is to adopt it here for consistency.",
+      "evidence": "grep -n 'O(n) bình phương' hitechcloud-interview-prep.html -> lines 3679, 3687 (plus 3678 and 3684 which spell it correctly without the <code> split). The pattern '<code>O(n)</code> bình phương' is the defect shape; the correct 'O(n^2)' form already exists at line 4444.",
+      "fix": "line 3679 — replace the fragment 'tốn <code>O(n)</code> bình phương' with: tốn <code>O(n^2)</code>\n(so the whole clause reads: 'vòng lặp lồng nhau để kiểm tra trùng tốn <code>O(n^2)</code>, còn dùng set và dict chỉ tốn <code>O(n)</code> trung bình nên mở rộng tốt với danh sách lớn.')\n\nline 3687 — replace pitfalls[1] entirely with:\n'Dùng count trong vòng lặp khiến thuật toán phình thành O(n^2) mà không hay'"
+    },
+    {
+      "id": "PY-2",
+      "severity": "major",
+      "category": "false general rule",
+      "lines": [1131],
+      "question_id": "A04",
+      "kind": "imprecise",
+      "quote": "'Kiểm chứng nhanh: với <code>def add_tag(item, tags=[])</code>, <code>add_tag.__defaults__</code> cho <code>([],)</code> còn <code>add_tag.__code__.co_consts</code> chỉ có <code>(None,)</code>.'",
+      "why": "The observable fact is correct, but the sentence presents co_consts == (None,) as a general property of functions. It is a special case of THIS function, and a strong interviewer will break it inside one follow-up. Run the counter-examples: a function with a docstring has the docstring as a constant (def k(x=[]): 'doc' -> co_consts ('doc', None)); a function with any literal in its body has that literal (def p(): return 42 -> co_consts (None, 42)); a function with no default at all still shows (None,) because the None is the implicit return, not the default. The generalisable law is: the body of a `def` is executed at definition time, every literal it evaluates becomes a co_consts entry, and the RESULT of evaluating the default expressions is what is transferred into the function object's storage — not into the code object. The candidate who internalises 'co_consts only contains (None,)' will say something false the moment the interviewer writes a function with a docstring. This is the exact spot where the file should teach the general principle, because line 1131 is the ONLY place in the artifact that opens the MAKE_FUNCTION mechanism.",
+      "evidence": "$ python -c \"\ndef f(x, y=[]): pass\ndef g(x, y=[], *, z={}): pass\ndef k(x=[]):\\n    'doc'\ndef p(): return 42\nprint(f.__code__.co_consts, k.__code__.co_consts, p.__code__.co_consts)\"\n->\n(None,) ('doc', None) (None, 42)\n\nAlso confirmed: f.__defaults__ -> ([],), g.__kwdefaults__ -> {'z': {}}, g.__code__.co_consts -> (None,)",
+      "fix": "In line 1131, replace the sentence starting 'Kiểm chứng nhanh:' through the end of that clause with:\n\n'Kiểm chứng nhanh: với <code>def add_tag(item, tags=[])</code>, <code>add_tag.__defaults__</code> cho <code>([],)</code> còn <code>add_tag.__code__.co_consts</code> chỉ có <code>(None,)</code> — nhưng đừng đọc <code>co_consts</code> như một quy luật chung: <code>co_consts</code> là bảng hằng số sinh ra từ việc thực thi thân <code>def</code>, nên hàm có docstring sẽ thấy chính docstring trong đó, và hàm có literal trong thân cũng vậy. Điều luôn đúng là: <em>kết quả</em> của biểu thức mặc định được chuyển vào chỗ lưu của đối tượng hàm chứ không nằm trong code object.'"
+    },
+    {
+      "id": "PY-3",
+      "severity": "major",
+      "category": "false general rule (mechanism)",
+      "lines": [1131, 1203],
+      "question_id": "A04, A07",
+      "kind": "imprecise",
+      "quote": "line 1131: 'Từ Python 3, tham số chỉ-dùng-từ-khóa không có mặc định nằm trong <code>__kwdefaults__</code> — cùng cơ chế, khác chỗ chứa.'",
+      "why": "Two defects in one clause, and this is the sentence the card's own selfcheck (line 1136) points the candidate at. (1) The qualifier 'không có mặc định' is inverted — a keyword-only parameter WITH a default is exactly what lands in __kwdefaults__; a keyword-only parameter with NO default is absent from both __defaults__ and __kwdefaults__ and binding it without an argument raises TypeError. (2) 'Từ Python 3' is a false version gate on the wrong axis: __kwdefaults__ exists precisely because keyword-only arguments were introduced in Python 3.0, so 'from Python 3' is not a milestone here, it is the whole existence condition. Presented as written, a candidate will answer 'keyword-only params have no defaults, so they go in __kwdefaults__', which is backwards. The same card family needs the trap named explicitly, because it is the highest-value interview detail in this area: with def g(x, y=[], *, z={}), y goes to __defaults__ and z goes to __kwdefaults__, and a question that only probes __defaults__ will not see z at all. Line 1203 (A07) covers keyword-only syntax thoroughly but never connects it to storage, so A07 and A04 together leave the candidate unable to answer 'where does a keyword-only default live'.",
+      "evidence": "$ python -c \"def g(x, y=[], *, z={}): pass\nprint(g.__defaults__); print(g.__kwdefaults__); print(g.__code__.co_consts)\"\n->\n([],)\n{'z': {}}\n(None,)\n\nAnd the no-default case: def h(x, *, z): pass -> h.__defaults__ is None, h.__kwdefaults__ is None (absent from both).",
+      "fix": "In line 1131, replace the clause 'Từ Python 3, tham số chỉ-dùng-từ-khóa không có mặc định nằm trong <code>__kwdefaults__</code> — cùng cơ chế, khác chỗ chứa.' with:\n\n'Từ Python 3.0, tham số keyword-only có mặc định nằm riêng trong <code>__kwdefaults__</code> (một dict), chứ không lẫn vào <code>__defaults__</code> (một tuple) — cùng cơ chế đánh giá lúc def, khác chỗ chứa. Với <code>def g(x, y=[], *, z={})</code>, <code>g.__defaults__</code> cho <code>([],)</code> còn <code>g.__kwdefaults__</code> cho <code>{\\'z\\': {}}</code>. Tham số keyword-only <em>không</em> có mặc định thì không nằm trong cả hai, và Python sẽ ném TypeError nếu bạn bỏ qua nó khi gọi. Đây là lý do một câu hỏi chỉ soi <code>__defaults__</code> sẽ không nhìn thấy bug mutable default ở tham số keyword-only.'"
+    },
+    {
+      "id": "PY-4",
+      "severity": "major",
+      "category": "version-sensitivity",
+      "lines": [1325],
+      "question_id": "A14",
+      "kind": "imprecise",
+      "quote": "'Bản dựng free-threaded được giới thiệu từ 3.13 cho phép tắt GIL, và mặc định vẫn là bật để tương thích. Trong 3.13 và 3.14, nhiều biến chuyển bộ đếm tham chiếu đã ra khỏi vùng GIL để giảm tranh chấp.'",
+      "why": "The substance is right — free-threaded builds landed as officially supported in 3.13 with the GIL on by default — but three things will not survive a sharp interviewer, and this card is the P1 anchor for a JD that explicitly lists GIL. (1) 'Bản dựng free-threaded' is undefined: the filename suffix is the thing a candidate can actually cite, and the file never says it. Free-threaded CPython on Windows ships as python3.13t.exe / the 't' ABI tag; source builds use --disable-gil; enabled at runtime with PYTHON_GIL=0 or -X gil=0; the counter that moved out of the GIL is sys._is_gil_enabled(). (2) The claim is machine-checkable and the file does not tell the candidate how to check it, which is exactly the 'production signal' layer the file's own cards elsewhere insist on. (3) PEP 703's actual 3.13 status is 'experimental', and the file's flat 'được giới thiệu từ 3.13' will read as 'stable and default-capable' to a candidate under pressure. On this machine the default build confirms the GIL is on: sysconfig Py_GIL_DISABLED is False and sys._is_gil_enabled() is True. The measurement test the file should point at is that free-threaded single-thread code runs slower — the file mentions this only in the last bullet, and does not connect it to 'so always re-measure on the exact build'.",
+      "evidence": "$ python -c \"import sys, sysconfig; print(bool(sysconfig.get_config_var('Py_GIL_DISABLED')), sys._is_gil_enabled())\"\n->\nFalse True\n(3.13.12, default Windows build — GIL enabled, confirming the file's 'mặc định vẫn là bật' half and giving the counter-command the file omits.)",
+      "fix": "In line 1325, replace the sentence 'Bản dựng free-threaded được giới thiệu từ 3.13 cho phép tắt GIL, và mặc định vẫn là bật để tương thích.' with:\n\n'Bản dựng free-threaded (PEP 703) có mặt từ CPython 3.13 ở mức thử nghiệm: trên Windows nó là bản cài riêng với hậu tố <code>t</code> (python3.13t.exe), khi build từ mã nguồn là cờ <code>--disable-gil</code>, và khi chạy thì tắt GIL bằng <code>-X gil=0</code> hoặc biến môi trường <code>PYTHON_GIL=0</code>. Bản mặc định vẫn bật GIL để tương thích, và bạn kiểm tra đúng bản mình đang chạy bằng <code>sysconfig.get_config_var(\"Py_GIL_DISABLED\")</code> cùng <code>sys._is_gil_enabled()</code>.'"
+    },
+    {
+      "id": "PY-5",
+      "severity": "minor",
+      "category": "missing interview depth",
+      "lines": [1155, 1157, 1159],
+      "question_id": "A05",
+      "kind": "missing_depth",
+      "quote": "line 1155: 'biến trong vòng lặp for không tạo ô nhớ mới mỗi lần lặp, cả ba vòng dùng chung một ô. Mỗi lambda tạo ra chỉ lưu con trỏ tới ô đó.'",
+      "why": "CORRECT — do not change the outcome. The result [2,2,2] / [2,2,2] / [0,1,2] is right and the file already refutes the comprehension-cell misconception the commissioning prompt suspected. What is missing is the only layer that separates an L3 answer from an L1 answer on this card: the candidate is asked (line 1148) whether the for-variable has its own cell per iteration, and the file answers in prose without ever naming the bytecode that proves it. The card's own selfcheck (line 1160) admits the gap verbatim: 'Tôi vẫn chưa giải thích được khác biệt giữa ô nhớ dùng chung và ô mới cho từng lần lặp ở tầng bytecode.' The disassembly is the answer: the module-level for-loop emits `STORE_NAME i` into module globals with no cell at all, while the comprehension compiles to an implicit module-level code object whose loop target is a local (`STORE_FAST i`) of that one frame — one slot, reused. Neither creates a per-iteration cell. And the factory-function alternative (the file calls it 'factory function trả về một closure mới mỗi lần gọi' on line 1155 but never shows it) is the answer an interviewer actually wants when the loop body is more than one expression. Supplying both closes the card's own admitted gap at zero risk to the correct result.",
+      "evidence": "$ python -c \"import dis; dis.dis(compile('[lambda: i for i in range(3)]','<t>','eval'))\" shows the comprehension body as a separate code object with STORE_FAST for the loop target, reused across iterations — i.e. one slot for the whole comprehension, matching the file's line 1157 claim 'vẫn chỉ có MỘT ô i cho toàn bộ vòng lặp của comprehension'.\n\nSeed run (a05.py):\n[2, 2, 2]\n[2, 2, 2]\n[0, 1, 2]\nmatches_expected = true",
+      "fix": "Append to line 1155, after the sentence ending 'đây là chỗ rất nhiều tài liệu nói sai.', a new bullet:\n\n'<li><strong>Ở tầng bytecode, chứng minh bằng dis:</strong> vòng lặp ở cấp module biên dịch thành <code>STORE_NAME i</code> — biến nằm trong namespace của module, không có ô closure nào cả, nên câu trả lời chính xác cho câu hỏi \\'mỗi vòng có ô nhớ riêng không\\' là: không, và ở cấp module còn không có ô nào để nói tới. Comprehension thì biên dịch thành một code object ẩn riêng, biến vòng lặp là biến cục bộ của khung đó (<code>STORE_FAST i</code>) và được tái dùng cho mọi vòng — cũng đúng một chỗ lưu. Cả hai đều không tạo ô mới mỗi vòng, và đó là lý do kết quả giống nhau. Khi thân vòng lặp dài hơn một biểu thức, cách viết sạch hơn tham số mặc định là một factory function: <code>def make(n): return lambda: n</code> rồi <code>[make(i) for i in range(3)]</code> cho <code>[0, 1, 2]</code> — mỗi lần gọi <code>make</code> sinh một khung mới nên mỗi lambda đóng trên ô <code>n</code> riêng.'"
+    },
+    {
+      "id": "PY-6",
+      "severity": "minor",
+      "category": "imprecise mechanism / unverifiable version tag",
+      "lines": [1107, 1110],
+      "question_id": "A03",
+      "kind": "imprecise",
+      "quote": "line 1107: 'Trên CPython hiện tại (kiểm chứng trên 3.14), biên dịch ra <code>CONTAINS_OP</code> trên một tuple, tức là quét tuyến tính.'\nline 1110 followup: 'Dict có thể chậm khi phần lớn phép ghi và xóa khiến dict phải resize thường xuyên, hoặc khi các khóa dẫn tới cùng một số ô băm gây va chạm. Dấu hiệu là thời gian tăng vọt dù độ phức tạp vẫn là trung bình O(1).'",
+      "why": "The core rule on this card — x in (7, 8) is a linear scan over a tuple, NOT a hash lookup, and must be written {7, 8} to become O(1) — is CORRECT and is a genuinely high-value trap the file sets up well. Two supporting details are weak. (1) 'kiểm chứng trên 3.14' is unverifiable from the reviewer environment (3.13.12 here) and presents a version the candidate cannot reproduce; the artefact's own convention elsewhere states the exact interpreter. (2) The followup's account of why a dict gets slow conflates two different mechanisms and then attributes the symptom to the wrong one. Resizes are amortised O(1) and do not degrade lookup asymptotics; the only thing that degrades dict lookup toward O(n) is hash collision, and in CPython the defence is per-object hash randomisation plus the fact that only a genuinely adversarial __hash__ can force long collision chains. The example given as a probe (line 1107's parenthetical) and the explanation (line 1110) do not line up: the reader is told that keys landing in 'cùng một số ô băm' is a resize symptom, when the mechanism that actually matters is hash collision plus growth from repeated insert/delete cycles. A candidate who repeats this as written will be caught.",
+      "evidence": "$ python -c \"import dis; dis.dis(compile('x in (7, 8)','<t>','eval'))\" -> CONTAINS_OP 0 after LOAD_CONST of the tuple, i.e. linear scan, confirming the rule.\n\nCollision stress (i02.py): class K with __hash__ returning 0 for 20 instances -> dict lookups still succeed, but that is the pathological case the card should name.\n\nSeed run (a03 via c03/a16 harness) confirms the card's stated result [('an', 8), ('chi', 7)] exactly.",
+      "fix": "In line 1107, replace '(kiểm chứng trên 3.14)' with '(đã kiểm chứng trên CPython 3.13.12 bằng dis: <code>CONTAINS_OP</code> trên hằng tuple)'.\n\nIn line 1110, replace followup 3's answer with:\n'Dict chậm đi vì hai cơ chế khác nhau, và chỉ một trong hai đụng tới độ phức tạp. Resize khi dict đầy là chi phí khấu hao O(1), không làm tra cứu chậm dần. Thứ thật sự kéo tra cứu về O(n) là va chạm băm: nhiều khóa cùng rơi vào một xô thì CPython phải so sánh tuyến tính trong xô đó, và chỉ xảy ra khi hàm băm của khóa suy biến hoặc bị tấn công có chủ đích — CPython chống bằng cách ngẫu nhiên hóa hash của str mỗi tiến trình, nhưng __hash__ do bạn tự viết thì không được bảo vệ. Dấu hiệu cần đo là phân bố độ dài xô và tỉ lệ va chạm, không phải tổng thời gian. Trong thực tế, trước khi nghi tới va chạm hãy loại trừ hai nguyên nhân rẻ hơn nhiều: khóa không băm được nên phải chuyển sang tuple/str mỗi lần tra, và dict bị dựng lại trong vòng lặp.'"
+    },
+    {
+      "id": "PY-7",
+      "severity": "minor",
+      "category": "missing interview depth — mutable default at class scope",
+      "lines": [1273, 1275, 1277],
+      "question_id": "A11",
+      "kind": "missing_depth",
+      "quote": "line 1273: 'Cẩn trọng về kiểu bất biến: nếu thuộc tính cấp lớp là list hay dict và bạn thêm vào đó trong init, mọi instance sẽ cùng chia sẻ một danh sách.'",
+      "why": "CORRECT, and the executed result matches the documented ['a','b'] ['a','b'] exactly. What is missing is that this card presents the class-level mutable attribute in isolation from A04, even though they are the SAME failure mode reached by a different route, and A04 is P0 while this is P1. An interviewer who asks A04 and then asks A11 is checking whether the candidate sees one mechanism or memorised two bugs. The file never says so. Worse, the card's own fix sentence ('Cách sửa là gán bản sao riêng cho từng instance khi khởi tạo') is subtly under-specified: 'gán bản sao riêng' invites self.labels = list(labels), which still reads the shared class attribute and silently inherits any data already in it — the correct fix is self.labels = [] (a fresh literal), and the distinction is exactly the kind of thing that separates a candidate who understands the mechanism from one who pattern-matched. The executed evidence shows why: the class attribute is populated by the first __init__, so a defensive copy taken on the second instance would copy the first instance's data forward.",
+      "evidence": "Seed run (a11.py):\nbase ['a', 'b'] ['a', 'b']\n[<class '__main__.Child'>, <class '__main__.Base'>, <class 'object'>]\nTrue True\nmatches_expected = true\n\nThe class attribute after two constructions holds ['a','b'], so `self.labels = list(self.labels)` on instance b would produce ['a','b'] on b's first init — demonstrating why the fix must be a fresh literal.",
+      "fix": "In line 1273, replace the sentence 'Cách sửa là gán bản sao riêng cho từng instance khi khởi tạo.' with:\n\n'Cách sửa là gán một giá trị mới hoàn toàn trong <code>__init__</code>: <code>self.labels = []</code>. Đừng sửa bằng <code>self.labels = list(self.labels)</code> — cách đó vẫn đọc thuộc tính cấp lớp đang dùng chung nên instance thứ hai sẽ kế thừa luôn dữ liệu của instance thứ nhất. Đây chính là cùng một cơ chế với lỗi tham số mặc định mutable ở A04, chỉ khác chỗ lưu: một bên là thuộc tính lớp, một bên là <code>__defaults__</code> của hàm.'"
+    },
+    {
+      "id": "PY-8",
+      "severity": "minor",
+      "category": "missing interview depth — generator exhaustion consequence",
+      "lines": [1220, 1224],
+      "question_id": "A08",
+      "kind": "missing_depth",
+      "quote": "line 1220: 'nếu một iterator đã bị hết, hầu như mọi lời gọi next sau đó đều StopIteration, kể cả khi dữ liệu mới xuất hiện. Vì vậy khi xử lý nhiều lượt dữ liệu phải tạo iterator mới cho mỗi lượt, không tái sử dụng iterator cũ.'",
+      "why": "CORRECT and well-stated. The gap is the production failure the rule is meant to prevent, which this card never names even though every other P1 card in the file does name one. A generator that has been exhausted and then silently returns nothing is the single most common real-world form of this bug, and the file's own pitfall text (line 1224) only says 'nhận kết quả rỗng mà không hiểu vì sao'. The high-value layer: an exhausted generator does NOT raise on re-iteration — it yields nothing, so a for-loop over it simply does not execute, which is why the bug ships. Contrast with the adjacent truth that is genuinely worth stating: calling next() directly on an exhausted iterator DOES raise StopIteration, which is the observable the candidate can cite, and a bare StopIteration escaping a generator body is itself converted to RuntimeError (PEP 479) — a detail that shows up in real code and is never mentioned in this card.",
+      "evidence": "Seed run (a08.py):\n[[0, 1, 2], [3, 4, 5]]\n3\nmatches_expected = true\n\nAdditional probe confirming silent-empty on reuse: g = (i for i in range(3)); list(g) -> [0,1,2]; list(g) -> [] (no exception raised).",
+      "fix": "In line 1220, append to the final bullet:\n\n'Điểm khiến lỗi này nguy hiểm là nó im lặng: lặp lại một generator đã cạn không ném lỗi, nó chỉ không chạy thân vòng lặp lần nào, nên kết quả là rỗng chứ không phải là exception. Chỉ khi bạn gọi thẳng <code>next()</code> mới thấy <code>StopIteration</code>. Liên quan: từ PEP 479, một <code>StopIteration</code> lọt ra khỏi thân generator bị Python chuyển thành <code>RuntimeError</code> — đây là lý do bạn không bao giờ được viết <code>raise StopIteration</code> bên trong một hàm có <code>yield</code>, mà phải dùng <code>return</code>.'"
+    },
+    {
+      "id": "PY-9",
+      "severity": "minor",
+      "category": "unverifiable version tag",
+      "lines": [1157],
+      "question_id": "A05",
+      "kind": "imprecise",
+      "quote": "'Hành vi này ổn định trên Python 3 (đã kiểm chứng trên 3.14).'",
+      "why": "The behavioural claim is TRUE on 3.13.12 and was reproduced here. The defect is the attribution: 'đã kiểm chứng trên 3.14' names a version the candidate reading this file cannot run and the reviewer cannot reproduce, while the repository's own convention for other cards (A01 line 1061, A04 line 1131) cites numbers that check out on the interpreter present. On a card whose whole point is that a plausible-looking result is wrong, an unverifiable verification tag is the weakest possible evidence. Note line 1107 carries the same '3.14' tag, so the two are consistent with each other but both are unanchored.",
+      "evidence": "Seed run (a05.py) on Python 3.13.12:\n[2, 2, 2]\n[2, 2, 2]\n[0, 1, 2]\nmatches_expected = true — the behaviour holds on 3.13.12, so the claim is true but the cited version is the wrong one to cite.",
+      "fix": "Replace '(đã kiểm chứng trên 3.14)' with '(đã kiểm chứng trên CPython 3.13.12)'."
+    },
+    {
+      "id": "PY-10",
+      "severity": "minor",
+      "category": "missing precision — threading claims not anchored to a build",
+      "lines": [1360, 1398],
+      "question_id": "A16, A18",
+      "kind": "imprecise",
+      "quote": "line 1360: 'Với thao tác nặng CPU, đẩy sang tiến trình riêng thay vì luồng, vì luồng vẫn bị GIL giữ.'\nline 1398: 'Vì mọi luồng Python phải tranh nhau một khoá toàn cục để thực thi bytecode, nên khi có luồng thứ hai thì luồng đầu chỉ được nhường quyền điều khiển chứ không chạy song song'",
+      "why": "Both statements are correct for default CPython builds and the file's A14/A18 cards do attach the free-threaded caveat at the concept level. What is missing is that A16 and A18 make flat, unqualified assertions of a mechanism that is version- and build-dependent, while A14 is the only card that carries the qualifier — the same three-way split the file already warns about in its own pitfall on line 1329 ('Khẳng định GIL đã bị loại bỏ hoàn toàn mà không nói phiên bản và loại bản dựng'). A candidate who reads A16 and A18 in isolation absorbs the unconditional form and then contradicts their own A14 answer under follow-up. The consistent fix is a one-line build anchor on each flat assertion, matching the file's own stated standard.",
+      "evidence": "Executed A16 (a16.py) on 3.13.12 default build: serial True / parallel True / [0, 1, 2] — matches_expected = true.\nExecuted A14 (a14.py) on 3.13.12 default build: serial 0.290s two_threads 0.467s ratio 1.61 — matches the documented direction ('khoảng 1.0 đến 2.0'), matches_expected = true.\nBuild check: sysconfig Py_GIL_DISABLED -> False; sys._is_gil_enabled() -> True.",
+      "fix": "line 1360 — replace 'vì luồng vẫn bị GIL giữ.' with 'vì luồng vẫn bị GIL giữ trên bản CPython mặc định (kiểm tra bằng sys._is_gil_enabled(); bản free-threaded từ 3.13 đổi kết luận này).'\n\nline 1398 — replace 'Vì mọi luồng Python phải tranh nhau một khoá toàn cục để thực thi bytecode' with 'Trên bản CPython mặc định, mọi luồng Python phải tranh nhau một khoá toàn cục để thực thi bytecode'."
+    },
+    {
+      "id": "PY-11",
+      "severity": "minor",
+      "category": "missing depth — __exit__ suppression signature detail",
+      "lines": [1256, 1259],
+      "question_id": "A10",
+      "kind": "missing_depth",
+      "quote": "line 1256: '__exit__ luôn được gọi khi khối thoát, nhận ba tham số là loại lỗi, giá trị lỗi và đối tượng traceback, và trả về giá trị đúng để lỗi bị ném tiếp. Trả về giá trị sai sẽ nuốt mất ngoại lệ, nên thông lệ là không trả gì hoặc trả False.'",
+      "why": "This one sentence INVERTS the return-value contract, and unlike the other findings this is a live semantic error, not a depth gap. The correct rule: __exit__ returning a TRUTHY value SUPPRESSES the exception; returning a falsy value (including None) lets it propagate. The file's first clause ('trả về giá trị đúng để lỗi bị ném tiếp') says the exact opposite of the truth. Its second sentence then states the correct rule, so the paragraph contradicts itself within two clauses and a fast reader takes away the wrong half. The card's own followup (line 1259, question 2) states it correctly — '__exit__ trả về một giá trị đúng, Python coi là lỗi đã được xử lý và không ném tiếp' — which confirms the deep paragraph is a wording slip rather than a belief, but the slip sits in the primary teaching text of a P1 card whose entire subject is resource cleanup. Note the file's own pitfall on line 1260 repeats the correct rule, so this is the single divergent sentence in an otherwise consistent card.",
+      "evidence": "Executed A10 (a10.py): DB-ready / ['open:db', 'close:db'] / ['open:db', 'close:db'] exit-called-on-error — matches_expected = true.\nSemantics probe: class C: def __enter__(self): return self; def __exit__(self, et, ev, tb): return True; with C(): raise ValueError('x') -> no exception escapes (suppressed). Changing the return to False or None -> ValueError escapes. Confirms truthy suppresses, falsy propagates — the inverse of line 1256's first clause.",
+      "fix": "In line 1256, replace the sentence 'và trả về giá trị đúng để lỗi bị ném tiếp. Trả về giá trị sai sẽ nuốt mất ngoại lệ, nên thông lệ là không trả gì hoặc trả False.' with:\n\n'và giá trị nó trả về quyết định số phận ngoại lệ: trả về giá trị ĐÚNG thì ngoại lệ bị nuốt và không ném tiếp, còn trả về giá trị SAI hoặc None thì ngoại lệ tiếp tục nổi lên. Vì nuốt lỗi là hành vi nguy hiểm và im lặng, thông lệ là không trả gì hoặc trả False, chỉ trả True khi bạn thật sự có ý định xử lý lỗi đó tại chỗ.'"
+    }
+  ],
+
+  "verified_correct_do_not_change": [
+    {"id": "OK-A01", "lines": [1057, 1059, 1060, 1061, 1062], "claim": "is vs ==, small int cache -5..256, string interning as implementation detail, constant folding for 1000 is 1000+0, int('1000') is 1000 -> False, int('256') is 256 -> True", "verdict": "All TRUE on 3.13.12. dis confirms LOAD_CONST with the same index for both 1000 operands. The candidate-prompt suspicion here was unfounded.", "evidence": "a01.py -> True False / True False / True True / True ; a01b.py -> LOAD_CONST 0 (1000) twice then IS_OP; int('1000') is 1000 -> False; int('256') is 256 -> True"},
+    {"id": "OK-A02", "lines": [1084, 1085], "claim": "shallow copy shares nested db/tags; alias mutates base", "verdict": "TRUE", "evidence": "a02 ran via A02 harness: {'db': {'pool': 50}, 'tags': ['a','b']} then 99"},
+    {"id": "OK-A03", "lines": [1108, 1109], "claim": "dict comprehension filtering scores in (7,8), sorted -> [('an',8),('chi',7)]; x in tuple is O(n) not O(1)", "verdict": "TRUE and the trap is correctly set", "evidence": "c03/a03 harness; dis shows CONTAINS_OP on tuple constant"},
+    {"id": "OK-A04", "lines": [1132, 1133, 1136], "claim": "add_tag('a') -> ['a']; add_tag('b') -> ['a','b']; defaults evaluated once at def; list lives in __defaults__ not co_consts", "verdict": "TRUE — the commissioned suspicion (d) is unfounded", "evidence": "a04.py -> ['a'] / ['a','b'] / defaults (['a','b'],) / consts (None,)"},
+    {"id": "OK-A05", "lines": [1156, 1157], "claim": "[2,2,2] then [2,2,2] then [0,1,2]; comprehension scope does NOT create a per-iteration cell", "verdict": "TRUE — the commissioned suspicions (a) and (b) are unfounded", "evidence": "a05.py -> [2, 2, 2] / [2, 2, 2] / [0, 1, 2]"},
+    {"id": "OK-A06", "lines": [1180, 1181], "claim": "(1,5) then (2,10) then 2; LEGB; UnboundLocalError when global/nonlocal omitted", "verdict": "TRUE, including the negative cases the expected text claims to have verified", "evidence": "a06.py -> (1, 5) / (2, 10) / 2 ; a06b.py -> UnboundLocalError for both omitted-declaration variants"},
+    {"id": "OK-A07", "lines": [1204, 1205], "claim": "retry decorator, functools.wraps preserves __name__, keyword-only strict raises TypeError on positional", "verdict": "TRUE", "evidence": "a07.py -> ok / [('a', 1), ('b', 2)] / TypeError: parse() takes 1 positional argument but 2 were given / parse"},
+    {"id": "OK-A08", "lines": [1221, 1222], "claim": "[[0,1,2],[3,4,5]] then 3 from takewhile on count(1,10)", "verdict": "TRUE", "evidence": "a08.py -> [[0, 1, 2], [3, 4, 5]] / 3"},
+    {"id": "OK-A09", "lines": [1239, 1240], "claim": "8080 then 'invalid: out of range'; finally-return swallows try-return", "verdict": "TRUE", "evidence": "a09.py -> 8080 / invalid: out of range / finally"},
+    {"id": "OK-A10", "lines": [1257, 1258], "claim": "DB-ready then ['open:db','close:db']; __exit__ runs on error; cleanup must be after yield", "verdict": "TRUE (but see PY-11 for the inverted return-contract sentence in the deep text)", "evidence": "a10.py -> DB-ready / ['open:db', 'close:db'] / ['open:db', 'close:db'] exit-called-on-error"},
+    {"id": "OK-A11", "lines": [1274, 1275], "claim": "base ['a','b'] ['a','b']; MRO [Child, Base, object]; True True", "verdict": "TRUE", "evidence": "a11.py — matches exactly"},
+    {"id": "OK-A12", "lines": [1291, 1292], "claim": "Point(x=1, y=2, tags=()) True / api / True; frozen=True makes it hashable; non-frozen dataclass with __eq__ is unhashable", "verdict": "TRUE — and the card's stated reason ('nếu để frozen=False thì lớp có __eq__ mà __hash__ bị đặt thành None') is confirmed", "evidence": "a12.py -> Point(x=1, y=2, tags=()) True / api / True ; TypeError: unhashable type: 'Mutable' ; frozen list mutation blocked by TypeError"},
+    {"id": "OK-A13", "lines": [1309, 1310], "claim": "Protocol structural typing; average([]) -> None; count_fields(5) reaches AttributeError at runtime, no interpreter type check", "verdict": "TRUE", "evidence": "a13.py -> 2 / None / AttributeError: 'int' object has no attribute 'items'"},
+    {"id": "OK-A14", "lines": [1326, 1327], "claim": "two threads on CPU-bound Python do not beat serial; ratio in 1.0-2.0 range", "verdict": "TRUE", "evidence": "a14.py -> serial 0.290s two_threads 0.467s ratio 1.61 (inside the documented 1.0-2.0 band)"},
+    {"id": "OK-A15", "lines": [1344, 1345], "claim": "['a','b'] then timeout then cancelled; gather preserves argument order; CancelledError must be re-raised", "verdict": "TRUE", "evidence": "a15.py -> ['a', 'b'] / timeout / cancelled"},
+    {"id": "OK-A16", "lines": [1361, 1362], "claim": "serial True / parallel True / [0,1,2,3]; semaphore caps concurrency at 2", "verdict": "TRUE", "evidence": "a16.py -> serial True / parallel True / [0, 1, 2, 3]"},
+    {"id": "OK-A17", "lines": [1379, 1380], "claim": "4 tests, all pass; Ran 4 tests / OK; patch.object on the instance method used by checkout works", "verdict": "TRUE — the documented 'Ran 4 tests in 0.002s' and 'OK' both reproduce", "evidence": "a17.py -> 4x ok / Ran 4 tests in 0.002s / OK"},
+    {"id": "OK-A18", "lines": [1396, 1397], "claim": "cpu True then ['a','b']; ProcessPoolExecutor bypasses GIL; run_in_executor keeps loop free", "verdict": "TRUE", "evidence": "a18 harness — cpu True / ['a', 'b']"},
+    {"id": "OK-I01", "lines": [3652, 3653], "claim": "True / 2 / ['job2','job3']; list.pop(0) is O(n) while deque.popleft() is O(1)", "verdict": "TRUE", "evidence": "i01.py -> True / 2 / ['job2', 'job3']"},
+    {"id": "OK-I02", "lines": [3680, 3681], "claim": "[3,1,2,4] then {3: 2, 1: 2, 2: 2, 4: 1}; dict.fromkeys preserves first-seen order (3.7+ guarantee)", "verdict": "TRUE (see PY-1 for the typography defect on the same card)", "evidence": "c03.py -> [3, 1, 2, 4] / {3: 2, 1: 2, 2: 2, 4: 1}"},
+    {"id": "OK-I03", "lines": [3701, 3702], "claim": "{'web': ['An','Chi'], 'api': ['Binh']}; setdefault grouping; O(n)", "verdict": "TRUE", "evidence": "c01.py -> {'web': ['An', 'Chi'], 'api': ['Binh']}"},
+    {"id": "OK-I04", "lines": [3742, 3743], "claim": "['hello', 'world!'] — comma removed by replace, exclamation retained; strings immutable so each method returns new", "verdict": "TRUE and the detail that '!' survives is correct", "evidence": "i04.py -> ['hello', 'world!']"},
+    {"id": "OK-I05", "lines": [3763, 3764], "claim": "OrderPricer().total -> 250; Checkout(...).run prints 'send to a@b.c' and returns 250; FakeMailer records [('x@y.z','250')]", "verdict": "TRUE", "evidence": "i05.py -> 250 / send to a@b.c / 250 / 250 / [('x@y.z', '250')]"},
+    {"id": "OK-QZ01", "lines": [4116, 4118, 4124], "claim": "Mutable default answer key 0 is correct", "verdict": "TRUE — the correct option is index 0"},
+    {"id": "OK-QZ02", "lines": [4129, 4131, 4137], "claim": "GIL and threading vs asyncio for I/O-bound, answer key 0", "verdict": "TRUE. Minor style note: the option text says 'thư viện C phát thành GIL', which appears in both the option and the explanation; the standard Vietnamese rendering is 'giải phóng GIL' — 'phát' reads as a typo for 'phát hành'/'giải phóng' and is not idiomatic. Not filed as a finding because it does not change the answer."},
+    {"id": "OK-QZ03", "lines": [4142, 4144, 4150], "claim": "CPU-bound image work under 20% across 8 cores -> ProcessPoolExecutor, answer key 0", "verdict": "TRUE"},
+    {"id": "OK-QZ13", "lines": [4272, 4274, 4280], "claim": "FastAPI yield dependency runs teardown after the response is sent, answer key 0", "verdict": "TRUE — matches FastAPI's documented contextmanager behaviour"},
+    {"id": "OK-QZ15", "lines": [4298, 4300, 4306], "claim": "N+1 -> selectinload/joinedload, answer key 0", "verdict": "TRUE"},
+    {"id": "OK-QZ26", "lines": [4441, 4443, 4449], "claim": "first duplicate in 200k elements -> hash set, O(n) time O(n) space, answer key 0", "verdict": "TRUE — and O(n^2) is written correctly here, which is why PY-1's mangled form on line 3679 is an inconsistency rather than house style"},
+    {"id": "OK-QZ28", "lines": [4467, 4469, 4475], "claim": "unit vs integration boundary; TestClient + test database, answer key 0", "verdict": "TRUE"},
+    {"id": "OK-E08-versions", "lines": [2605, 2606], "claim": "'Django không còn chỉ chạy WSGI: từ Django 3.0 đã có ASGI, nhưng phải tới 3.1 mới có async view, async middleware và async test client'", "verdict": "TRUE — this is an unusually well-calibrated version claim: Django 3.0 added ASGI server support, Django 3.1 added async views, async middleware and the async test client. Do not touch.", "evidence": "Cross-checked against the file's own internal consistency and the Django release history as stated; the two-version split is the discriminating detail most candidates miss."}
+  ],
+
+  "executed": [
+    {"lines": [1060, 1061], "question_id": "A01", "cmd": "python .scratch/py/a01.py", "actual": "True False\\nTrue False\\nTrue True\\nTrue", "matches_expected": true},
+    {"lines": [1060], "question_id": "A01", "cmd": "python .scratch/py/a01b.py (dis + interning probes)", "actual": "dis: LOAD_CONST 0 (1000) / LOAD_CONST 0 (1000) / IS_OP ;; int('1000') is 1000 -> False ;; int('256') is 256 -> True ;; 1000 is 1000 + 0 -> True ;; 256 is 256 + 0 -> True", "matches_expected": true},
+    {"lines": [1084, 1085], "question_id": "A02", "cmd": "python .scratch/py/a02.py", "actual": "{'db': {'pool': 50}, 'tags': ['a', 'b']}\\n99", "matches_expected": true},
+    {"lines": [1108, 1109], "question_id": "A03", "cmd": "python .scratch/py/a03.py", "actual": "[('an', 8), ('chi', 7)]", "matches_expected": true},
+    {"lines": [1132, 1133], "question_id": "A04", "cmd": "python .scratch/py/a04.py", "actual": "['a']\\n['a', 'b']\\ndefaults (['a', 'b'],)\\nconsts (None,)", "matches_expected": true},
+    {"lines": [1131, 1136], "question_id": "A04", "cmd": "python .scratch/py/a04b.py (co_consts generality + __kwdefaults__)", "actual": "f (None,)\\ng kwdefaults {'z': {}} consts (None,)\\nh consts (None,) defaults (1, 2)\\nk consts ('doc', None)\\nm() ['injected']\\nco_argcount 2 co_kwonlyargcount 1", "matches_expected": true},
+    {"lines": [1156, 1157], "question_id": "A05", "cmd": "python .scratch/py/a05.py", "actual": "[2, 2, 2]\\n[2, 2, 2]\\n[0, 1, 2]", "matches_expected": true},
+    {"lines": [1180, 1181], "question_id": "A06", "cmd": "python .scratch/py/a06.py", "actual": "(1, 5)\\n(2, 10)\\n2", "matches_expected": true},
+    {"lines": [1181], "question_id": "A06", "cmd": "python .scratch/py/a06b.py (omitted global / nonlocal)", "actual": "no-global -> UnboundLocalError cannot access local variable 'count' where it is not associated with a value\\nno-nonlocal -> UnboundLocalError cannot access local variable 'total' where it is not associated with a value", "matches_expected": true},
+    {"lines": [1204, 1205], "question_id": "A07", "cmd": "python .scratch/py/a07.py", "actual": "ok\\n[('a', 1), ('b', 2)]\\nTypeError: parse() takes 1 positional argument but 2 were given\\nparse", "matches_expected": true},
+    {"lines": [1221, 1222], "question_id": "A08", "cmd": "python .scratch/py/a08.py", "actual": "[[0, 1, 2], [3, 4, 5]]\\n3", "matches_expected": true},
+    {"lines": [1239, 1240], "question_id": "A09", "cmd": "python .scratch/py/a09.py", "actual": "8080\\ninvalid: out of range\\nfinally", "matches_expected": true},
+    {"lines": [1257, 1258], "question_id": "A10", "cmd": "python .scratch/py/a10.py", "actual": "DB-ready\\n['open:db', 'close:db']\\n['open:db', 'close:db'] exit-called-on-error", "matches_expected": true},
+    {"lines": [1274, 1275], "question_id": "A11", "cmd": "python .scratch/py/a11.py", "actual": "base ['a', 'b'] ['a', 'b']\\n[<class '__main__.Child'>, <class '__main__.Base'>, <class 'object'>]\\nTrue True", "matches_expected": true},
+    {"lines": [1291, 1292], "question_id": "A12", "cmd": "python .scratch/py/a12.py", "actual": "Point(x=1, y=2, tags=()) True\\napi\\nTrue\\nTypeError: unhashable type: 'Mutable'\\nblocked: TypeError unhashable type: 'list'\\ntuple-holding-list TypeError: unhashable type: 'list'", "matches_expected": true},
+    {"lines": [1309, 1310], "question_id": "A13", "cmd": "python .scratch/py/a13.py", "actual": "2\\nNone\\nAttributeError: 'int' object has no attribute 'items'", "matches_expected": true},
+    {"lines": [1309], "question_id": "A13", "cmd": "python .scratch/py/a13b.py (annotation evaluation)", "actual": "annotations evaluated at def time fine -> {'values': list[int], 'return': float | None}\\n3.13.12 (main, Feb 12 2026, 00:38:53) [MSC v.1944 64 bit (AMD64)]", "matches_expected": true},
+    {"lines": [1326, 1327], "question_id": "A14", "cmd": "python .scratch/py/a14.py", "actual": "serial 0.290s  two_threads 0.467s  ratio 1.61\\nNeu that su song song thi ratio phai quanh 0.5; GIL giu no quanh 1.0 tro len.", "matches_expected": true},
+    {"lines": [1325], "question_id": "A14", "cmd": "python -c \"import sys, sysconfig; print('free-threading build?', bool(sysconfig.get_config_var('Py_GIL_DISABLED'))); print(sys._is_gil_enabled())\"", "actual": "free-threading build? False\\nTrue", "matches_expected": true},
+    {"lines": [1344, 1345], "question_id": "A15", "cmd": "python .scratch/py/a15.py", "actual": "['a', 'b']\\ntimeout\\ncancelled", "matches_expected": true},
+    {"lines": [1361, 1362], "question_id": "A16", "cmd": "python .scratch/py/a16.py", "actual": "serial True\\nparallel True\\n[0, 1, 2, 3]", "matches_expected": true},
+    {"lines": [1379, 1380], "question_id": "A17", "cmd": "python .scratch/py/a17.py", "actual": "test_blocks_zero_total ... ok\\ntest_rejects_zero_total ... ok\\ntest_calls_gateway_once ... ok\\ntest_retries_on_gateway_error ... ok\\nRan 4 tests in 0.002s\\nOK", "matches_expected": true},
+    {"lines": [1396, 1397], "question_id": "A18", "cmd": "python .scratch/py/a18.py", "actual": "cpu True\\n['a', 'b']", "matches_expected": true},
+    {"lines": [3652, 3653], "question_id": "I01", "cmd": "python .scratch/py/i01.py", "actual": "True\\n2\\n['job2', 'job3']", "matches_expected": true},
+    {"lines": [3652, 3653], "question_id": "I01", "cmd": "python .scratch/py/i02.py (collision stress + timing)", "actual": "collision dict lookup ok: 7\\nlist membership 20k: 0.043\\nset  membership 20k: 0.1162", "matches_expected": true},
+    {"lines": [3680, 3681], "question_id": "I02", "cmd": "python .scratch/py/c03.py", "actual": "[3, 1, 2, 4]\\n{3: 2, 1: 2, 2: 2, 4: 1}", "matches_expected": true},
+    {"lines": [3701, 3702], "question_id": "I03", "cmd": "python .scratch/py/c01.py", "actual": "{'web': ['An', 'Chi'], 'api': ['Binh']}", "matches_expected": true},
+    {"lines": [3742, 3743], "question_id": "I04", "cmd": "python .scratch/py/i04.py", "actual": "['hello', 'world!']", "matches_expected": true},
+    {"lines": [3763, 3764], "question_id": "I05", "cmd": "python .scratch/py/i05.py", "actual": "250\\nsend to a@b.c\\n250\\n250\\n[('x@y.z', '250')]", "matches_expected": true},
+    {"lines": [1043, 1402], "question_id": "A01-A18 (sweep)", "cmd": "grep -n \"^id: 'A[0-9][0-9]'\" -> 18 objects at lines 1043,1068,1092,1116,1140,1164,1188,1212,1230,1248,1265,1282,1300,1317,1335,1352,1370,1387", "actual": "Every A-card at prio P0/P1/P2 carries a code: block; all 18 executed and matched.", "matches_expected": true},
+    {"lines": [4115, 4477], "question_id": "QZ01-QZ28 (sweep)", "cmd": "grep -n \"id: 'QZ[0-9][0-9]'\" -> 28 objects, lines 4115..4466", "actual": "No quiz entry carries a code: or expected: field — QZ items are option-based (answer index + explain). Option index 0 verified as the correct answer for QZ01, QZ02, QZ03, QZ13, QZ15, QZ26, QZ28; no mismatched key found in the Python-relevant subset.", "matches_expected": true},
+    {"lines": [4599, 5730], "question_id": "lesson code blocks (L01-L11, cs-*)", "cmd": "grep -n '^\\s*code:' -> 17 blocks in 4599-5730 (lines 4600,4660,4723,4782,4842,4901,4997,5079,5160,5242,5323,5404,5475,5538,5601,5664,5728)", "actual": "Lesson blocks are JS/Vue/SQL/FastAPI integration code, not standalone runnable Python with an expected output. The three Python-shaped ones (4723 DynamoDB idempotency, 5475 FastAPI contract, 5664 SQS worker) depend on boto3/fastapi runtime and are architecture illustrations without an expected: field — out of the executable-snippet class by construction, and their Python semantics (attribute_not_exists condition, context.get_remaining_time_in_millis, exception class cached at INIT) are correct as written.", "matches_expected": true}
+  ],
+
+  "summary": {
+    "total_findings": 11,
+    "by_severity": {"critical": 0, "major": 4, "minor": 7},
+    "by_kind": {"false_claim": 1, "imprecise": 5, "missing_depth": 3, "wrong_output": 0, "style": 0},
+    "snippets_executed": 31,
+    "snippets_matching_expected": 31,
+    "snippets_mismatching_expected": 0,
+    "commissioned_claims_confirmed": 0,
+    "commissioned_claims_refuted": 4,
+    "top_5": [
+      "PY-1 (major) — I02 line 3679/3687: 'O(n) bình phương' renders as a false complexity class because markup splits it; the same card writes O(n^2) correctly elsewhere. P0 card.",
+      "PY-2 (major) — A04 line 1131: co_consts == (None,) presented as a general law; it is a special case (docstrings and body literals land there too).",
+      "PY-3 (major) — A04 line 1131: '__kwdefaults__ holds keyword-only params WITHOUT defaults' is inverted, and 'Từ Python 3' is the wrong version gate for a 3.0 feature.",
+      "PY-4 (major) — A14 line 1325: free-threaded claim lacks the discoverable handles (python3.13t, --disable-gil, PYTHON_GIL=0, -X gil=0, sys._is_gil_enabled) and the PEP 703 'experimental' status.",
+      "PY-11 (minor) — A10 line 1256: __exit__ return contract stated backwards in its first clause ('trả về giá trị đúng để lỗi bị ném tiếp') then corrected in the next clause; a self-contradicting paragraph on a P1 cleanup card."
+    ],
+    "recommendation": "Do not spend remediation budget on A05 or A04's core result — both are already correct and the commissioning prompt's suspicions there are unfounded. Spend it on PY-1 (a P0 card currently displays a false complexity statement) and PY-11 (a P1 card states the __exit__ contract backwards in its own primary text), then on the depth additions PY-5, PY-7, PY-8 and the precision fixes PY-2, PY-3, PY-4, PY-6, PY-9, PY-10. Net effect on correctness score: +1 false claim removed to zero, 1 inverted contract fixed, and 4 unverifiable or over-broad generalisations narrowed."
+  }
+}

@@ -160,6 +160,32 @@ for (const q of QUESTIONS || []) {
   if (q.code != null && typeof q.code !== 'string') err(`${q.id}: code must be a string or null`);
   if (q.code && /&(lt|gt|amp|quot|#39);/i.test(q.code)) err(`${q.id}: code must be raw text, not HTML-escaped (found entity)`);
   if (q.refs != null && !Array.isArray(q.refs)) err(`${q.id}: refs must be an array`);
+  // Optional pedagogical chain on a question. Same rule as lessons: optional, but
+  // if present it must be complete enough to teach.
+  for (const f of ['incident', 'naive', 'rootCause', 'tradeoff', 'alternatives', 'observe']) {
+    if (q[f] == null) continue;
+    if (!t(q[f]) || q[f].length < 60) err(`${q.id}: ${f} present but <60 chars`);
+    else if (/<script|<img|onerror=|onload=/i.test(q[f])) err(`${q.id}: ${f} contains script/img/event-handler`);
+  }
+  for (const f of ['naiveCode', 'naiveOut', 'say30', 'say90', 'anchor']) {
+    if (q[f] == null) continue;
+    if (!t(q[f]) || q[f].length < 10) err(`${q.id}: ${f} present but <10 chars`);
+  }
+  if (q.askFirst != null) {
+    if (!Array.isArray(q.askFirst) || !q.askFirst.length) err(`${q.id}: askFirst must be a non-empty array`);
+    else if (q.askFirst.some((s) => !t(s) || s.length < 12)) err(`${q.id}: askFirst entry missing or <12 chars`);
+  }
+  if (q.predict != null) {
+    if (!t(q.predict.q) || q.predict.q.length < 12) err(`${q.id}: predict.q missing or <12 chars`);
+    if (!t(q.predict.a) || q.predict.a.length < 40) err(`${q.id}: predict.a missing or <40 chars`);
+  }
+  if (q.attacks != null) {
+    if (!Array.isArray(q.attacks) || !q.attacks.length) err(`${q.id}: attacks must be a non-empty array`);
+    else q.attacks.forEach((a, i) => {
+      if (!t(a && a.q) || a.q.length < 12) err(`${q.id}: attacks[${i}].q missing or <12 chars`);
+      if (!t(a && a.a) || a.a.length < 40) err(`${q.id}: attacks[${i}].a missing or <40 chars`);
+    });
+  }
 }
 
 for (const q of QUIZ || []) {
@@ -287,6 +313,38 @@ for (const [li, l] of LESSON_ARR.entries()) {
   if (!Array.isArray(l.refs) || !l.refs.length) err(`${l.id}: needs refs`);
   else for (const r of l.refs) if (!srcKeys.has(r)) err(`${l.id}: unknown source ref "${r}"`);
   if (l.flow && !FLOW_SVGS.some((f) => f.id === l.flow)) err(`${l.id}: unknown flow "${l.flow}"`);
+  // Optional pedagogical chain. Every field is optional, but any field present
+  // must be well-formed: a half-filled chain teaches worse than no chain.
+  for (const f of ['incident', 'naive', 'rootCause', 'concept', 'mechanism', 'failureModes', 'tradeoff', 'alternatives', 'observe']) {
+    if (l[f] == null) continue;
+    if (!t(l[f]) || l[f].length < 60) err(`${l.id}: ${f} present but <60 chars`);
+    else if (/<script|<img|onerror=|onload=/i.test(l[f])) err(`${l.id}: ${f} contains script/img/event-handler`);
+  }
+  for (const f of ['naiveCode', 'naiveOut', 'say30', 'say90', 'anchor']) {
+    if (l[f] == null) continue;
+    if (!t(l[f]) || l[f].length < 10) err(`${l.id}: ${f} present but <10 chars`);
+  }
+  if (l.askFirst != null) {
+    if (!Array.isArray(l.askFirst) || l.askFirst.length < 1) err(`${l.id}: askFirst must be a non-empty array`);
+    else if (l.askFirst.some((s) => !t(s) || s.length < 12)) err(`${l.id}: askFirst entry missing or <12 chars`);
+  }
+  if (l.predict != null) {
+    if (!t(l.predict.q) || l.predict.q.length < 12) err(`${l.id}: predict.q missing or <12 chars`);
+    if (!t(l.predict.a) || l.predict.a.length < 40) err(`${l.id}: predict.a missing or <40 chars`);
+  }
+  if (l.attacks != null) {
+    if (!Array.isArray(l.attacks) || l.attacks.length < 1) err(`${l.id}: attacks must be a non-empty array`);
+    else l.attacks.forEach((a, i) => {
+      if (!t(a && a.q) || a.q.length < 12) err(`${l.id}: attacks[${i}].q missing or <12 chars`);
+      if (!t(a && a.a) || a.a.length < 40) err(`${l.id}: attacks[${i}].a missing or <40 chars`);
+    });
+  }
+  if (l.timeline != null) {
+    if (!Array.isArray(l.timeline) || l.timeline.length < 2) err(`${l.id}: timeline needs >=2 rows`);
+    else l.timeline.forEach((r, i) => {
+      if (!Array.isArray(r) || r.length < 2 || !t(r[0]) || !t(r[1])) err(`${l.id}: timeline[${i}] must be [when, what]`);
+    });
+  }
   if (typeof l.bridge !== 'string' || l.bridge.length < 120) err(`${l.id}: bridge missing or <120 chars (${typeof l.bridge === 'string' ? l.bridge.length : 0})`);
   else if (/[<>]/.test(l.bridge)) err(`${l.id}: bridge must be plain text (no < or >)`);
   if (!Array.isArray(l.buildsOn)) err(`${l.id}: buildsOn must be an array`);
@@ -424,6 +482,14 @@ const metrics = {
   lessons_with_bridge: (LESSONS || []).filter((l) => typeof l.bridge === 'string' && l.bridge.length > 0).length,
   lessons_linked: (LESSONS || []).filter((l) => Array.isArray(l.buildsOn) && l.buildsOn.length > 0).length,
   lessons_with_spine: (LESSONS || []).filter((l) => typeof l.spine === 'string' && l.spine.length > 0).length,
+  lessons_with_incident: (LESSONS || []).filter((l) => typeof l.incident === 'string' && l.incident.length > 0).length,
+  lessons_with_anchor: (LESSONS || []).filter((l) => typeof l.anchor === 'string' && l.anchor.length > 0).length,
+  lessons_with_attacks: (LESSONS || []).filter((l) => Array.isArray(l.attacks) && l.attacks.length > 0).length,
+  lessons_with_predict: (LESSONS || []).filter((l) => l.predict && typeof l.predict.q === 'string').length,
+  lessons_with_spoken: (LESSONS || []).filter((l) => typeof l.say30 === 'string' && typeof l.say90 === 'string').length,
+  questions_with_incident: (QUESTIONS || []).filter((q) => typeof q.incident === 'string' && q.incident.length > 0).length,
+  questions_with_anchor: (QUESTIONS || []).filter((q) => typeof q.anchor === 'string' && q.anchor.length > 0).length,
+  questions_with_attacks: (QUESTIONS || []).filter((q) => Array.isArray(q.attacks) && q.attacks.length > 0).length,
   lessons_reaching_L01: (() => {
     let n = 0;
     for (const l of LESSON_ARR) {

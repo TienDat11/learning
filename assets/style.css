@@ -5,7 +5,9 @@
   --bg-sunken: #eef1f5;
   --fg: #16191f;
   --fg-soft: #4a5261;
-  --fg-faint: #6d7686;
+  /* #6d7686 measured 4.31:1 against --bg (#f7f8fa) — below the 4.5:1 AA floor for the
+     12–13px labels that use it. #646d7d measures 4.91:1. */
+  --fg-faint: #646d7d;
   --line: #d8dde5;
   --line-strong: #b6bfcc;
   --accent: #1b5fb8;
@@ -18,7 +20,6 @@
   --p2-bg: #eaf1f5;
   --ok: #1d6b3f;
   --ok-bg: #e6f4ec;
-  --warn: #8a5a00;
   --code-bg: #1e2228;
   --code-fg: #e6e9ee;
   --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 14px rgba(16, 24, 40, .05);
@@ -243,6 +244,9 @@ th { background: var(--bg-sunken); font-weight: 600; }
 .mock-stage { background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
 .timer { font-family: var(--mono); font-size: 24px; font-variant-numeric: tabular-nums; }
 .timer.warn { color: var(--p0); font-weight: 700; }
+.mock-reveal { margin-top: 12px; }
+.mock-reveal > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+.mock-reveal-body { margin-top: 10px; }
 
 /* ---------- case / sources ---------- */
 .case-sec { background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
@@ -327,6 +331,113 @@ th { background: var(--bg-sunken); font-weight: 600; }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap; border: 0;
 }
+
+/* ---------- pedagogical blocks (causal chain) ----------
+   One shape, one accent bar, colour only on the label and the bar. The chain is
+   read top to bottom; colour marks the phase, it does not decorate. */
+.pb {
+  margin: 12px 0; padding: 10px 13px; background: var(--bg-soft);
+  border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.pb-h {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; color: var(--fg-faint); margin: 0 0 5px;
+}
+.pb .deep > p:last-child, .pb .deep > ul:last-child, .pb .deep > ol:last-child { margin-bottom: 0; }
+.pb-incident { border-left-color: var(--p0); background: var(--p0-bg); }
+.pb-incident > .pb-h { color: var(--p0); }
+.pb-naive { border-left-color: var(--line-strong); background: var(--bg-sunken); }
+.pb-root { border-left-color: var(--p1); background: var(--p1-bg); }
+.pb-root > .pb-h { color: var(--p1); }
+.pb-concept { border-left-color: var(--accent); background: var(--accent-soft); }
+.pb-concept > .pb-h { color: var(--accent); }
+.pb-mech { border-left-color: var(--p2); background: var(--p2-bg); }
+.pb-mech > .pb-h { color: var(--p2); }
+.pb-fail { border-left-color: var(--p0); }
+.pb-fail > .pb-h { color: var(--p0); }
+.pb-tradeoff { border-left-color: var(--p1); }
+.pb-tradeoff > .pb-h { color: var(--p1); }
+.pb-alt { border-left-color: var(--p2); }
+.pb-alt > .pb-h { color: var(--p2); }
+.pb-observe { border-left-color: var(--ok); background: var(--ok-bg); }
+.pb-observe > .pb-h { color: var(--ok); }
+.pb code, .pb-out code { font-family: var(--mono); font-size: .93em; }
+.pb-out {
+  margin: 8px 0 0; padding: 7px 10px; background: var(--bg-sunken);
+  border: 1px dashed var(--line-strong); border-radius: 6px;
+  font-family: var(--mono); font-size: 13.5px; white-space: pre-wrap; word-break: break-word;
+}
+.pb-out-h {
+  display: block; font-family: var(--sans); font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: .06em; font-weight: 700; color: var(--fg-faint); margin-bottom: 3px;
+}
+
+/* "Tự hỏi trước khi đọc" — numbered, no answer */
+.asks {
+  margin: 12px 0; padding: 10px 13px; background: var(--accent-soft);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.asks > .pb-h { color: var(--accent); }
+.asks ol { margin: 0; padding-left: 22px; }
+.asks li { margin-bottom: 4px; font-weight: 600; }
+
+/* "Thử đoán trước" — prompt visible, answer behind a toggle.
+   Retrieval before recognition: the learner must commit before revealing. */
+.predict {
+  margin: 12px 0; padding: 10px 13px; background: var(--bg-sunken);
+  border: 1px dashed var(--line-strong); border-radius: var(--radius);
+}
+.predict > .pb-h { color: var(--fg-faint); }
+.predict-q { margin: 0 0 6px; font-weight: 600; }
+details.predict-ans > summary {
+  cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--accent);
+  list-style: none; padding: 2px 0;
+}
+details.predict-ans > summary::-webkit-details-marker { display: none; }
+details.predict-ans > summary::before { content: "▸ "; display: inline-block; }
+details.predict-ans[open] > summary::before { content: "▾ "; }
+details.predict-ans .ans-body { padding: 4px 0 2px; }
+details.predict-ans .ans-body > p:last-child { margin-bottom: 0; }
+
+/* Interviewer attacks */
+.attacks {
+  margin: 12px 0; padding: 10px 13px; background: var(--bg-soft);
+  border: 1px solid var(--line); border-left: 3px solid var(--p0);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.attacks > .pb-h { color: var(--p0); }
+.atk { border-left: 2px solid var(--line-strong); padding-left: 11px; margin: 9px 0; }
+.atk:last-child { margin-bottom: 0; }
+.atk .fq { font-weight: 600; margin: 0 0 3px; font-size: 15.5px; }
+.atk .fa { margin: 0; color: var(--fg-soft); }
+
+/* Memory anchor — the one sentence to keep */
+.anchor {
+  margin: 12px 0; padding: 9px 13px; background: var(--ok-bg);
+  border: 1px solid var(--line); border-left: 3px solid var(--ok);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-weight: 600; color: var(--fg);
+}
+.anchor > .pb-h { color: var(--ok); }
+
+/* Spoken answers 30s / 90s */
+.spoken {
+  margin: 10px 0; padding: 10px 13px; background: var(--accent-soft);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.spoken > .pb-h { color: var(--accent); }
+.spoken > p { margin: 0; }
+.spoken-90 { background: var(--bg-sunken); border-left-color: var(--line-strong); }
+.spoken-90 > .pb-h { color: var(--fg-faint); }
+
+/* Incident timeline */
+table.timeline { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14.5px; }
+table.timeline th, table.timeline td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+table.timeline th { background: var(--bg-sunken); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-faint); }
+table.timeline .tl-when { font-family: var(--mono); font-size: 13px; white-space: nowrap; color: var(--fg-soft); }
 
 /* ---------- print ---------- */
 @media print {

@@ -1,1 +1,18 @@
 dist/
+
+# dependencies
+node_modules/
+
+# local scratch / audit working dirs — large, never published
+.scratch/
+
+# scratch dumps from content work
+.tmp-*
+.c*.txt
+.f*.txt
+
+# python
+venv/
+.venv/
+__pycache__/
+*.pyc

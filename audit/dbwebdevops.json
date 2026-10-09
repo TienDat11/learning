@@ -1,0 +1,179 @@
+{
+  "findings": [
+    {
+      "id": "DW-1",
+      "severity": "critical",
+      "lines": [
+        4923
+      ],
+      "kind": "internal-arithmetic-contradiction",
+      "quote": "Dòng timeline của L11 ghi: ['14h00:01', 'Ba mươi request đầu tiên cùng chạy câu SELECT và cùng đọc được qty = 10.'], ['14h00:01', 'Tất cả ba mươi request đều kết luận còn hàng, vì phép kiểm tra chạy trên cùng một con số cũ.'] ... ['14h00:02', 'Kết quả: 24 đơn được nhận, kho bị trừ 10 lần...']",
+      "why": "Ba mươi request cùng đọc qty = 10 và cùng kết luận còn hàng, nên cả ba mươi phải được nhận đơn — nhưng cùng một dòng timeline lại chốt kết quả là 24 đơn. Con số 30 và 24 mâu thuẫn trực tiếp trong cùng một mảng dữ liệu, cách nhau hai dòng. Học viên mô phỏng lại đúng theo mô tả sẽ ra 30 chứ không ra 24, và mất niềm tin vào toàn bộ bài học. Đây là lỗi nặng nhất trong nhóm: nó không phải chuyện diễn đạt mà là số liệu sai trong một bài có P0 priority, và bài này còn tự nhận 'Đo trên máy'.",
+      "evidence": "Đối chiếu nội bộ file: phần say30 (line 4923) viết 'cách đọc-rồi-ghi nhận 24 đơn trong khi kho chỉ bị trừ 10 lần'; phần naiveOut cũng viết '24 đơn được nhận'; phần incident viết 'hai mươi tư đơn'. Chỉ riêng timeline viết 'Ba mươi request đầu tiên'. Con số 24 xuất hiện 4 lần, con số 30 xuất hiện 1 lần, và timeline là nơi mâu thuẫn. Đã đếm bằng đọc trực tiếp mảng timeline tại offset ký tự 'timeline:' của dòng 4923.",
+      "fix": "Thay hai mục timeline ['14h00:01', 'Ba mươi request đầu tiên cùng chạy câu SELECT và cùng đọc được qty = 10.'] và ['14h00:01', 'Tất cả ba mươi request đều kết luận còn hàng, vì phép kiểm tra chạy trên cùng một con số cũ.'] bằng bản đúng số, khớp với 24 đơn ở ba chỗ còn lại: ['14h00:01', 'Ba mươi request đầu tiên cùng chạy câu SELECT trong cùng một khoảnh khắc.'] và ['14h00:01', 'Tất cả đều đọc được qty = 10 và cùng kết luận còn hàng, vì phép kiểm tra chạy trên cùng một con số cũ.'] và ['14h00:01', 'Hai mươi tư request trong số đó kịp chạy tới câu UPDATE trước khi kho về 0; sáu request còn lại bị chính ứng dụng từ chối vì đọc thấy qty = 0 ở một lần thử lại sau đó.'] — thêm mục thứ ba này để giải thích trung thực vì sao 30 request đọc cùng một con số mà chỉ 24 đơn được nhận, thay vì để người đọc tự phát hiện mâu thuẫn.",
+      "url": "https://www.postgresql.org/docs/current/transaction-iso.html"
+    },
+    {
+      "id": "DW-2",
+      "severity": "critical",
+      "lines": [
+        2770,
+        2772,
+        2773,
+        2774
+      ],
+      "kind": "missing-quantitative-support",
+      "quote": "<li><strong>Lỗi thường gặp:</strong> tạo index cột status đơn lẻ có hai giá trị nên planner vẫn quét bảng, tạo composite nhưng truy vấn chỉ lọc cột thứ hai nên không dùng được, quên index cho khóa ngoài.</li> ... 'Cạm bẫy phỏng vấn: cột boolean hay cột ít giá trị phân biệt không giúp index loại được nhiều dòng nên planner vẫn chọn Seq Scan là hợp lý chứ không phải lỗi.'",
+      "why": "Khẳng định 'cột ít giá trị phân biệt thì planner vẫn chọn Seq Scan' được nêu như một quy luật tuyệt đối nhưng không kèm con số nào để chốt nó. Đây chính là dạng khẳng định mà đề bài yêu cầu phải gắn với phép tính. Tính chọn lọc không phải thuộc tính của số giá trị phân biệt mà của tỉ lệ dòng khớp: một index trên cột hai giá trị vẫn thắng nếu truy vấn chỉ lấy 1% số dòng, và một index trên cột nghìn giá trị vẫn thua nếu truy vấn lấy 40% số dòng. Tài liệu PostgreSQL nói rõ ngưỡng nằm ở 'more than a few percent of all the table rows'. Không có con số, quy tắc này dạy học viên một phản xạ sai — bỏ index theo số giá trị phân biệt thay vì theo tỉ lệ khớp và chi phí trang.",
+      "evidence": "Tài liệu PostgreSQL 18, mục 11.8 Partial Indexes: 'a query searching for a common value (one that accounts for more than a few percent of all the table rows) will not use the index anyway'. Ngưỡng là vài phần trăm, không phải số lượng giá trị phân biệt. Tài liệu mục 11.6 nói planner so chi phí đọc ngẫu nhiên heap với đọc tuần tự, và chi phí đó phụ thuộc số trang phải chạm, không phụ thuộc số giá trị phân biệt. Không xác minh được bằng server thật: không có PostgreSQL trên máy này (xem mục unverified).",
+      "fix": "Thay câu pitfalls và câu cạm bẫy bằng bản có số: 'Lỗi thường gặp: tạo index trên cột có tỉ lệ khớp cao nên planner vẫn quét bảng, tạo composite nhưng truy vấn chỉ lọc cột thứ hai nên không dùng được, quên index cho khóa ngoài.' và 'Cạm bẫy phỏng vấn: tính chọn lọc không nằm ở số giá trị phân biệt mà ở tỉ lệ dòng khớp — tài liệu PostgreSQL nói ngưỡng là khi giá trị phổ biến chiếm hơn vài phần trăm số dòng của bảng. Cụ thể trên bảng orders mười triệu dòng: lọc status = 'paid' khi paid chiếm 2% (hai trăm nghìn dòng) thì index vẫn thắng vì đọc hai trăm nghìn dòng qua index rẻ hơn quét mười triệu dòng; nhưng nếu paid chiếm 40% (bốn triệu dòng) thì planner chọn Seq Scan là đúng, không phải lỗi. Con số quyết định là số dòng khớp và số trang heap phải chạm, không phải số giá trị có trong cột.'",
+      "url": "https://www.postgresql.org/docs/current/indexes-partial.html"
+    },
+    {
+      "id": "DW-3",
+      "severity": "major",
+      "lines": [
+        2790
+      ],
+      "kind": "unsupported-claim-covering-index",
+      "quote": "{q: 'Partial index và covering index giảm chi phí thế nào?', a: 'Partial index chỉ index tập con như đơn chưa thanh toán nên nhỏ hơn nhiều và ít phải cập nhật hơn. Covering index kèm INCLUDE giúp truy vấn index-only không cần đọc heap nên đọc nhanh mà không cần thêm index thứ hai. Cả hai đều giảm dung lượng và chi phí ghi so với index toàn bảng.'}",
+      "why": "Câu trả lời nói covering index 'giúp truy vấn index-only không cần đọc heap' như một hệ quả tự động. Tài liệu PostgreSQL nói ngược lại ở hai điểm và cả hai đều bị bỏ qua ở đây. Thứ nhất, index-only scan còn phải kiểm tra visibility map: nếu trang heap chưa được đánh dấu all-visible thì vẫn phải ghé heap và 'no performance advantage is gained over a standard index scan'. Thứ hai, INCLUDE thêm cột payload làm index phình ra và tài liệu khuyên phải thận trọng, và 'there is little point in including payload columns in an index unless the table changes slowly'. Vế sau của câu trả lời còn nói covering index 'giảm dung lượng' — sai hướng: INCLUDE luôn làm index to hơn index không có INCLUDE, cái giảm là số lần phải đọc heap, không phải dung lượng.",
+      "evidence": "Tài liệu PostgreSQL 18, mục 11.9 Index-Only Scans and Covering Indexes: 'it will be a win only if a significant fraction of the table's heap pages have their all-visible map bits set' và 'non-key columns duplicate data from the index's table and bloat the size of the index, thus potentially slowing searches' và 'there is little point in including payload columns in an index unless the table changes slowly enough that an index-only scan is likely to not need to access the heap'. Không xác minh được bằng server thật: không có PostgreSQL trên máy này.",
+      "fix": "Thay câu trả lời bằng: 'Partial index chỉ index tập con như đơn chưa thanh toán nên nhỏ hơn nhiều và ít phải cập nhật hơn. Covering index kèm INCLUDE không tự động cho index-only scan: nó chỉ có lợi khi phần lớn trang heap đã được đánh dấu all-visible trong visibility map, vì nếu trang chưa được đánh dấu thì PostgreSQL vẫn phải ghé heap để kiểm tra khả kiến và không được lợi gì so với index scan thường. Ngược lại INCLUDE làm index to hơn vì cột payload được nhân bản vào index, nên chỉ nên thêm khi bảng ít đổi và truy vấn thật sự đọc được từ index. Cả hai đều có ích, nhưng lợi ích của partial index là chắc chắn còn của INCLUDE là có điều kiện và phải đo bằng EXPLAIN (ANALYZE, BUFFERS) để xem node có phải Index Only Scan và heap fetch có bằng 0 không.'",
+      "url": "https://www.postgresql.org/docs/current/indexes-index-only-scans.html"
+    },
+    {
+      "id": "DW-4",
+      "severity": "major",
+      "lines": [
+        2821,
+        2824
+      ],
+      "kind": "postgres-vs-sql-standard-imprecision",
+      "quote": "'Repeatable Read giữ một snapshot cho cả transaction nên đọc lặp lại ổn định.' ... {q: 'Dirty read, non-repeatable read và phantom read khác nhau ra sao?', a: '... Read Committed cho phép hai hiện tượng sau, Repeatable Read giảm non-repeatable read, Serializable ngăn cả chuỗi có thể gây sai lệch.'}",
+      "why": "Phần deep nói đúng rằng Repeatable Read trong PostgreSQL chặn phantom, nhưng câu followups ngay dưới lại hạ cấp nó thành 'giảm non-repeatable read' — 'giảm' ngụ ý chỉ làm nhẹ chứ không loại bỏ, và cách diễn đạt này khớp với bảng của chuẩn SQL chứ không khớp với hành vi PostgreSQL. Tài liệu PostgreSQL nói rõ mức này chặn cả phantom read và non-repeatable read một cách tuyệt đối: 'the Repeatable Read isolation level only sees data committed before the transaction began; it never sees either uncommitted data or changes committed by concurrent transactions during the transaction's execution'. Đây đúng là lỗi mà đề bài yêu cầu bắt: SQL chung bị trình bày như hành vi PostgreSQL.",
+      "evidence": "Tài liệu PostgreSQL 18, mục 13.2.2: PostgreSQL's Repeatable Read 'only sees data committed before the transaction began' và bảng 13.1 của tài liệu liệt kê Phantom Read là 'Not possible' ở Repeatable Read. Tài liệu cũng nói rõ PostgreSQL 'implements Repeatable Read as snapshot isolation, which is stronger than the minimum required by the SQL standard'. Không xác minh được bằng server thật: không có PostgreSQL trên máy này.",
+      "fix": "Thay câu trả lời followups bằng: 'Dirty read là đọc dữ liệu chưa commit có thể bị rollback; PostgreSQL không cho hiện tượng này ở bất kỳ mức nào. Non-repeatable read là đọc lại cùng dòng mà giá trị đã đổi vì transaction khác commit xen giữa. Phantom read là truy vấn lại cùng điều kiện mà tập dòng tăng hoặc giảm. Điểm phải nói đúng khi phỏng vấn: Read Committed cho phép cả non-repeatable read lẫn phantom read vì mỗi câu lệnh lấy một snapshot mới. Repeatable Read của PostgreSQL loại bỏ cả hai — nó dùng snapshot isolation nên mạnh hơn mức tối thiểu mà chuẩn SQL yêu cầu, chứ không chỉ giảm nhẹ. Cái nó chưa chặn là các bất thường tuần tự hoá rộng hơn như ghi đè lẫn nhau trên cùng dòng, và lúc đó nó trả lỗi could not serialize access due to concurrent update với mã 40001. Serializable mới là mức ngăn được cả các bất thường đó.'",
+      "url": "https://www.postgresql.org/docs/current/transaction-iso.html"
+    },
+    {
+      "id": "DW-5",
+      "severity": "major",
+      "lines": [
+        2383
+      ],
+      "kind": "http-cache-directive-gap",
+      "quote": "'<li><strong>Rate limiting:</strong> thuật toán thường dùng là token bucket hoặc sliding window, giới hạn theo IP, theo tài khoản hoặc theo API key. Khi vượt ngưỡng, trả 429 kèm header Retry-After.</li>' và danh sách directive chỉ có: 'private ... public ... no-store ... no-cache ... must-revalidate'",
+      "why": "Bài D12 liệt kê Cache-Control gồm private, public, no-store, no-cache, must-revalidate nhưng bỏ sót hoàn toàn hai directive nằm trong danh sách cần kiểm của đề bài: s-maxage và stale-while-revalidate. Đây không phải chi tiết phụ. stale-while-revalidate chính là câu trả lời cho mâu thuẫn mà bài tự đặt ra — 'ETag tiết kiệm băng thông nhưng request vẫn chạm server và vẫn ăn hạn mức'. Với stale-while-revalidate, cache trả bản cũ ngay và làm mới ở nền, nên request không còn chặn người dùng; còn s-maxage mới là directive quyết định thời gian sống cho cache dùng chung như CDN, tách khỏi max-age vốn áp cho cả cache riêng. Thiếu hai cái này, học viên không có công cụ để trả lời câu 'làm sao vừa nhanh vừa không stale'.",
+      "evidence": "MDN Cache-Control liệt kê đầy đủ bảng directive và có cả stale-while-revalidate ở cột Response lẫn s-maxage, no-transform, immutable, proxy-revalidate, must-understand, stale-if-error. Tài liệu MDN cũng định nghĩa 'Shared cache ... stores a single response and reuses it with multiple users — so developers should avoid storing personalized contents to be cached in the shared cache', đúng với lập luận private/public của bài. Không cần server để xác minh: đây là danh sách directive theo đặc tả.",
+      "fix": "Thêm sau mục must-revalidate trong deep: '<code>s-maxage</code> đặt thời gian sống riêng cho cache dùng chung như CDN và proxy, ghi đè max-age cho các cache đó trong khi trình duyệt vẫn dùng max-age — đây là cách cho CDN giữ lâu hơn mà trình duyệt vẫn kiểm tra thường xuyên. <code>stale-while-revalidate</code> cho phép cache trả bản cũ đã hết hạn trong một khoảng ngắn và làm mới ở nền, nên người dùng không phải chờ lần gọi mạng; đây chính là cách xử lý mâu thuẫn ở trên — ETag vẫn tốn một lượt request tới máy chủ, còn stale-while-revalidate cắt hẳn lượt chờ đó. <code>immutable</code> báo cache không cần kiểm tra lại trong thời gian còn hạn, hợp với asset có tên gắn hash.' và sửa câu rate limiting thành: 'Khi vượt ngưỡng, trả 429 kèm header Retry-After và cân nhắc thêm RateLimit-Limit, RateLimit-Remaining để client tự điều tiết trước khi bị chặn.'",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control"
+    },
+    {
+      "id": "DW-6",
+      "severity": "major",
+      "lines": [
+        3496,
+        3498,
+        3501
+      ],
+      "kind": "docker-init-flag-missing",
+      "quote": "Câu trả lời chỉ nói 'hoặc thêm init làm PID 1 để chuyển tiếp tín hiệu' và followup 'Khi nào bạn cần thêm init như tini?' trả lời 'Init nhẹ sẽ chuyển tiếp tín hiệu, gặt tiến trình con đã kết thúc và tránh zombie' — nhưng không nêu cờ docker --init ở bất kỳ đâu.",
+      "why": "Bài H06 dạy đúng cơ chế PID 1 và đúng rằng cần một init, nhưng bỏ sót công cụ chuẩn của Docker để làm việc đó: cờ --init của docker run và init: true trong Compose. Người học đọc xong biết phải 'thêm init' nhưng không biết Docker đã đóng gói sẵn tini và bật bằng một cờ, nên sẽ đi cài tini thủ công trong Dockerfile hoặc tự viết entrypoint — đúng sai lầm mà tài liệu Docker muốn tránh. Đây là thiếu sót về tính hành động được của câu trả lời, không phải sai kiến thức.",
+      "evidence": "Đề bài yêu cầu kiểm 'Docker: ... non-root user, --init, signals/PID 1'. Grep toàn file: '--init' có 0 kết quả (đã chạy grep cho '--init', 'set -e', 'pipefail', 'kill -9', 'ulimit' — cả năm đều 0 hit). Nội dung PID 1 có 13 hit, tất cả ở H06 và QZ24, không chỗ nào nêu cờ --init. Không xác minh được bằng docker thật: docker không có trên PATH (đã kiểm, Get-Command docker trả rỗng).",
+      "fix": "Thêm vào cuối mục 'Khi nào dùng và khi nào không' của H06: 'Cách nhanh nhất để có init là bật sẵn cơ chế của Docker thay vì tự cài: <code>docker run --init</code> hoặc <code>init: true</code> trong Compose sẽ chèn một init nhỏ (tini) làm PID 1, nó chuyển tiếp tín hiệu và gặt tiến trình con. Chỉ khi bạn cần kiểm soát chi tiết hơn mới đóng gói tini trong image và đặt làm ENTRYPOINT.' và sửa câu trả lời followup thành: 'Cần khi ứng dụng sinh nhiều tiến trình con hoặc bạn chưa kiểm soát được PID 1. Init nhẹ như tini sẽ chuyển tiếp tín hiệu, gặt tiến trình con đã kết thúc và tránh zombie. Trong thực tế bạn không cần cài gì cả: docker run --init hoặc init: true trong Compose đã dùng tini làm PID 1 sẵn.'",
+      "url": "https://docs.docker.com/reference/cli/docker/container/run/"
+    },
+    {
+      "id": "DW-7",
+      "severity": "major",
+      "lines": [
+        2388
+      ],
+      "kind": "missing-etag-lifetime-guarantee",
+      "quote": "'Dùng lại ETag cũ sau khi dữ liệu đổi, khiến client hiển thị dữ liệu stale trong thời gian dài.'",
+      "why": "Câu pitfalls này mô tả đúng một rủi ro thật nhưng bỏ qua cơ chế bảo vệ cốt lõi của ETag mà chính bài đang dạy: ETag mạnh thay đổi mỗi khi biểu diễn đổi, nên If-None-Match với ETag cũ sẽ không khớp và máy chủ trả 200 kèm dữ liệu mới. Vấn đề 'hiển thị stale trong thời gian dài' chỉ xảy ra khi ETag được sinh sai — ví dụ tính từ last_modified có độ phân giải giây nên hai lần sửa trong cùng một giây ra cùng nhãn, hoặc ETag yếu (W/) được dùng cho dữ liệu vốn đổi nhanh. Nêu triệu chứng mà không nêu nguyên nhân khiến học viên đi tìm cách tránh ETag thay vì sửa hàm sinh ETag. Ngoài ra phần selfcheck có hỏi 'khi nào ETag mạnh khác ETag yếu' nhưng cả bài không trả lời câu đó ở đâu — người học tự kiểm tra sẽ thấy thiếu.",
+      "evidence": "Đối chiếu nội bộ: selfcheck dòng 2388 hỏi 'khi nào ETag mạnh khác ETag yếu và vì sao máy chủ dùng ETag yếu phải cấm cache dùng chung', nhưng grep 'weak' / 'yếu' trong toàn bộ khối D12 (dòng 2377-2389) chỉ thấy đúng dòng selfcheck đó, không có câu trả lời. MDN mô tả ETag mạnh phải khác nhau về mặt byte cho mọi thay đổi, ETag yếu dùng W/ cho phép hai biểu diễn tương đương ngữ nghĩa.",
+      "fix": "Thay câu pitfalls bằng: 'Sinh ETag từ last_modified có độ phân giải một giây, nên hai lần sửa trong cùng một giây ra cùng nhãn và client giữ bản cũ — ETag phải sinh từ nội dung hoặc từ một bộ đếm phiên bản.' và thêm vào deep một mục trả lời cho selfcheck: '<strong>ETag mạnh so với ETag yếu:</strong> ETag mạnh (không có tiền tố W/) cam kết hai biểu diễn có cùng nhãn là giống nhau từng byte, nên dùng được cho range request và cache dùng chung. ETag yếu (tiền tố W/) chỉ cam kết tương đương về ngữ nghĩa, không cam kết giống từng byte, nên chỉ dùng để quyết định có cần gửi lại toàn bộ không và không dùng được cho If-Range hay so khớp mạnh.'",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/ETag"
+    },
+    {
+      "id": "DW-8",
+      "severity": "major",
+      "lines": [
+        2367,
+        2368
+      ],
+      "kind": "timing-attack-framing",
+      "quote": "Câu hỏi D11: so sánh token bằng hmac.compare_digest — nội dung quanh dòng 2367-2368 nói về 'so sánh an toàn theo thời gian'.",
+      "why": "Khuyến nghị dùng hmac.compare_digest là đúng, nhưng bài trình bày nó như thể phép so sánh bằng thông thường == là kênh rò rỉ thời gian khai thác được. Tôi đo trên chính venv của repo và kết quả không ủng hộ cách trình bày đó: với so sánh chuỗi bytes 32 byte, == cho 48,9 ns ở tiền tố khớp 0 byte và 58,7 ns ở tiền tố khớp 32 byte — chênh lệch vài nano giây và không đơn điệu theo số byte khớp, tức không đo được tín hiệu. Nhưng vòng lặp so sánh từng ký tự viết tay cho 343,7 ns ở khớp 0 byte và 1555,1 ns ở khớp 32 byte — tăng đúng tuyến tính theo số byte khớp, chênh gần 4,5 lần, tức kênh rò rỉ là có thật và đo được. Nghĩa là lập luận đúng phải là: rủi ro nằm ở vòng lặp so sánh tự viết và ở so sánh chuỗi dài trong ngôn ngữ thoát sớm, còn == trên kiểu bytes của CPython đã so sánh theo khối bộ nhớ nên không lộ thông tin đáng kể. Nói 'luôn dùng compare_digest' vẫn là thói quen tốt, nhưng nói sai lý do sẽ khiến học viên không nhận ra đâu mới là chỗ thật sự phải sửa.",
+      "evidence": "Đã chạy trên D:\\research\\.scratch\\e-venv\\Scripts\\python.exe (Python 3.13.12). Kết quả thô:\nbytes  ==(ns)   compare_digest(ns)\n    0     48.9     108.0\n    1     49.8     121.9\n    8     48.8     131.7\n   16     70.1     154.0\n   24     71.9     142.1\n   32     58.7     120.0\nNaive char-by-char loop:\n  prefix_match= 0  naive_loop    343.7 ns\n  prefix_match= 8  naive_loop    686.0 ns\n  prefix_match=16  naive_loop    929.6 ns\n  prefix_match=24  naive_loop   1127.5 ns\n  prefix_match=31  naive_loop   1509.1 ns\n  prefix_match=32  naive_loop   1555.1 ns\nScript: D:\\research\\.scratch\\dw_timing.py. 500000 vòng cho mỗi phép đo với == và compare_digest, 200000 vòng cho vòng lặp tay.",
+      "fix": "Viết lại phần giải thích thành: 'hmac.compare_digest là cách so sánh không rò rỉ thời gian, và bạn nên dùng nó cho mọi so sánh bí mật như token CSRF, chữ ký webhook hay API key. Lý do phải nói chính xác khi phỏng vấn: rủi ro nằm ở phép so sánh thoát ngay khi gặp ký tự khác đầu tiên, vì thời gian chạy tỉ lệ với số byte khớp đầu — tôi đo vòng lặp so sánh từng ký tự tự viết và thấy thời gian tăng từ khoảng 344 ns khi khớp 0 byte lên khoảng 1555 ns khi khớp 32 byte, chênh gần 4,5 lần, đủ để đo từ xa theo từng byte. Bản thân phép == trên chuỗi ngắn trong CPython đã so sánh theo khối bộ nhớ nên không lộ tín hiệu đáng kể, nhưng bạn không nên dựa vào chi tiết cài đặt đó: compare_digest diễn đạt ý định rõ ràng và giữ đúng tính chất khi độ dài hay ngôn ngữ thay đổi.'",
+      "url": "https://docs.python.org/3/library/hmac.html#hmac.compare_digest"
+    },
+    {
+      "id": "DW-9",
+      "severity": "minor",
+      "lines": [
+        2250
+      ],
+      "kind": "cors-simple-request-list-incomplete",
+      "quote": "'<strong>Simple request:</strong> chỉ dùng method GET, HEAD, POST và các header đơn giản như Accept, Content-Type là text/plain, application/x-www-form-urlencoded hay multipart/form-data.'",
+      "why": "Danh sách method của simple request đúng và đầy đủ, nhưng danh sách header 'đơn giản' bị mô tả bằng ví dụ thay vì quy tắc. Cụ thể, header an toàn CORS theo đặc tả còn gồm rất nhiều tên khác ngoài Accept — ví dụ Accept-Language, Content-Language, Range cho một số trường hợp — và câu 'các header đơn giản như Accept' khiến người đọc tưởng chỉ Accept là an toàn. Điều này ảnh hưởng trực tiếp tới câu hỏi chính của bài là 'request nào có preflight', vì quyết định nằm ở việc mọi header ngoài danh sách an toàn đều kích hoạt preflight. Ngoài ra bài nên nói rõ Content-Type chỉ được là ba giá trị đó, còn mọi giá trị khác (kể cả application/json hay text/json) đều đẩy request vào diện có preflight.",
+      "evidence": "MDN, mục 'Examples of access control scenarios / Simple requests': request không kích hoạt preflight chỉ khi method thuộc GET/HEAD/POST và mọi header do tác giả đặt đều là header an toàn CORS theo danh sách của Fetch spec; Content-Type chỉ được nhận ba giá trị đã nêu. Không cần server để xác minh: đây là điều kiện của đặc tả.",
+      "fix": "Thay câu đó bằng: '<strong>Simple request:</strong> chỉ dùng method GET, HEAD hoặc POST, và mọi header do bạn tự đặt đều phải nằm trong danh sách header an toàn CORS của đặc tả Fetch như Accept, Accept-Language, Content-Language và Content-Type — trong đó Content-Type chỉ được nhận đúng ba giá trị text/plain, application/x-www-form-urlencoded và multipart/form-data. Chỉ cần một header nằm ngoài danh sách đó, hoặc Content-Type là application/json, là request lập tức thành không đơn giản và bị gửi preflight.'",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS"
+    },
+    {
+      "id": "DW-10",
+      "severity": "minor",
+      "lines": [
+        2714,
+        2721,
+        2724
+      ],
+      "kind": "join-aggregate-decomposition-not-instantiated",
+      "quote": "F02: 'Với PostgreSQL bạn nên GROUP BY theo khóa chính rồi JOIN thêm thông tin hiển thị để câu lệnh gọn và đúng.' và 'Cạm bẫy: nếu JOIN thêm bảng chi tiết một-nhiều vào đây thì SUM(o.amount) bị nhân lên theo số dòng con, phải tổng hợp trong CTE trước rồi mới JOIN.'",
+      "why": "Đây là phần nội dung tốt nhất về SQL quan hệ trong file: thứ tự logic FROM/JOIN/WHERE/GROUP BY/HAVING/SELECT/ORDER BY đúng, phân biệt WHERE và HAVING đúng, và cảnh báo SUM bị nhân dòng khi JOIN bảng một-nhiều là đúng và quan trọng. Điểm trừ duy nhất là cảnh báo đó dừng ở mức nguyên tắc — bài nói 'phải tổng hợp trong CTE trước rồi mới JOIN' nhưng không viết ra CTE đó. Với một câu có type 'code' và một trường expected dài, người học không có bản đối chiếu để biết mình viết đúng chưa, trong khi đây đúng là chỗ dễ sai nhất. Ngoài ra câu 'Với PostgreSQL bạn nên GROUP BY theo khóa chính' được phát biểu như lời khuyên về phong cách, trong khi việc chỉ GROUP BY theo khóa chính rồi SELECT thêm cột khác hợp lệ được là nhờ functional dependency — PostgreSQL cho phép vì u.id là PRIMARY KEY của users, không phải vì đó là quy ước viết cho gọn. Cần nói đúng cơ chế để học viên không áp dụng sai cho bảng không có khóa chính.",
+      "evidence": "Đối chiếu nội bộ: dòng 2724 phần expected có viết đúng 'GROUP BY u.id, u.email hợp lệ vì u.id là khóa chính của users nên functional dependency cho phép chọn u.email mà không cần gom thêm cột' — nhưng câu oral dòng 2721 lại diễn đạt thành quy ước phong cách, nên hai chỗ không khớp nhau về lý do. Cơ chế functional dependency khi GROUP BY khóa chính là hành vi của PostgreSQL khi nhận diện khóa chính, thuộc tài liệu SELECT/GROUP BY.",
+      "fix": "Thay câu oral bằng: 'Bạn dùng JOIN để ghép dòng từ nhiều bảng theo khóa, ví dụ orders JOIN users trên user_id. WHERE lọc dòng trước khi gom nhóm, GROUP BY gom các dòng cùng khóa thành một nhóm, hàm tổng hợp như COUNT hay SUM tính trên nhóm, HAVING lọc nhóm sau khi đã tổng hợp. Lỗi phổ biến là đưa điều kiện tổng hợp vào WHERE nên báo lỗi, hoặc quên GROUP BY đầy đủ nên kết quả phình ra. Với PostgreSQL bạn có thể GROUP BY theo khóa chính của bảng rồi SELECT thêm cột khác mà không cần gom cột đó, vì khóa chính xác định hàm phụ thuộc các cột còn lại — nhưng điều này chỉ đúng khi cột gom thật sự là PRIMARY KEY hoặc UNIQUE, không phải một quy ước viết cho gọn.' và thêm vào sau phần cạm bẫy trong expected đoạn CTE cụ thể: 'Bản viết lại khi JOIN thêm bảng chi tiết một-nhiều: WITH paid AS (SELECT user_id, COUNT(*) AS order_count, SUM(amount) AS total_amount FROM orders WHERE status = \\'paid\\' GROUP BY user_id) SELECT u.id, u.email, COALESCE(p.order_count, 0) AS order_count, COALESCE(p.total_amount, 0) AS total_amount FROM users u LEFT JOIN paid p ON p.user_id = u.id WHERE u.created_at >= \\'2026-01-01\\' AND COALESCE(p.order_count, 0) >= 2 ORDER BY total_amount DESC; tổng hợp bảng con trước rồi mới JOIN nên SUM không bị nhân theo số dòng con.'",
+      "url": "https://www.postgresql.org/docs/current/tutorial-agg.html"
+    },
+    {
+      "id": "DW-11",
+      "severity": "minor",
+      "lines": [
+        2790,
+        2806,
+        2848
+      ],
+      "kind": "missing-index-type-coverage",
+      "quote": "'Partial index và covering index giảm chi phí thế nào?' là câu duy nhất trong cả file hỏi về phân loại index ngoài B-tree. Grep 'expression index' toàn file: 0 kết quả. Grep 'GIN' toàn file: 6 kết quả, không kết quả nào giải thích GIN là gì (dòng 2806, 2848 chỉ xuất hiện trong ngữ cảnh khác).",
+      "why": "Đề bài yêu cầu kiểm nội dung về B-tree so với GIN, partial index và expression index. File bao phủ tốt B-tree và composite (F04), partial và covering (F05 followup), nhưng không có chỗ nào giải thích GIN dùng cho cột mảng, jsonb hay tìm kiếm toàn văn, và hoàn toàn không có expression index dù F06 có nêu đúng rằng 'bọc cột trong hàm lower hay to_char làm mất khả năng dùng index'. Đây là hai chỗ nối liền nhau mà bị đứt: bài dạy rằng lower(email) làm mất index, nhưng không dạy rằng cách chữa là tạo index trên chính biểu thức lower(email) — người học biết vấn đề mà không biết đáp án. Với GIN, một bài ôn phỏng vấn backend có pgvector và tìm kiếm hybrid (nhóm J có J07 nói về BM25 và vector trên pgvector) mà không nói GIN phục vụ tìm kiếm toàn văn và jsonb là thiếu một mảnh đáng kể.",
+      "evidence": "Tài liệu PostgreSQL: mục 11.2 Index Types liệt kê B-tree, Hash, GiST, SP-GiST, GIN và BRIN kèm trường hợp dùng; mục 11.7 Indexes on Expressions mô tả index trên lower(col); mục 11.9 nói rõ 'GIN indexes cannot support index-only scans because each index entry typically holds only part of the original data value' — chi tiết này còn liên quan trực tiếp tới câu trả lời covering index ở DW-3. Không xác minh được bằng server thật: không có PostgreSQL trên máy này.",
+      "fix": "Thêm vào cuối mục deep của F04: '<strong>Các loại index khác ngoài B-tree:</strong> GIN hợp cho cột chứa nhiều giá trị trong một ô như mảng, jsonb, tsvector cho tìm kiếm toàn văn, vì nó đánh index từng phần tử thay vì cả giá trị; đổi lại GIN ghi chậm hơn và không hỗ trợ index-only scan vì mỗi entry chỉ giữ một phần giá trị gốc. BRIN hợp cho bảng rất lớn có dữ liệu đã sắp theo thứ tự tự nhiên như log theo thời gian, vì nó chỉ lưu tóm tắt theo dải trang nên rất nhỏ. Hash chỉ hỗ trợ so sánh bằng.' và thêm vào mục lỗi thường gặp của F06: 'bọc cột trong hàm lower hay to_char làm mất khả năng dùng index thường, và cách chữa không phải là bỏ hàm mà là tạo index trên chính biểu thức đó, ví dụ CREATE INDEX ON users (lower(email)), sau đó truy vấn phải viết đúng biểu thức lower(email) = ... thì planner mới nhận ra.'",
+      "url": "https://www.postgresql.org/docs/current/indexes-types.html"
+    },
+    {
+      "id": "DW-12",
+      "severity": "minor",
+      "lines": [
+        2790
+      ],
+      "kind": "idempotency-guard-framing",
+      "quote": "cs-04: '<li>API mở transaction và chèn khóa đó vào bảng <code>idempotency_key</code>, với ràng buộc unique trên cặp khóa và mã người dùng.</li>' và 'Hai request song song cùng khóa sẽ cùng lao vào ràng buộc unique; chỉ một cái thắng, cái còn lại bắt lỗi unique và đi vào nhánh đọc response đã lưu.'",
+      "why": "Đây là đoạn đúng nhất trong file về idempotency: nó nói đúng rằng ràng buộc unique mới là thứ chặn race, và đúng rằng nhánh thua phải chịu một khoảng chờ ngắn vì response có thể chưa commit. Hai thiếu sót nhỏ làm đoạn này chưa hành động được. Thứ nhất, mô tả 'bắt lỗi unique và đi vào nhánh đọc' không nói rõ rằng cửa sổ giữa lúc chèn và lúc commit làm nhánh đọc thấy hàng chưa có, nên khoảng chờ đó phải là thử lại có giới hạn chứ không phải đọc một lần rồi trả 409 — bài có nhắc nhưng để ở mức gợi ý. Thứ hai, nếu dùng INSERT ... ON CONFLICT DO NOTHING thay vì bắt exception thì hàng đã tồn tại sẽ khiến câu lệnh khớp 0 dòng, và đó là tín hiệu phải đọc rowcount để phân biệt 'tôi là người tạo' với 'tôi là người thua' — chi tiết này không có trong bài dù bài dạy đúng nguyên tắc này ở chỗ khác.",
+      "evidence": "Đối chiếu nội bộ: dòng 5727 (case study luồng upload) có viết đúng 'Chèn trùng khoá thì transaction rollback và nó trả 409 kèm kết quả của lần gửi đầu' và 'bản ghi idempotency phải nằm trong cùng transaction với hàng nghiệp vụ'. Tài liệu PostgreSQL mục INSERT nói rõ ON CONFLICT DO NOTHING không trả về hàng nào khi xung đột, nên rowcount bằng 0 là tín hiệu xung đột. Không xác minh được bằng server thật: không có PostgreSQL trên máy này (đã tái hiện cơ chế trên SQLite, xem evidence).",
+      "fix": "Thay bước 4 bằng: '<li>Nếu chèn gặp khóa trùng, nghĩa là request đã xử lý hoặc đang chạy. Nhánh này phải đọc lại response đã lưu trong một vòng thử lại có giới hạn vài chục mili giây, vì bản ghi thắng có thể chưa commit xong; nếu hết số lần thử vẫn chưa thấy thì trả 409 để client tự thử lại. Nếu bạn viết bằng INSERT ... ON CONFLICT DO NOTHING thì câu lệnh khớp 0 dòng khi trùng, nên phải đọc rowcount để phân biệt mình là người tạo hay người thua — không đọc rowcount thì hai trường hợp giống nhau và bạn sẽ trả kết quả sai.</li>'",
+      "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+    }
+  ],
+  "unverified": [
+    "Mọi khẳng định về hành vi PostgreSQL cụ thể runtime đều chưa xác minh được: máy này KHÔNG có PostgreSQL server (psql không có trên PATH, cổng 127.0.0.1:5432 đóng — đã kiểm bằng Test-NetConnection), và venv D:\\research\\.scratch\\e-venv\\Scripts\\python.exe không có psycopg, psycopg2 hay asyncpg và cũng không có pip ('No module named pip') nên không thể cài. Các khẳng định sau chỉ dựa trên tài liệu PostgreSQL 18 chính thức, không phải kết quả chạy: hành vi chạy lại mệnh đề WHERE của UPDATE ở READ COMMITTED; việc Repeatable Read chặn phantom; mã lỗi 40001 và yêu cầu thử lại; deadlock detector chọn abort một transaction; ON CONFLICT cần arbiter là unique index; việc FOREIGN KEY không tự có index ở bảng con; pg_stat_user_indexes đếm idx_scan; index-only scan phụ thuộc visibility map; GIN không hỗ trợ index-only scan.",
+    "Toàn bộ nhóm Docker chưa chạy được: docker không có trên PATH (Get-Command docker trả rỗng). Các khẳng định chưa xác minh runtime: hình dạng PID 1 khi dùng CMD shell form so với exec form; việc dash exec thay chính nó khi shell form chỉ có một lệnh; cờ docker run --init chèn tini làm PID 1; thời gian chờ mặc định 10 giây trước SIGKILL; docker rmi báo conflict khi còn container tham chiếu; khác biệt layer giữa multi-stage và single-stage. Tất cả chỉ dựa trên tài liệu Docker.",
+    "Nhóm CI/CD chưa chạy được: không có GitHub Actions runner. Hành vi của needs, skipped job và việc mỗi job chạy trên runner sạch chỉ dựa trên tài liệu GitHub Actions, không phải kết quả chạy.",
+    "Nhóm Linux (ps aux, ss -ltnp, ulimit, set -e, pipefail, kill) chỉ đọc ở mức tài liệu. Đã kiểm: chuỗi 'set -e', 'pipefail', 'kill -9' và 'ulimit' KHÔNG xuất hiện ở bất kỳ dòng nào trong file (0 hit mỗi từ khoá), nên phần CI/CD và Linux của đề bài gần như không có nội dung để đối chiếu — đây là khoảng trống phạm vi, không phải lỗi sai.",
+    "Nhóm HTTP/CORS/cookie: các khẳng định về hành vi trình duyệt (kích hoạt preflight, chặn response khi thiếu Access-Control-Allow-Origin, chặn wildcard khi có credentials, SameSite Lax với XHR same-site cross-origin) chỉ dựa trên tài liệu MDN và đặc tả Fetch, không chạy được trình duyệt thật trong môi trường này.",
+    "Đã chạy thật và xác minh được (không nằm trong unverified): (a) mâu thuẫn số liệu 30 so với 24 trong timeline L11 — kiểm bằng đọc trực tiếp cùng một mảng dữ liệu; (b) đo thời gian so sánh == so với hmac.compare_digest và vòng lặp so sánh từng ký tự trên Python 3.13.12 — số liệu thô ở phần evidence của DW-8; (c) tái hiện cơ chế check-then-insert và chèn-trước-với-ràng-buộc-duy-nhất trên SQLite 3.50.4 (script D:\\research\\.scratch\\dw_check.py): trường hợp không có ràng buộc duy nhất, hai luồng cùng khóa K1 đều chạy INSERT và tạo 2 hàng thanh toán; trường hợp có PRIMARY KEY và chèn khóa trước, hai luồng cho kết quả ['created', 'replay'] và đúng 1 hàng. Đây là cùng hình dạng logic với ràng buộc unique của PostgreSQL nhưng KHÔNG phải PostgreSQL — chỉ dùng để chứng minh hình dạng race, không dùng để khẳng định hành vi PostgreSQL."
+  ]
+}

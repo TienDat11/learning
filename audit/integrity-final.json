@@ -1,0 +1,1401 @@
+﻿{
+ "file": "D:/research/hitechcloud-interview-prep.html",
+ "bytes": 1544741,
+ "lines": 7263,
+ "parseErrors": [],
+ "counts": {
+  "questions": 131,
+  "lessons": 22,
+  "sources": 72,
+  "quiz": 28,
+  "flows": 12,
+  "byGroup": {
+   "A": 18,
+   "B": 14,
+   "C": 12,
+   "D": 14,
+   "E": 12,
+   "F": 12,
+   "G": 17,
+   "H": 12,
+   "I": 8,
+   "J": 12
+  },
+  "byPrio": {
+   "P0": 60,
+   "P1": 50,
+   "P2": 21
+  },
+  "byLevel": {
+   "L1": 18,
+   "L2": 78,
+   "L3": 35
+  },
+  "caseStudyKeys": 3,
+  "studyPlanKeys": 3,
+  "mockSetKeys": 6
+ },
+ "dangling": [],
+ "duplicateQuestionIds": [],
+ "questionsMissingFields": [
+  {
+   "id": "A08",
+   "field": "incident"
+  },
+  {
+   "id": "A08",
+   "field": "askFirst"
+  },
+  {
+   "id": "A08",
+   "field": "predict"
+  },
+  {
+   "id": "A08",
+   "field": "anchor"
+  },
+  {
+   "id": "A09",
+   "field": "incident"
+  },
+  {
+   "id": "A09",
+   "field": "askFirst"
+  },
+  {
+   "id": "A09",
+   "field": "predict"
+  },
+  {
+   "id": "A09",
+   "field": "anchor"
+  },
+  {
+   "id": "A10",
+   "field": "incident"
+  },
+  {
+   "id": "A10",
+   "field": "askFirst"
+  },
+  {
+   "id": "A10",
+   "field": "predict"
+  },
+  {
+   "id": "A10",
+   "field": "anchor"
+  },
+  {
+   "id": "A11",
+   "field": "incident"
+  },
+  {
+   "id": "A11",
+   "field": "askFirst"
+  },
+  {
+   "id": "A11",
+   "field": "predict"
+  },
+  {
+   "id": "A11",
+   "field": "anchor"
+  },
+  {
+   "id": "A12",
+   "field": "incident"
+  },
+  {
+   "id": "A12",
+   "field": "askFirst"
+  },
+  {
+   "id": "A12",
+   "field": "predict"
+  },
+  {
+   "id": "A12",
+   "field": "anchor"
+  },
+  {
+   "id": "A13",
+   "field": "incident"
+  },
+  {
+   "id": "A13",
+   "field": "askFirst"
+  },
+  {
+   "id": "A13",
+   "field": "predict"
+  },
+  {
+   "id": "A13",
+   "field": "anchor"
+  },
+  {
+   "id": "A14",
+   "field": "incident"
+  },
+  {
+   "id": "A14",
+   "field": "askFirst"
+  },
+  {
+   "id": "A14",
+   "field": "predict"
+  },
+  {
+   "id": "A14",
+   "field": "anchor"
+  },
+  {
+   "id": "A15",
+   "field": "incident"
+  },
+  {
+   "id": "A15",
+   "field": "askFirst"
+  },
+  {
+   "id": "A15",
+   "field": "predict"
+  },
+  {
+   "id": "A15",
+   "field": "anchor"
+  },
+  {
+   "id": "A16",
+   "field": "incident"
+  },
+  {
+   "id": "A16",
+   "field": "askFirst"
+  },
+  {
+   "id": "A16",
+   "field": "predict"
+  },
+  {
+   "id": "A16",
+   "field": "anchor"
+  },
+  {
+   "id": "A17",
+   "field": "incident"
+  },
+  {
+   "id": "A17",
+   "field": "askFirst"
+  },
+  {
+   "id": "A17",
+   "field": "predict"
+  },
+  {
+   "id": "A17",
+   "field": "anchor"
+  },
+  {
+   "id": "A18",
+   "field": "incident"
+  },
+  {
+   "id": "A18",
+   "field": "askFirst"
+  },
+  {
+   "id": "A18",
+   "field": "predict"
+  },
+  {
+   "id": "A18",
+   "field": "anchor"
+  },
+  {
+   "id": "B07",
+   "field": "incident"
+  },
+  {
+   "id": "B07",
+   "field": "askFirst"
+  },
+  {
+   "id": "B07",
+   "field": "predict"
+  },
+  {
+   "id": "B07",
+   "field": "anchor"
+  },
+  {
+   "id": "B08",
+   "field": "incident"
+  },
+  {
+   "id": "B08",
+   "field": "askFirst"
+  },
+  {
+   "id": "B08",
+   "field": "predict"
+  },
+  {
+   "id": "B08",
+   "field": "anchor"
+  },
+  {
+   "id": "B09",
+   "field": "incident"
+  },
+  {
+   "id": "B09",
+   "field": "askFirst"
+  },
+  {
+   "id": "B09",
+   "field": "predict"
+  },
+  {
+   "id": "B09",
+   "field": "anchor"
+  },
+  {
+   "id": "B10",
+   "field": "incident"
+  },
+  {
+   "id": "B10",
+   "field": "askFirst"
+  },
+  {
+   "id": "B10",
+   "field": "predict"
+  },
+  {
+   "id": "B10",
+   "field": "anchor"
+  },
+  {
+   "id": "B11",
+   "field": "incident"
+  },
+  {
+   "id": "B11",
+   "field": "askFirst"
+  },
+  {
+   "id": "B11",
+   "field": "predict"
+  },
+  {
+   "id": "B11",
+   "field": "anchor"
+  },
+  {
+   "id": "B12",
+   "field": "incident"
+  },
+  {
+   "id": "B12",
+   "field": "askFirst"
+  },
+  {
+   "id": "B12",
+   "field": "predict"
+  },
+  {
+   "id": "B12",
+   "field": "anchor"
+  },
+  {
+   "id": "B13",
+   "field": "incident"
+  },
+  {
+   "id": "B13",
+   "field": "askFirst"
+  },
+  {
+   "id": "B13",
+   "field": "predict"
+  },
+  {
+   "id": "B13",
+   "field": "anchor"
+  },
+  {
+   "id": "B14",
+   "field": "incident"
+  },
+  {
+   "id": "B14",
+   "field": "askFirst"
+  },
+  {
+   "id": "B14",
+   "field": "predict"
+  },
+  {
+   "id": "B14",
+   "field": "anchor"
+  },
+  {
+   "id": "C10",
+   "field": "incident"
+  },
+  {
+   "id": "C10",
+   "field": "askFirst"
+  },
+  {
+   "id": "C10",
+   "field": "predict"
+  },
+  {
+   "id": "C10",
+   "field": "anchor"
+  },
+  {
+   "id": "C11",
+   "field": "incident"
+  },
+  {
+   "id": "C11",
+   "field": "askFirst"
+  },
+  {
+   "id": "C11",
+   "field": "predict"
+  },
+  {
+   "id": "C11",
+   "field": "anchor"
+  },
+  {
+   "id": "C12",
+   "field": "incident"
+  },
+  {
+   "id": "C12",
+   "field": "askFirst"
+  },
+  {
+   "id": "C12",
+   "field": "predict"
+  },
+  {
+   "id": "C12",
+   "field": "anchor"
+  },
+  {
+   "id": "D01",
+   "field": "code"
+  },
+  {
+   "id": "D01",
+   "field": "expected"
+  },
+  {
+   "id": "D07",
+   "field": "incident"
+  },
+  {
+   "id": "D07",
+   "field": "askFirst"
+  },
+  {
+   "id": "D07",
+   "field": "predict"
+  },
+  {
+   "id": "D07",
+   "field": "anchor"
+  },
+  {
+   "id": "D08",
+   "field": "incident"
+  },
+  {
+   "id": "D08",
+   "field": "askFirst"
+  },
+  {
+   "id": "D08",
+   "field": "predict"
+  },
+  {
+   "id": "D08",
+   "field": "anchor"
+  },
+  {
+   "id": "D09",
+   "field": "incident"
+  },
+  {
+   "id": "D09",
+   "field": "askFirst"
+  },
+  {
+   "id": "D09",
+   "field": "predict"
+  },
+  {
+   "id": "D09",
+   "field": "anchor"
+  },
+  {
+   "id": "D10",
+   "field": "incident"
+  },
+  {
+   "id": "D10",
+   "field": "askFirst"
+  },
+  {
+   "id": "D10",
+   "field": "predict"
+  },
+  {
+   "id": "D10",
+   "field": "anchor"
+  },
+  {
+   "id": "D11",
+   "field": "incident"
+  },
+  {
+   "id": "D11",
+   "field": "askFirst"
+  },
+  {
+   "id": "D11",
+   "field": "predict"
+  },
+  {
+   "id": "D11",
+   "field": "anchor"
+  },
+  {
+   "id": "D12",
+   "field": "incident"
+  },
+  {
+   "id": "D12",
+   "field": "askFirst"
+  },
+  {
+   "id": "D12",
+   "field": "predict"
+  },
+  {
+   "id": "D12",
+   "field": "anchor"
+  },
+  {
+   "id": "D13",
+   "field": "incident"
+  },
+  {
+   "id": "D13",
+   "field": "askFirst"
+  },
+  {
+   "id": "D13",
+   "field": "predict"
+  },
+  {
+   "id": "D13",
+   "field": "anchor"
+  },
+  {
+   "id": "D14",
+   "field": "incident"
+  },
+  {
+   "id": "D14",
+   "field": "askFirst"
+  },
+  {
+   "id": "D14",
+   "field": "predict"
+  },
+  {
+   "id": "D14",
+   "field": "anchor"
+  },
+  {
+   "id": "E07",
+   "field": "incident"
+  },
+  {
+   "id": "E07",
+   "field": "askFirst"
+  },
+  {
+   "id": "E07",
+   "field": "predict"
+  },
+  {
+   "id": "E07",
+   "field": "anchor"
+  },
+  {
+   "id": "E08",
+   "field": "incident"
+  },
+  {
+   "id": "E08",
+   "field": "askFirst"
+  },
+  {
+   "id": "E08",
+   "field": "predict"
+  },
+  {
+   "id": "E08",
+   "field": "anchor"
+  },
+  {
+   "id": "E08",
+   "field": "code"
+  },
+  {
+   "id": "E08",
+   "field": "expected"
+  },
+  {
+   "id": "E09",
+   "field": "incident"
+  },
+  {
+   "id": "E09",
+   "field": "askFirst"
+  },
+  {
+   "id": "E09",
+   "field": "predict"
+  },
+  {
+   "id": "E09",
+   "field": "anchor"
+  },
+  {
+   "id": "E10",
+   "field": "incident"
+  },
+  {
+   "id": "E10",
+   "field": "askFirst"
+  },
+  {
+   "id": "E10",
+   "field": "predict"
+  },
+  {
+   "id": "E10",
+   "field": "anchor"
+  },
+  {
+   "id": "E11",
+   "field": "incident"
+  },
+  {
+   "id": "E11",
+   "field": "askFirst"
+  },
+  {
+   "id": "E11",
+   "field": "predict"
+  },
+  {
+   "id": "E11",
+   "field": "anchor"
+  },
+  {
+   "id": "E11",
+   "field": "code"
+  },
+  {
+   "id": "E11",
+   "field": "expected"
+  },
+  {
+   "id": "E12",
+   "field": "incident"
+  },
+  {
+   "id": "E12",
+   "field": "askFirst"
+  },
+  {
+   "id": "E12",
+   "field": "predict"
+  },
+  {
+   "id": "E12",
+   "field": "anchor"
+  },
+  {
+   "id": "F02",
+   "field": "incident"
+  },
+  {
+   "id": "F02",
+   "field": "askFirst"
+  },
+  {
+   "id": "F02",
+   "field": "predict"
+  },
+  {
+   "id": "F02",
+   "field": "anchor"
+  },
+  {
+   "id": "F05",
+   "field": "incident"
+  },
+  {
+   "id": "F05",
+   "field": "askFirst"
+  },
+  {
+   "id": "F05",
+   "field": "predict"
+  },
+  {
+   "id": "F05",
+   "field": "anchor"
+  },
+  {
+   "id": "F06",
+   "field": "incident"
+  },
+  {
+   "id": "F06",
+   "field": "askFirst"
+  },
+  {
+   "id": "F06",
+   "field": "predict"
+  },
+  {
+   "id": "F06",
+   "field": "anchor"
+  },
+  {
+   "id": "F07",
+   "field": "incident"
+  },
+  {
+   "id": "F07",
+   "field": "askFirst"
+  },
+  {
+   "id": "F07",
+   "field": "predict"
+  },
+  {
+   "id": "F07",
+   "field": "anchor"
+  },
+  {
+   "id": "F07",
+   "field": "code"
+  },
+  {
+   "id": "F07",
+   "field": "expected"
+  },
+  {
+   "id": "F09",
+   "field": "incident"
+  },
+  {
+   "id": "F09",
+   "field": "askFirst"
+  },
+  {
+   "id": "F09",
+   "field": "predict"
+  },
+  {
+   "id": "F09",
+   "field": "anchor"
+  },
+  {
+   "id": "F10",
+   "field": "incident"
+  },
+  {
+   "id": "F10",
+   "field": "askFirst"
+  },
+  {
+   "id": "F10",
+   "field": "predict"
+  },
+  {
+   "id": "F10",
+   "field": "anchor"
+  },
+  {
+   "id": "F11",
+   "field": "incident"
+  },
+  {
+   "id": "F11",
+   "field": "askFirst"
+  },
+  {
+   "id": "F11",
+   "field": "predict"
+  },
+  {
+   "id": "F11",
+   "field": "anchor"
+  },
+  {
+   "id": "F11",
+   "field": "code"
+  },
+  {
+   "id": "F11",
+   "field": "expected"
+  },
+  {
+   "id": "F12",
+   "field": "incident"
+  },
+  {
+   "id": "F12",
+   "field": "askFirst"
+  },
+  {
+   "id": "F12",
+   "field": "predict"
+  },
+  {
+   "id": "F12",
+   "field": "anchor"
+  },
+  {
+   "id": "G01",
+   "field": "code"
+  },
+  {
+   "id": "G01",
+   "field": "expected"
+  },
+  {
+   "id": "G05",
+   "field": "code"
+  },
+  {
+   "id": "G05",
+   "field": "expected"
+  },
+  {
+   "id": "G10",
+   "field": "code"
+  },
+  {
+   "id": "G10",
+   "field": "expected"
+  },
+  {
+   "id": "G11",
+   "field": "incident"
+  },
+  {
+   "id": "G11",
+   "field": "askFirst"
+  },
+  {
+   "id": "G11",
+   "field": "predict"
+  },
+  {
+   "id": "G11",
+   "field": "anchor"
+  },
+  {
+   "id": "G12",
+   "field": "incident"
+  },
+  {
+   "id": "G12",
+   "field": "askFirst"
+  },
+  {
+   "id": "G12",
+   "field": "predict"
+  },
+  {
+   "id": "G12",
+   "field": "anchor"
+  },
+  {
+   "id": "G12",
+   "field": "code"
+  },
+  {
+   "id": "G13",
+   "field": "incident"
+  },
+  {
+   "id": "G13",
+   "field": "askFirst"
+  },
+  {
+   "id": "G13",
+   "field": "predict"
+  },
+  {
+   "id": "G13",
+   "field": "anchor"
+  },
+  {
+   "id": "G14",
+   "field": "incident"
+  },
+  {
+   "id": "G14",
+   "field": "askFirst"
+  },
+  {
+   "id": "G14",
+   "field": "predict"
+  },
+  {
+   "id": "G14",
+   "field": "anchor"
+  },
+  {
+   "id": "G15",
+   "field": "incident"
+  },
+  {
+   "id": "G15",
+   "field": "askFirst"
+  },
+  {
+   "id": "G15",
+   "field": "predict"
+  },
+  {
+   "id": "G15",
+   "field": "anchor"
+  },
+  {
+   "id": "G15",
+   "field": "code"
+  },
+  {
+   "id": "G15",
+   "field": "expected"
+  },
+  {
+   "id": "G16",
+   "field": "incident"
+  },
+  {
+   "id": "G16",
+   "field": "askFirst"
+  },
+  {
+   "id": "G16",
+   "field": "predict"
+  },
+  {
+   "id": "G16",
+   "field": "anchor"
+  },
+  {
+   "id": "G16",
+   "field": "code"
+  },
+  {
+   "id": "G16",
+   "field": "expected"
+  },
+  {
+   "id": "G17",
+   "field": "incident"
+  },
+  {
+   "id": "G17",
+   "field": "askFirst"
+  },
+  {
+   "id": "G17",
+   "field": "predict"
+  },
+  {
+   "id": "G17",
+   "field": "anchor"
+  },
+  {
+   "id": "H04",
+   "field": "incident"
+  },
+  {
+   "id": "H04",
+   "field": "askFirst"
+  },
+  {
+   "id": "H04",
+   "field": "predict"
+  },
+  {
+   "id": "H04",
+   "field": "anchor"
+  },
+  {
+   "id": "H05",
+   "field": "incident"
+  },
+  {
+   "id": "H05",
+   "field": "askFirst"
+  },
+  {
+   "id": "H05",
+   "field": "predict"
+  },
+  {
+   "id": "H05",
+   "field": "anchor"
+  },
+  {
+   "id": "H07",
+   "field": "incident"
+  },
+  {
+   "id": "H07",
+   "field": "askFirst"
+  },
+  {
+   "id": "H07",
+   "field": "predict"
+  },
+  {
+   "id": "H07",
+   "field": "anchor"
+  },
+  {
+   "id": "H08",
+   "field": "incident"
+  },
+  {
+   "id": "H08",
+   "field": "askFirst"
+  },
+  {
+   "id": "H08",
+   "field": "predict"
+  },
+  {
+   "id": "H08",
+   "field": "anchor"
+  },
+  {
+   "id": "H08",
+   "field": "code"
+  },
+  {
+   "id": "H08",
+   "field": "expected"
+  },
+  {
+   "id": "H09",
+   "field": "incident"
+  },
+  {
+   "id": "H09",
+   "field": "askFirst"
+  },
+  {
+   "id": "H09",
+   "field": "predict"
+  },
+  {
+   "id": "H09",
+   "field": "anchor"
+  },
+  {
+   "id": "H10",
+   "field": "incident"
+  },
+  {
+   "id": "H10",
+   "field": "askFirst"
+  },
+  {
+   "id": "H10",
+   "field": "predict"
+  },
+  {
+   "id": "H10",
+   "field": "anchor"
+  },
+  {
+   "id": "H11",
+   "field": "incident"
+  },
+  {
+   "id": "H11",
+   "field": "askFirst"
+  },
+  {
+   "id": "H11",
+   "field": "predict"
+  },
+  {
+   "id": "H11",
+   "field": "anchor"
+  },
+  {
+   "id": "H11",
+   "field": "code"
+  },
+  {
+   "id": "H11",
+   "field": "expected"
+  },
+  {
+   "id": "H12",
+   "field": "incident"
+  },
+  {
+   "id": "H12",
+   "field": "askFirst"
+  },
+  {
+   "id": "H12",
+   "field": "predict"
+  },
+  {
+   "id": "H12",
+   "field": "anchor"
+  },
+  {
+   "id": "H12",
+   "field": "code"
+  },
+  {
+   "id": "H12",
+   "field": "expected"
+  },
+  {
+   "id": "I03",
+   "field": "incident"
+  },
+  {
+   "id": "I03",
+   "field": "askFirst"
+  },
+  {
+   "id": "I03",
+   "field": "predict"
+  },
+  {
+   "id": "I03",
+   "field": "anchor"
+  },
+  {
+   "id": "I04",
+   "field": "incident"
+  },
+  {
+   "id": "I04",
+   "field": "askFirst"
+  },
+  {
+   "id": "I04",
+   "field": "predict"
+  },
+  {
+   "id": "I04",
+   "field": "anchor"
+  },
+  {
+   "id": "I05",
+   "field": "incident"
+  },
+  {
+   "id": "I05",
+   "field": "askFirst"
+  },
+  {
+   "id": "I05",
+   "field": "predict"
+  },
+  {
+   "id": "I05",
+   "field": "anchor"
+  },
+  {
+   "id": "I06",
+   "field": "incident"
+  },
+  {
+   "id": "I06",
+   "field": "askFirst"
+  },
+  {
+   "id": "I06",
+   "field": "predict"
+  },
+  {
+   "id": "I06",
+   "field": "anchor"
+  },
+  {
+   "id": "I07",
+   "field": "incident"
+  },
+  {
+   "id": "I07",
+   "field": "askFirst"
+  },
+  {
+   "id": "I07",
+   "field": "predict"
+  },
+  {
+   "id": "I07",
+   "field": "anchor"
+  },
+  {
+   "id": "I08",
+   "field": "incident"
+  },
+  {
+   "id": "I08",
+   "field": "askFirst"
+  },
+  {
+   "id": "I08",
+   "field": "predict"
+  },
+  {
+   "id": "I08",
+   "field": "anchor"
+  },
+  {
+   "id": "I08",
+   "field": "code"
+  },
+  {
+   "id": "I08",
+   "field": "expected"
+  },
+  {
+   "id": "J01",
+   "field": "code"
+  },
+  {
+   "id": "J01",
+   "field": "expected"
+  },
+  {
+   "id": "J02",
+   "field": "code"
+  },
+  {
+   "id": "J02",
+   "field": "expected"
+  },
+  {
+   "id": "J03",
+   "field": "code"
+  },
+  {
+   "id": "J03",
+   "field": "expected"
+  },
+  {
+   "id": "J04",
+   "field": "code"
+  },
+  {
+   "id": "J04",
+   "field": "expected"
+  },
+  {
+   "id": "J05",
+   "field": "code"
+  },
+  {
+   "id": "J05",
+   "field": "expected"
+  },
+  {
+   "id": "J06",
+   "field": "code"
+  },
+  {
+   "id": "J06",
+   "field": "expected"
+  },
+  {
+   "id": "J07",
+   "field": "incident"
+  },
+  {
+   "id": "J07",
+   "field": "askFirst"
+  },
+  {
+   "id": "J07",
+   "field": "predict"
+  },
+  {
+   "id": "J07",
+   "field": "anchor"
+  },
+  {
+   "id": "J07",
+   "field": "code"
+  },
+  {
+   "id": "J07",
+   "field": "expected"
+  },
+  {
+   "id": "J08",
+   "field": "incident"
+  },
+  {
+   "id": "J08",
+   "field": "askFirst"
+  },
+  {
+   "id": "J08",
+   "field": "predict"
+  },
+  {
+   "id": "J08",
+   "field": "anchor"
+  },
+  {
+   "id": "J08",
+   "field": "code"
+  },
+  {
+   "id": "J08",
+   "field": "expected"
+  },
+  {
+   "id": "J09",
+   "field": "incident"
+  },
+  {
+   "id": "J09",
+   "field": "askFirst"
+  },
+  {
+   "id": "J09",
+   "field": "predict"
+  },
+  {
+   "id": "J09",
+   "field": "anchor"
+  },
+  {
+   "id": "J09",
+   "field": "code"
+  },
+  {
+   "id": "J09",
+   "field": "expected"
+  },
+  {
+   "id": "J10",
+   "field": "incident"
+  },
+  {
+   "id": "J10",
+   "field": "askFirst"
+  },
+  {
+   "id": "J10",
+   "field": "predict"
+  },
+  {
+   "id": "J10",
+   "field": "anchor"
+  },
+  {
+   "id": "J10",
+   "field": "code"
+  },
+  {
+   "id": "J10",
+   "field": "expected"
+  },
+  {
+   "id": "J11",
+   "field": "incident"
+  },
+  {
+   "id": "J11",
+   "field": "askFirst"
+  },
+  {
+   "id": "J11",
+   "field": "predict"
+  },
+  {
+   "id": "J11",
+   "field": "anchor"
+  },
+  {
+   "id": "J11",
+   "field": "code"
+  },
+  {
+   "id": "J11",
+   "field": "expected"
+  },
+  {
+   "id": "J12",
+   "field": "incident"
+  },
+  {
+   "id": "J12",
+   "field": "askFirst"
+  },
+  {
+   "id": "J12",
+   "field": "predict"
+  },
+  {
+   "id": "J12",
+   "field": "anchor"
+  },
+  {
+   "id": "J12",
+   "field": "code"
+  },
+  {
+   "id": "J12",
+   "field": "expected"
+  }
+ ],
+ "lessonsMissingFields": [],
+ "metaDescriptionClaim": {
+  "claimed": 131,
+  "actual": 131,
+  "ok": true
+ },
+ "typography": {
+  "O_n_split": 0,
+  "unclosed_O_n_binh_phuong": 8,
+  "version_314_tags": 1
+ }
+}

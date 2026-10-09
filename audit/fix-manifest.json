@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "purpose": "Lead integration manifest. Each entry is an exact literal replacement on D:/research/hitechcloud-interview-prep.html. Verified against the live file before applying.",
+    "verification": "Every old_string is checked to occur EXACTLY ONCE before the edit is applied; if not, the entry is skipped and reported."
+  },
+  "fixes": [
+    {
+      "id": "PY-1",
+      "source": "audit/python.json",
+      "severity": "major",
+      "why": "A P0 card (I02) renders the false complexity statement 'O(n) bình phương' because the markup splits the class across a tag boundary. Line 4444 already writes O(n^2) correctly, so this is an internal inconsistency, not house style.",
+      "old": "vòng lặp lồng nhau để kiểm tra trùng tốn <code>O(n)</code> bình phương",
+      "new": "vòng lặp lồng nhau để kiểm tra trùng tốn <code>O(n^2)</code>"
+    },
+    {
+      "id": "PY-1b",
+      "source": "audit/python.json",
+      "severity": "major",
+      "why": "Same card, pitfalls[1]: renders 'O(n bình phương' with an unclosed parenthesis. Normalise to the O(n^2) form used at line 4444.",
+      "old": "Dùng count trong vòng lặp khiến thuật toán phình thành O(n bình phương mà không hay",
+      "new": "Dùng count trong vòng lặp khiến thuật toán phình thành O(n^2) mà không hay"
+    },
+    {
+      "id": "PY-11",
+      "source": "audit/python.json",
+      "severity": "minor",
+      "why": "A10 is a P1 card about resource cleanup, and its primary teaching sentence states the __exit__ contract BACKWARDS: it says a truthy return re-raises the exception. Proven by execution: return True -> suppressed, return False/None -> propagated.",
+      "old": "và trả về giá trị đúng để lỗi bị ném tiếp. Trả về giá trị sai sẽ nuốt mất ngoại lệ, nên thông lệ là không trả gì hoặc trả False.",
+      "new": "và giá trị nó trả về quyết định số phận ngoại lệ: trả về giá trị ĐÚNG thì ngoại lệ bị nuốt và không ném tiếp, còn trả về giá trị SAI hoặc None thì ngoại lệ tiếp tục nổi lên. Vì nuốt lỗi là hành vi nguy hiểm và im lặng, thông lệ là không trả gì hoặc trả False, chỉ trả True khi bạn thật sự có ý định xử lý lỗi đó tại chỗ."
+    },
+    {
+      "id": "PY-2",
+      "source": "audit/python.json",
+      "severity": "major",
+      "why": "A04 presents co_consts == (None,) as a general property of functions. It is a special case. Proven: def k(x=[]): 'doc' -> ('doc', None); def p(): return 42 -> (None, 42).",
+      "old": "còn <code>add_tag.__code__.co_consts</code> chỉ có <code>(None,)</code>. Vì vậy sửa",
+      "new": "còn <code>add_tag.__code__.co_consts</code> chỉ có <code>(None,)</code> — nhưng đừng đọc <code>co_consts</code> như một quy luật chung: nó là bảng hằng số sinh ra từ việc thực thi thân <code>def</code>, nên hàm có docstring sẽ thấy chính docstring trong đó (<code>def k(x=[]): 'doc'</code> cho <code>('doc', None)</code>), hàm có literal trong thân cũng vậy (<code>def p(): return 42</code> cho <code>(None, 42)</code>). Điều luôn đúng là <em>kết quả</em> của biểu thức mặc định được chuyển vào chỗ lưu của chính đối tượng hàm, không nằm trong code object. Vì vậy sửa"
+    },
+    {
+      "id": "PY-3",
+      "source": "audit/python.json",
+      "severity": "major",
+      "why": "A04's __kwdefaults__ clause inverts the condition ('không có mặc định') and applies a false version gate. Proven: def g(x, y=[], *, z={}) -> __defaults__ ([],), __kwdefaults__ {'z': {}}.",
+      "old": "Từ Python 3, tham số chỉ-dùng-từ-khóa không có mặc định nằm trong <code>__kwdefaults__</code> — cùng cơ chế, khác chỗ chứa.",
+      "new": "Từ Python 3.0, tham số keyword-only <em>có</em> mặc định nằm riêng trong <code>__kwdefaults__</code> (một dict) chứ không lẫn vào <code>__defaults__</code> (một tuple) — cùng cơ chế đánh giá lúc def, khác chỗ chứa. Với <code>def g(x, y=[], *, z={})</code> thì <code>g.__defaults__</code> cho <code>([],)</code> còn <code>g.__kwdefaults__</code> cho <code>{'z': {}}</code>; tham số keyword-only <em>không</em> có mặc định thì không nằm trong cả hai và Python ném TypeError nếu bạn bỏ qua nó khi gọi. Đây là lý do một câu hỏi chỉ soi <code>__defaults__</code> sẽ không nhìn thấy bug mutable default ở tham số keyword-only."
+    },
+    {
+      "id": "PY-9",
+      "source": "audit/python.json",
+      "severity": "minor",
+      "why": "Two cards cite 'đã kiểm chứng trên 3.14', a version neither the reader nor this machine can run. All executed results reproduce on the interpreter actually present (3.13.12), so cite that.",
+      "old": "Hành vi này ổn định trên Python 3 (đã kiểm chứng trên 3.14).",
+      "new": "Hành vi này ổn định trên Python 3 (đã kiểm chứng trên CPython 3.13.12)."
+    },
+    {
+      "id": "PY-6",
+      "source": "audit/python.json",
+      "severity": "minor",
+      "why": "A03 cites an unreproducible version tag and mislabels the dict-slowness mechanism: resizes are amortised O(1); only hash collision degrades lookup.",
+      "old": "Trên CPython hiện tại (kiểm chứng trên 3.14), biên dịch ra <code>CONTAINS_OP</code> trên một tuple, tức là quét tuyến tính.",
+      "new": "Trên CPython (đã kiểm chứng trên 3.13.12 bằng <code>dis</code>), biểu thức này biên dịch ra <code>CONTAINS_OP</code> trên hằng tuple, tức là quét tuyến tính."
+    },
+    {
+      "id": "AWS-1",
+      "source": "audit/aws.json",
+      "severity": "critical",
+      "why": "The file contradicts itself on a HARD limit: line 4789 correctly calls 29 s a ceiling, while QZ20 option[2] presents 'raise the integration timeout to 29 s' as a fix. AWS docs: REST API integration timeout is 29 s maximum and is NOT raisable. Distractor only; the answer key stays 0.",
+      "old": "'Do API Gateway timeout, xử lý bằng cách tăng timeout của integration lên 29 giây',",
+      "new": "'Do API Gateway timeout, xử lý bằng cách tăng timeout của integration lên 60 giây để hàm có thêm thời gian',"
+    },
+    {
+      "id": "AWS-2",
+      "source": "audit/aws.json",
+      "severity": "major",
+      "why": "Presents a convention as an SQS platform default. AWS docs: there is no default maxReceiveCount; a standard queue has no DLQ at all until you configure a redrive policy. Line 3340 uses maxReceiveCount: 5, so '3' and '10' both contradict the file's own example.",
+      "old": "maxReceiveCount mặc định là 10 nên tôi đặt lại có chủ đích.",
+      "new": "maxReceiveCount không có giá trị mặc định nào cả — hàng đợi chuẩn không có DLQ cho tới khi tôi tự cấu hình redrive policy, nên tôi phải chọn con số có chủ đích chứ không thể dựa vào mặc định."
+    },
+    {
+      "id": "AWS-3",
+      "source": "audit/aws.json + verified against AWS docs",
+      "severity": "major",
+      "why": "States the 15-minute Lambda ceiling flatly. AWS docs (gettingstarted-limits.html): 900 s default, but 5,400 s (90 min) for Lambda Managed Instances invoked asynchronously or through event source mapping (except MQ and DocumentDB).",
+      "old": "Khi một lần xử lý cần hơn 15 phút; khi cần một tiến trình chạy liên tục hoặc giữ state trong bộ nhớ giữa các request;",
+      "new": "Khi một lần xử lý cần hơn trần thời gian của hàm (900 giây, tức 15 phút, và tài liệu AWS cho phép tới 5.400 giây tức 90 phút với Lambda Managed Instances chạy bất đồng bộ hoặc qua event source mapping, trừ Amazon MQ và Amazon DocumentDB); khi cần một tiến trình chạy liên tục hoặc giữ state trong bộ nhớ giữa các request;"
+    }
+  ]
+}
