@@ -21,3 +21,8 @@ __pycache__/
 # (see src/07-lesson-images.js and assets/images/webp/); 35 MB of raw source
 # is not needed to publish or to rebuild.
 assets/images/*.png
+
+# Cloud-cost post-mortem SOURCE. It names the real GCP project, service, repos,
+# digest tags, deploy files and API keys. The public repo carries the redacted
+# page (cloud-cost-lessons-gcp-aws.html); this raw file stays local.
+cloud-cost-lessons-gcp-aws.md
