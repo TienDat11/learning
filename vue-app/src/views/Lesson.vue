@@ -319,7 +319,7 @@ const refDocs = computed(() => {
 .hcp-phase-title { margin: 0; background: var(--sunken); }
 .hcp-accordion-head {
   width: 100%; text-align: left; background: var(--sunken); border: none;
-  padding: 12px 14px; font-size: 15px; font-weight: 600; color: var(--fg); cursor: pointer;
+  padding: 16px 20px; font-size: 15px; font-weight: 600; color: var(--fg); cursor: pointer;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .hcp-back:focus-visible, .hcp-done-btn:focus-visible, .hcp-rail-seg:focus-visible, .hcp-next-btn:focus-visible { outline: none; box-shadow: var(--ring); }
@@ -330,35 +330,45 @@ const refDocs = computed(() => {
 .hcp-glossary-strip-h { margin: 0; background: var(--sunken); font-size: 14px; }
 .hcp-glossary-strip-h .hcp-accordion-head { font-size: 14px; color: var(--accent-ink); }
 .hcp-glossary-list { padding: 8px 16px 16px 16px; }
-.hcp-checklist { margin: 0; padding-left: 20px; }
-.hcp-checklist-item { margin: 8px 0; }
-.hcp-num { font-family: var(--mono); font-size: 12px; color: var(--accent-ink); margin-right: 6px; }
-.hcp-prompt { color: var(--fg-2); }
-.hcp-predict { margin-top: 14px; border: 1px solid var(--accent); border-radius: var(--r); background: var(--accent-soft); padding: 12px; }
-.hcp-predict-q { margin: 0 0 8px 0; font-size: 14px; }
-.hcp-predict-a { margin: 10px 0 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; }
-.hcp-reveal-ans { font-size: 13px; padding: 6px 10px; }
-.hcp-placeholder { border: 1px dashed var(--fg-2); border-radius: var(--r-card); padding: 16px; text-align: center; }
-.hcp-placeholder-msg { margin: 0; color: var(--fg-3); font-size: 14px; font-family: var(--mono); }
-.hcp-notes { margin-top: 14px; }
-.hcp-section { margin: 16px 0; }
-.hcp-section-h { margin: 0 0 8px 0; font-size: 16px; color: var(--fg); border-bottom: 2px solid var(--line); padding-bottom: 4px; }
-.hcp-body { font-size: 15px; line-height: 1.65; }
-.hcp-voice { font-style: italic; color: var(--fg-2); }
-.hcp-timeline { margin: 0; padding-left: 20px; }
-.hcp-timeline li { margin: 6px 0; }
-.hcp-time { font-family: var(--mono); font-weight: 600; color: var(--accent-ink); margin-right: 6px; }
-.hcp-cto { display: flex; flex-direction: column; gap: 10px; }
-.hcp-cto-item { border-top: 1px solid var(--line); padding-top: 8px; }
-.hcp-cto-q { margin: 0 0 4px 0; font-size: 14px; color: var(--fg-2); }
-.hcp-cto-a { margin: 0; font-size: 15px; line-height: 1.6; }
-.hcp-empty { color: var(--fg-3); font-style: italic; }
-.hcp-done { text-align: center; padding: 20px; border-top: 1px solid var(--line); }
-.hcp-done-msg { margin: 0; font-size: 16px; font-weight: 600; color: var(--ok); }
+/* Nội dung chặng do phaseContent() sinh ra rồi chèn bằng v-html, nên không mang
+   attribute scope của component. Mọi rule cho nó phải đi qua :deep(), nếu không
+   selector biên dịch thành .hcp-x[data-v-hash] và không bao giờ khớp.
+   Padding 20px lấy từ design.pen frame "Nội dung pha 1" = [0, 20, 20, 20]. */
+.hcp-phase-body { padding: 0 20px 20px; }
+.hcp-phase-body :deep(.hcp-checklist) { margin: 0; padding-left: 20px; }
+.hcp-phase-body :deep(.hcp-checklist-item) { margin: 8px 0; }
+.hcp-phase-body :deep(.hcp-checklist-item) + .hcp-checklist-item { margin-top: 14px; }
+.hcp-phase-body :deep(.hcp-num) { font-family: var(--mono); font-size: 12px; color: var(--accent-ink); margin-right: 6px; }
+.hcp-phase-body :deep(.hcp-prompt) { color: var(--fg-2); }
+.hcp-phase-body :deep(.hcp-predict) { margin-top: 14px; border: 1px solid var(--accent); border-radius: var(--r); background: var(--accent-soft); padding: 12px; }
+.hcp-phase-body :deep(.hcp-predict-q) { margin: 0 0 8px 0; font-size: 14px; }
+.hcp-phase-body :deep(.hcp-predict-a) { margin: 10px 0 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; }
+.hcp-phase-body :deep(.hcp-reveal-ans) { font-size: 13px; padding: 6px 10px; }
+.hcp-phase-body :deep(.hcp-placeholder) { border: 1px dashed var(--fg-2); border-radius: var(--r-card); padding: 16px; text-align: center; }
+.hcp-phase-body :deep(.hcp-placeholder-msg) { margin: 0; color: var(--fg-3); font-size: 14px; font-family: var(--mono); }
+.hcp-phase-body :deep(.hcp-notes) { margin-top: 14px; }
+.hcp-phase-body :deep(.hcp-section) { margin: 16px 0; }
+.hcp-phase-body :deep(.hcp-section-h) { margin: 0 0 8px 0; font-size: 16px; color: var(--fg); border-bottom: 2px solid var(--line); padding-bottom: 4px; }
+.hcp-phase-body :deep(.hcp-body) { font-size: 15px; line-height: 1.65; }
+.hcp-phase-body :deep(.hcp-voice) { font-style: italic; color: var(--fg-2); }
+.hcp-phase-body :deep(.hcp-timeline) { margin: 0; padding-left: 20px; }
+.hcp-phase-body :deep(.hcp-timeline) li { margin: 6px 0; }
+.hcp-phase-body :deep(.hcp-tight) { margin: 0; padding-left: 20px; }
+.hcp-phase-body :deep(.hcp-tight) li { margin: 6px 0; }
+.hcp-phase-body :deep(.hcp-time) { font-family: var(--mono); font-weight: 600; color: var(--accent-ink); margin-right: 6px; }
+.hcp-phase-body :deep(.hcp-cto) { display: flex; flex-direction: column; gap: 10px; }
+.hcp-phase-body :deep(.hcp-cto-item) { border-top: 1px solid var(--line); padding-top: 8px; }
+.hcp-phase-body :deep(.hcp-cto-q) { margin: 0 0 4px 0; font-size: 14px; color: var(--fg-2); }
+.hcp-phase-body :deep(.hcp-cto-a) { margin: 0; font-size: 15px; line-height: 1.6; }
+.hcp-phase-body :deep(.hcp-empty) { color: var(--fg-3); font-style: italic; }
+.hcp-phase-body :deep(.hcp-done) { text-align: center; padding: 20px; border-top: 1px solid var(--line); }
+.hcp-phase-body :deep(.hcp-done-msg) { margin: 0; font-size: 16px; font-weight: 600; color: var(--ok); }
 .hcp-footer-actions { margin-top: 20px; display: flex; justify-content: flex-end; }
 .hcp-next-btn { min-width: 160px; justify-content: center; }
 .hcp-error { padding: 20px; text-align: center; color: var(--err); }
-.hcp-svg-wrap { margin: 14px 0; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); padding: 8px; }
+.hcp-phase-body :deep(.hcp-svg-wrap) { margin: 14px 0; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); padding: 8px; }
+/* Sơ đồ trong pen rộng 720; để svg tự co theo khung thay vì kéo giãn hết bề ngang chặng. */
+.hcp-phase-body :deep(.hcp-svg-inner) svg { width: 100%; max-width: 720px; height: auto; display: block; }
 .hcp-glossary-item { display: grid; gap: 2px; padding: 8px 0; border-top: 1px solid var(--line); }
 .hcp-glossary-item:first-of-type { border-top: none; padding-top: 0; }
 .hcp-glossary-term { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
