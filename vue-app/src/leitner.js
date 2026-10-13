@@ -2,9 +2,11 @@
 // Shape: { [qid]: { box: 1..5, due: 'YYYY-MM-DD' } }. A never-rated question is unseen and counts as due.
 
 export const KEY = 'hcp-leitner-v1';
-export const INTERVALS = [1, 2, 4, 7, 14]; // days to next review for box 1..5
 export const CAP_DUE = '2026-10-19';       // day before the interview; nothing is scheduled past it
 
+function _leitnerIntervals() {
+  return window.__HCP_DATA?.LOGIC?.LEITNER_INTERVALS || [1, 2, 4, 8, 16];
+}
 let cache = null; // in-memory copy, so the session still works when localStorage is blocked or full
 
 export function todayISO(d = new Date()) {
@@ -49,7 +51,7 @@ export function rate(qid, r, today = todayISO()) {
   let box = prev >= 1 && prev <= 5 ? prev : 1;
   if (r === 1) box = 1;
   else if (r === 3) box = Math.min(5, box + 1);
-  let due = addDays(today, INTERVALS[box - 1]);
+  let due = addDays(today, _leitnerIntervals()[box - 1]);
   if (due > CAP_DUE) due = CAP_DUE;
   state[qid] = { box, due };
   save(state);

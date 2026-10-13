@@ -24,7 +24,7 @@ const total = computed(() => SOURCES.length);
       <p class="hcp-page-lede">Chỉ dẫn tài liệu chính thức. Ngày kiểm tra ghi kèm từng mục. Bài blog và diễn đàn không được dùng làm nguồn chính ở đây.</p>
       <p class="src-count">{{ total }} nguồn · {{ groups.length }} nhóm</p>
     </div>
-    <div class="hcp-note"><p>Ngày kiểm tra toàn bộ liên kết: {{ CHECKED }}.</p></div>
+    <div class="hcp-note"><p>Ngày kiểm tra ghi kèm từng mục; lần rà gần nhất: {{ CHECKED }}.</p></div>
     <section
       v-for="g in groups"
       :key="g.key"

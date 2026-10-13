@@ -850,7 +850,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         if (s) { var g = s.group || '*'; (groups[g] = groups[g] || []).push(s); }
       });
       var ck = checkedText();
-      body.innerHTML = when(ck, '<div class="note">Ngày kiểm tra toàn bộ liên kết: ' + esc(ck) + '.</div>') +
+      body.innerHTML = when(ck, '<div class="note">Ngày kiểm tra ghi kèm từng mục; lần rà gần nhất: ' + esc(ck) + '.</div>') +
         Object.keys(groups).sort().map(function (g) {
           return '<div class="src-group"><h3>' + esc(groupTitle(g)) + '</h3><ul class="src-list">' +
             groups[g].map(function (s) {
@@ -869,8 +869,9 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       var rows = Object.keys(GI).sort().map(function (g) {
         var i = obj(GI[g]) || {};
         var total = QS.filter(function (q) { return q && q.group === g; }).length;
+        var p0 = QS.filter(function (q) { return q && q.group === g && q.prio === 'P0'; }).length;
         return '<tr><td><strong>' + esc(str(i.title || g)) + '</strong></td><td>' + esc(str(i.why)) +
-          '</td><td>' + arr(i.p0).length + '</td><td>' + total + '</td></tr>';
+          '</td><td>' + p0 + '</td><td>' + total + '</td></tr>';
       }).join('');
       body.innerHTML =
         '<h3 class="sub">Cách dùng</h3>' +

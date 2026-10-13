@@ -1,6 +1,6 @@
 var SOURCES = SOURCES || [];
 var GROUP_INTROS = GROUP_INTROS || {};
-var SOURCE_CHECKED = SOURCE_CHECKED || '2026-10-01';
+var SOURCE_CHECKED = SOURCE_CHECKED || '2026-10-12';
 
 SOURCES.push(
   { key: 'py-datamodel', name: 'Python Data Model', url: 'https://docs.python.org/3/reference/datamodel.html', checked: '2026-10-01', group: 'A' },

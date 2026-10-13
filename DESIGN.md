@@ -7,7 +7,7 @@ Implementation values live in `assets/style.css` (tokens at the top of the file)
 ## What this is
 
 A single self-contained HTML study tool for one person preparing for one interview
-(Fullstack Engineer, AWS / Python / VueJS). 134 questions with answers, 23 lesson
+ (Fullstack Engineer, AWS / Python / VueJS). 147 questions with answers, 23 lesson
 schematics, quiz, flashcards, mock interview, case study, study plan, sources.
 It must open offline from disk, print cleanly, and be read for long stretches.
 
@@ -46,23 +46,23 @@ Structure and information:
   rail.
 
 - **The memory anchor** is the only green-filled panel in a lesson (green-tinted).
-- **"Hôm nay" (`view-today`): Leitner box drill over the 63 P0 deck.** A top bar shows the
-  brand and `Bộ P0 · 63 câu`. A two-column grid puts the method statement on the left
+- **"Hôm nay" (`view-today`): Leitner box drill over the 71 P0 deck.** A top bar shows the
+-   brand and `Bộ P0 · 71 câu`. A two-column grid puts the method statement on the left
   — eyebrow "Phương pháp Leitner", title "Đúng thì lên hộp. Sai thì về hộp một.", a short lede
   — and the five Leitner boxes on the right: count per box, interval per box, active box
   filled indigo. The full-width card below holds the drawn question, "Mở đáp án", then
   "Nhớ được" / "Chưa nhớ". Selection is runtime (`prio === 'P0'` via `P0_IDS` in
-  `src/90-app.js`); the 134-question bank is never the drill. State is `hcp-leitner-v1` =
+-   `src/90-app.js`); the 147-question bank is never the drill. State is `hcp-leitner-v1` =
   `{ [qid]: { box: 1..5, due: "YYYY-MM-DD" } }`; a missing entry counts as box 1, due today.
   Draw picks a due question from the lowest box with any due question, uniformly at random
   (`LOGIC.leitnerDueQids` → `LOGIC.leitnerPick`). "Nhớ được" advances the box one level and
   schedules by the new box's interval; "Chưa nhớ" resets box 1, due today. Answer is
-  `expected` if present, else `oral`; the app never authors an answer. 12 of the 63 P0 cards
-  (D01, G01, G05, G10, G18, H13, J01–J06) lack `expected` — all type `concept`/`situation`,
-  none `predict`/`debug` — but all 63 carry a non-empty `oral`, so every card has a real
+-   `expected` if present, else `oral`; the app never authors an answer. 18 of the 71 P0 cards
+-   (C14, C15, D01, G01, G05, G10, G18, G19, G20, G23, H13, J01–J06) lack `expected` — all type
+-   none `predict`/`debug` — but all 71 carry a non-empty `oral`, so every card has a real
   answer. Keyboard: Enter draws, Space toggles the answer, 1 = nhớ được, 2 = chưa nhớ; keys
   are ignored while typing in an input/textarea/select and while focus is on a button/link.
-  "Sẵn sàng" reads `count(box 5) / 63` and is labelled a proposal, not a pass mark. Empty
+-   "Sẵn sàng" reads `count(box 5) / 71` and is labelled a proposal, not a pass mark. Empty
   state shows "Hôm nay không có thẻ đến hạn." with the remaining box-1 count; there is no
   error state. `#today-reset` confirms in a dialog then deletes only `hcp-leitner-v1` and
   `hcp-recall-v1`. Intervals are `LOGIC.LEITNER_INTERVALS = [1, 2, 4, 8, 16]` days, one
@@ -184,16 +184,16 @@ a proposal and not established Leitner practice.
 
 ## Decisions still waiting on the owner
 
-- The deck is the 63 P0 questions (`prio === 'P0'` in `P0_IDS`, `src/90-app.js`). The count
+- The deck is the 71 P0 questions (`prio === 'P0'` in `P0_IDS`, `src/90-app.js`). The count
    is verified against `dist/questions.json` via jq and matches the build's METRIC lines:
-   134 total = P0 63 / P1 50 / P2 21. Switching to all 134 is a one-line change in `P0_IDS`,
-   but the decision has not been taken. None of the 28 questions lacking `expected` is
-   `predict`/`debug` (all are `concept`/`situation`); of the 12 P0 without `expected` —
+   147 total = P0 71 / P1 50 / P2 26. Switching to all 147 is a one-line change in `P0_IDS`,
+   but the decision has not been taken. None of the 39 questions lacking `expected` is
+   `predict`/`debug` (all are `concept`/`situation`); of the 18 P0 without `expected` —
    D01, G01, G05, G10, G18, H13, J01–J06 — every card still carries a non-empty `oral` and
    `deep`, so every card has a real answer.
 - The 1 / 2 / 4 / 8 / 16-day intervals are a proposal. Changing them means editing
    `LOGIC.LEITNER_INTERVALS` in `src/05-logic.js` only.
-- The "Sẵn sàng" threshold (box 5 / 63) is a proposal, not a settled pass mark, and is
+- The "Sẵn sàng" threshold (box 5 / 71) is a proposal, not a settled pass mark, and is
    labelled as such in the UI.
 - 23 memory anchors (memory-palace style) were drafted at `.scratch/anchors-proposal.md`.
    They are not in the app and are not approved; gating is explicit. The app carries no
