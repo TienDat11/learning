@@ -285,13 +285,13 @@ const refDocs = computed(() => {
 .hcp-lesson-header {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
 }
-.hcp-back { border: none; background: none; color: var(--accent-ink); font-size: 14px; cursor: pointer; padding: 0; }
+.hcp-back { border: none; background: none; color: var(--accent-ink); font-size: 14px; cursor: pointer; padding: 0; min-height: 44px; display: inline-flex; align-items: center; }
 .hcp-lesson-meta { flex: 1; }
 .hcp-lesson-id { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--accent-ink); }
 .hcp-lesson-stage { font-size: 13px; color: var(--fg-3); margin-left: 8px; }
 .hcp-lesson-title { margin: 4px 0 6px 0; font-size: 24px; line-height: 1.3; }
 .hcp-lesson-goal { margin: 0 0 16px 0; font-size: 14px; color: var(--fg-2); line-height: 1.5; }
-.hcp-done-btn { font-size: 13px; padding: 7px 12px; border-color: var(--ok); color: var(--ok); }
+.hcp-done-btn { font-size: 13px; padding: 7px 12px; min-height: 36px; border-color: var(--ok); color: var(--ok); }
 .hcp-done-btn.done { background: var(--ok); color: white; }
 .hcp-done-btn.done:hover { background: var(--ok-fill); }
 .hcp-rail {

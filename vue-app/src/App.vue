@@ -7,6 +7,10 @@ import Today from './views/Today.vue';
 import Drill from './views/Drill.vue';
 import Mock from './views/Mock.vue';
 import Quiz from './views/Quiz.vue';
+import Flashcard from './views/Flashcard.vue';
+import Case from './views/Case.vue';
+import Sources from './views/Sources.vue';
+import Intro from './views/Intro.vue';
 
 const APP_DATA = window.__HCP_DATA || {};
 const LESSONS = Array.isArray(APP_DATA.LESSONS) ? APP_DATA.LESSONS : [];
@@ -15,7 +19,7 @@ const PHASE_DONE = 6; // phase 6 ("Xong") marks a lesson as completed
 // ---------- hash router ----------
 // route.path is the concrete path ('/', '/lesson/L01', '/mock/<key>', ...).
 // Anything unrecognised resolves to Home ('/').
-const SIMPLE_ROUTES = ['today', 'drill', 'mock', 'quiz'];
+const SIMPLE_ROUTES = ['today', 'drill', 'mock', 'quiz', 'flashcard', 'sources', 'intro', 'case'];
 
 function decodeSegment(s) {
   try { return decodeURIComponent(s); } catch { return s; }
@@ -136,6 +140,7 @@ const NAV = [
       </nav>
 
       <div class="hcp-header-actions">
+        <a v-if="view !== 'home'" class="hcp-btn hcp-btn-chip" href="#/">← Trang chủ</a>
         <button type="button" class="hcp-btn hcp-btn-icon" @click="toggleTheme"
                 :aria-pressed="theme === 'dark'" aria-label="Chế độ tối">
           <span v-if="theme === 'light'" aria-hidden="true">☾</span>
@@ -156,6 +161,10 @@ const NAV = [
     <Drill v-else-if="view === 'drill'" />
     <Mock v-else-if="view === 'mock'" @navigate="navigate" />
     <Quiz v-else-if="view === 'quiz'" />
+    <Flashcard v-else-if="view === 'flashcard'" />
+    <Case v-else-if="view === 'case'" />
+    <Sources v-else-if="view === 'sources'" />
+    <Intro v-else-if="view === 'intro'" />
   </main>
 
   <footer class="hcp-footer" role="contentinfo">
@@ -188,6 +197,11 @@ const NAV = [
 .hcp-nav-btn.active { background: var(--accent-soft); color: var(--accent-ink); }
 .hcp-header-actions { display: flex; gap: 6px; margin-left: auto; }
 .hcp-btn { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--fg); cursor: pointer; }
+.hcp-btn-chip {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  font-size: 14px; font-weight: 600; color: var(--fg-2); text-decoration: none;
+}
+.hcp-btn-chip:hover { color: var(--accent-ink); border-color: var(--accent); }
 .hcp-btn-icon { padding: 5px 8px; font-size: 16px; }
 .hcp-btn-icon:hover { border-color: var(--accent); }
 .hcp-app { max-width: 1100px; margin: 0 auto; padding: 16px; min-height: calc(100vh - 200px); }

@@ -80,6 +80,67 @@ button { font-family: var(--sans); }
 /* focus */
 button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
+/* ---------- nút dùng chung ----------
+   `.hcp-btn` là nền tảng; các biến thể dưới đây được nhiều view dùng (Lesson, Today, DrillCard)
+   nhưng trước đây chưa từng được định nghĩa, nên nút CTA chính render như nút trơn không padding. */
+.hcp-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 10px 16px; border: 1px solid var(--line);
+  border-radius: var(--r); background: var(--surface); color: var(--fg);
+  font-family: var(--sans); font-size: 14px; font-weight: 600; line-height: 1.3;
+  cursor: pointer; text-decoration: none;
+}
+.hcp-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.hcp-btn-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.hcp-btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.hcp-btn-mini { min-height: 36px; padding: 6px 10px; font-size: 13px; }
+.hcp-btn-ghost { background: transparent; border-color: var(--line-2); color: var(--fg-2); }
+.hcp-btn-ghost:hover { border-color: var(--err); color: var(--err); }
+
+/* ---------- page shell dùng chung cho các view mới ----------
+   Cùng nhịp với Home: tiêu đề 40px (26px khi hẹp), lede 16px --fg-2, khối cách 24px. */
+.hcp-page { display: flex; flex-direction: column; gap: 24px; font-family: var(--sans); color: var(--fg); min-width: 0; }
+.hcp-page > * { min-width: 0; }
+.hcp-page-head { display: flex; flex-direction: column; gap: 8px; }
+.hcp-page-title { margin: 0; font-size: 40px; font-weight: 700; line-height: 1.15; color: var(--fg); }
+.hcp-page-lede { margin: 0; font-size: 16px; line-height: 1.6; color: var(--fg-2); }
+.hcp-section { display: flex; flex-direction: column; gap: 12px; }
+.hcp-h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--fg); }
+.hcp-note {
+  background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-card);
+  padding: 16px 18px; font-size: 15px; line-height: 1.65; color: var(--fg-2);
+}
+.hcp-note p { margin: 0 0 10px; }
+.hcp-note p:last-child, .hcp-note ul:last-child { margin-bottom: 0; }
+.hcp-note ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.hcp-prose { font-size: 16px; line-height: 1.7; color: var(--fg-2); }
+.hcp-prose p { margin: 0 0 12px; }
+.hcp-prose ul, .hcp-prose ol { margin: 0 0 12px; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+.hcp-prose li { line-height: 1.65; }
+.hcp-prose strong { color: var(--fg); font-weight: 600; }
+.hcp-prose code { font-family: var(--mono); font-size: 14px; background: var(--sunken); padding: 1px 4px; border-radius: 4px; }
+.hcp-prose > :last-child { margin-bottom: 0; }
+.hcp-kbd {
+  display: inline-block; font-family: var(--mono); font-size: 13px; font-weight: 600;
+  background: var(--sunken); border: 1px solid var(--line-2); border-radius: 4px;
+  padding: 2px 7px; color: var(--fg);
+}
+.hcp-chip {
+  display: inline-flex; align-items: center; font-family: var(--mono); font-size: 12px;
+  font-weight: 600; background: var(--sunken); border-radius: 6px; padding: 4px 8px; color: var(--fg-2);
+}
+.hcp-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.hcp-table th, .hcp-table td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+.hcp-table thead th { background: var(--sunken); font-weight: 700; color: var(--fg); }
+.hcp-table td { color: var(--fg-2); line-height: 1.55; }
+.hcp-table td:first-child { color: var(--fg); font-weight: 600; }
+.hcp-table .num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+@media (max-width: 720px) {
+  .hcp-page-title { font-size: 26px; }
+  .hcp-table { font-size: 14px; }
+  .hcp-table th, .hcp-table td { padding: 8px; }
+}
+
 /* print */
 @media print {
   .hcp-app-header, .hcp-header-actions, .hcp-footer, .hcp-next,

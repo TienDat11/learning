@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -28,8 +28,10 @@ function safeJson(obj) {
 
 // ---- 1. loader: run src/*.js in a vm, keep JSON-safe exports ----
 // LOGIC is kept out of the payload: its functions would be dropped by JSON.stringify.
+// LESSON_IMAGES is excluded too: the Vue app renders diagrams from FLOW_SVGS instead, so
+// shipping the 2.26 MB of base64 WebP schematics would be dead weight in every page load.
 const VM_EXPORTS = ['QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'CASE_STUDY', 'SOURCES',
-  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LESSONS', 'LESSON_IMAGES'];
+  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LESSONS'];
 const files = readdirSync(SRCROOT).filter((f) => f.endsWith('.js')).sort();
 const payload = {};
 const ctx = createContext({
@@ -47,7 +49,16 @@ for (const f of files) {
 const LOGIC_SRC = readFileSync(join(SRCROOT, '05-logic.js'), 'utf8');
 
 // ---- 2. vite build ----
-rmSync(DIST, { recursive: true, force: true });
+// Windows giữ handle trên thư mục outDir khi có tiến trình đang đứng trong đó, và `rmSync`
+// ném EPERM dù thư mục rỗng. Xoá từng mục con rồi bỏ qua lỗi ở chính thư mục gốc: vite vẫn
+// ghi đè được nội dung, còn build thì không chết vì một handle lạ.
+function emptyDir(dir) {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir)) {
+    rmSync(join(dir, entry), { recursive: true, force: true });
+  }
+}
+emptyDir(DIST);
 mkdirSync(DIST, { recursive: true });
 execSync('node node_modules/vite/bin/vite.js build', { cwd: ROOT, stdio: 'inherit' });
 
@@ -84,3 +95,10 @@ html = html.replace('</head>', () => head + '</head>');
 
 writeFileSync(OUT, html, 'utf8');
 console.log('OK: ' + OUT + ' (' + Math.round(Buffer.byteLength(html) / 1024) + ' KiB)');
+
+// ---- 5. publish to the GitHub Pages entry ----
+// Pages serves the repository root, so the built file has to land at <repo>/index.html.
+// Keeping it a build step is what stops the published page from drifting behind src/.
+const PUBLISH = join(ROOT, '..', 'index.html');
+writeFileSync(PUBLISH, html, 'utf8');
+console.log('PUBLISHED: ' + PUBLISH);

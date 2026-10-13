@@ -14,6 +14,8 @@ const doneSet = inject('doneSet');
 const STAGE_COUNT = new Set(LESSONS.map((l) => l.stage)).size;
 const P0_IDS = QUESTIONS.filter((q) => q && q.prio === 'P0').map((q) => String(q.id));
 const MOCK_COUNT = Object.keys(MOCK_SETS).length;
+const CASE_SECTIONS = Array.isArray(data.CASE_STUDY?.sections) ? data.CASE_STUDY.sections.length : 0;
+const SOURCES = Array.isArray(data.SOURCES) ? data.SOURCES : [];
 
 // Leitner state (đọc một lần; Home được remount mỗi lần vào route).
 function loadLeitner() {
@@ -51,6 +53,14 @@ const ENTRIES = [
   { key: 'drill', name: 'Ôn câu hỏi', desc: `${QUESTIONS.length} câu`, href: '#/drill' },
   { key: 'quiz', name: 'Quiz', desc: `Quiz ${QUIZ.length} câu`, href: '#/quiz' },
   { key: 'mock', name: 'Phỏng vấn thử', desc: `Phỏng vấn thử ${MOCK_COUNT} bộ`, href: '#/mock' },
+];
+
+// Bốn màn tra cứu: không nằm trong thanh 5 mục, mở từ đây hoặc từ chip "← Trang chủ" ở đầu trang.
+const REFS = [
+  { key: 'flashcard', name: 'Flashcard', desc: `${QUESTIONS.length} thẻ · luyện nhịp trả lời`, href: '#/flashcard' },
+  { key: 'case', name: 'Case study', desc: `${CASE_SECTIONS} mục · một hệ thống đầu-cuối`, href: '#/case' },
+  { key: 'sources', name: 'Nguồn tham khảo', desc: `${SOURCES.length} nguồn · 8 nhóm`, href: '#/sources' },
+  { key: 'intro', name: 'Bắt đầu', desc: 'Cách dùng · lịch ôn · điểm yếu', href: '#/intro' },
 ];
 
 // Bước tiếp theo: bài đầu chưa hoàn thành trong chặng thấp nhất còn dở.
@@ -123,6 +133,16 @@ function openLesson(l) {
           {{ nextLesson.id }} · {{ nextLesson.title }}
         </button>
       </aside>
+    </section>
+
+    <section class="hcp-refs" aria-label="Tài liệu tra cứu">
+      <h3 class="hcp-roadmap-title">Tài liệu</h3>
+      <div class="hcp-refs-list">
+        <a v-for="r in REFS" :key="r.key" class="hcp-ref" :href="r.href">
+          <span class="hcp-ref-name">{{ r.name }}</span>
+          <span class="hcp-ref-desc">{{ r.desc }}</span>
+        </a>
+      </div>
     </section>
 
     <section class="hcp-roadmap" :aria-label="'Lộ trình ' + LESSONS.length + ' bài'">
@@ -199,6 +219,25 @@ function openLesson(l) {
   font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .hcp-next-btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.hcp-refs {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.hcp-refs-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.hcp-ref {
+  display: flex; flex-direction: column; gap: 4px; min-height: 44px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--fg);
+  transition: border-color 0.15s;
+}
+.hcp-ref:hover { border-color: var(--accent); }
+.hcp-ref:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.hcp-ref-name { font-size: 16px; font-weight: 600; color: var(--fg); }
+.hcp-ref-desc { font-size: 13px; color: var(--fg-2); }
+
+@media (max-width: 720px) {
+  .hcp-refs-list { grid-template-columns: 1fr; }
+}
 
 .hcp-roadmap {
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
