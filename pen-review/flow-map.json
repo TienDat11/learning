@@ -1,0 +1,197 @@
+{
+  "lessons": [
+    {
+      "file": "35-lessons-aws.js",
+      "id": "L01",
+      "stage": 1,
+      "flow": "flow-request-lifecycle",
+      "title": "Đọc một kiến trúc serverless từ trái sang phải"
+    },
+    {
+      "file": "35-lessons-aws.js",
+      "id": "L02",
+      "stage": 1,
+      "flow": "flow-auth-jwt",
+      "title": "IAM: hai lớp quyền của một hệ thống serverless"
+    },
+    {
+      "file": "35-lessons-aws.js",
+      "id": "L03",
+      "stage": 1,
+      "flow": "flow-lambda-cold-start",
+      "title": "Lambda: handler, cold start, concurrency và retry"
+    },
+    {
+      "file": "35-lessons-aws.js",
+      "id": "L04",
+      "stage": 1,
+      "flow": "flow-cors-preflight",
+      "title": "API Gateway: cổng vào và nơi chặn request rác"
+    },
+    {
+      "file": "35-lessons-aws.js",
+      "id": "L05",
+      "stage": 1,
+      "flow": "flow-upload-presign",
+      "title": "S3 presigned URL và DynamoDB: dữ liệu to, truy vấn rẻ"
+    },
+    {
+      "file": "35-lessons-aws.js",
+      "id": "L06",
+      "stage": 1,
+      "flow": "flow-queue-worker",
+      "title": "SQS, worker, DLQ và cách biết hệ thống đang chết dần"
+    },
+    {
+      "file": "36-lessons-py.js",
+      "id": "L07",
+      "stage": 2,
+      "flow": null,
+      "title": "Vòng đời một request trong FastAPI: từ khoá def quyết định s"
+    },
+    {
+      "file": "36-lessons-py.js",
+      "id": "L08",
+      "stage": 2,
+      "flow": null,
+      "title": "Dependency injection cho auth và DB session: connection pool"
+    },
+    {
+      "file": "36-lessons-py.js",
+      "id": "L09",
+      "stage": 2,
+      "flow": "flow-failure-retry",
+      "title": "Backend Python gọi AWS: credential, timeout, retry và idempo"
+    },
+    {
+      "file": "36-lessons-py.js",
+      "id": "L10",
+      "stage": 2,
+      "flow": "flow-lambda-cold-start",
+      "title": "Lambda hay container/ECS: chọn theo vòng đời công việc, khôn"
+    },
+    {
+      "file": "36-lessons-py.js",
+      "id": "L11",
+      "stage": 2,
+      "flow": "flow-db-transaction",
+      "title": "Đo lường và sự cố: log, metric, alarm, transaction và một dò"
+    },
+    {
+      "file": "37-lessons-vue.js",
+      "id": "L12",
+      "stage": 3,
+      "flow": "flow-vue-reactivity",
+      "title": "Reactivity: ref, reactive và cái Proxy"
+    },
+    {
+      "file": "37-lessons-vue.js",
+      "id": "L13",
+      "stage": 3,
+      "flow": null,
+      "title": "computed, watch và watchEffect: dependency, caching, side ef"
+    },
+    {
+      "file": "37-lessons-vue.js",
+      "id": "L14",
+      "stage": 3,
+      "flow": null,
+      "title": "Component: SFC, script setup, props và emits"
+    },
+    {
+      "file": "37-lessons-vue.js",
+      "id": "L15",
+      "stage": 3,
+      "flow": null,
+      "title": "Composable, provide/inject và Pinia: tách logic hay chia sẻ "
+    },
+    {
+      "file": "37-lessons-vue.js",
+      "id": "L16",
+      "stage": 3,
+      "flow": null,
+      "title": "Vue Router: route params, navigation guard và lazy loading"
+    },
+    {
+      "file": "37-lessons-vue.js",
+      "id": "L17",
+      "stage": 3,
+      "flow": "flow-idempotency",
+      "title": "Form, trạng thái và chuyển kiến thức từ React sang Vue"
+    },
+    {
+      "file": "38-lessons-link.js",
+      "id": "L18",
+      "stage": 4,
+      "flow": "flow-request-lifecycle",
+      "title": "Hợp đồng API giữa Vue và FastAPI"
+    },
+    {
+      "file": "38-lessons-link.js",
+      "id": "L19",
+      "stage": 4,
+      "flow": "flow-auth-jwt",
+      "title": "Auth xuyên hai phía: token, nơi lưu, interceptor, và ai quyế"
+    },
+    {
+      "file": "38-lessons-link.js",
+      "id": "L20",
+      "stage": 4,
+      "flow": "flow-upload-presign",
+      "title": "Upload file: từ ô chọn file tới S3"
+    },
+    {
+      "file": "38-lessons-link.js",
+      "id": "L21",
+      "stage": 4,
+      "flow": "flow-queue-worker",
+      "title": "Đẩy việc nặng sang SQS và worker"
+    },
+    {
+      "file": "38-lessons-link.js",
+      "id": "L22",
+      "stage": 4,
+      "flow": "flow-request-lifecycle",
+      "title": "Một tính năng end-to-end: từ ô nhập tới hàng trong DB, kèm b"
+    },
+    {
+      "file": "39-lessons-security.js",
+      "id": "L23",
+      "stage": 5,
+      "flow": "flow-ddos-defense",
+      "title": "DDoS: bản chất, các thời kỳ, và cách phòng thủ theo tầng"
+    }
+  ],
+  "flowSvgs": [
+    "flow-request-lifecycle",
+    "flow-cors-preflight",
+    "flow-vue-reactivity",
+    "flow-upload-presign",
+    "flow-queue-worker",
+    "flow-sqs-visibility",
+    "flow-auth-jwt",
+    "flow-db-transaction",
+    "flow-idempotency",
+    "flow-lambda-cold-start",
+    "flow-cicd-pipeline",
+    "flow-ddos-defense",
+    "flow-failure-retry"
+  ],
+  "unusedFlows": [
+    "flow-sqs-visibility",
+    "flow-cicd-pipeline"
+  ],
+  "missingFlows": [],
+  "noFlowLessons": [
+    "L07",
+    "L08",
+    "L13",
+    "L14",
+    "L15",
+    "L16"
+  ],
+  "counts": {
+    "lessons": 23,
+    "flowSvgs": 13
+  }
+}

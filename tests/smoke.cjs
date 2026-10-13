@@ -178,6 +178,91 @@ if (LOGIC) {
   check('resolvePick by prio', R({ prio: 'P0' }, list).length === 2);
   check('resolvePick respects limit', R({ prio: 'P0', limit: 1 }, list).length === 1);
   check('resolvePick empty spec = all', R({}, list).length === 3);
+
+  // ---- Leitner --------------------------------------------------------
+  var ids = [];
+  for (var i = 1; i <= 63; i++) ids.push('Q' + ('00' + i).slice(-3));
+  var S = {};
+
+  check('leitnerCounts: chưa ôn -> tất cả ở hộp 1', JSON.stringify(LOGIC.leitnerCounts(ids, S)) === JSON.stringify([ids.length, 0, 0, 0, 0]));
+  check('leitnerDueQids: chưa ôn -> tất cả đến hạn', LOGIC.leitnerDueQids(ids, S, '2025-10-11').length === ids.length);
+
+  var T = '2025-10-11';
+  var T2 = LOGIC.addDaysISO(T, 2);
+  var T16 = LOGIC.addDaysISO(T, LOGIC.LEITNER_INTERVALS[LOGIC.LEITNER_INTERVALS.length - 1]);
+
+  check('addDaysISO +2 -> 2025-10-13', T2 === '2025-10-13');
+
+  // chấm đúng: box1 -> box2, due = today + 2
+  var st = LOGIC.leitnerGrade(S, 'Q001', true, T);
+  check('leitnerGrade đúng box1 -> 2', LOGIC.leitnerBox(st, 'Q001') === 2);
+  check('leitnerGrade đúng due = today+2', st.Q001.due === T2);
+
+  // chấm sai: box3 -> box1, due = today
+  var st3 = LOGIC.leitnerGrade({}, 'Q003', false, T);
+  check('leitnerGrade sai -> box1, due=today', LOGIC.leitnerBox(st3, 'Q003') === 1 && st3.Q003.due === T);
+
+  // trần hộp 5: 5 lần đúng liên tiếp từ box1
+  var s5 = {}; var b = 1;
+  for (var k = 0; k < 5; k++) {
+    s5 = LOGIC.leitnerGrade(s5, 'Q005', true, T);
+    b = LOGIC.leitnerBox(s5, 'Q005');
+  }
+  check('trần hộp 5: box=5', b === 5);
+  check('trần hộp 5: due = today + khoảng của hộp cuối', s5.Q005.due === T16);
+  check('trần hộp 5: state cũ không bị mutate', S.Q001 === undefined);
+
+  // reset: state rỗng -> tất cả về hộp 1
+  check('reset -> tất cả ở hộp 1', JSON.stringify(LOGIC.leitnerCounts(ids, {})) === JSON.stringify([ids.length, 0, 0, 0, 0]));
+
+  // ưu tiên hộp thấp nhất: hộp 1 hết -> lấy hộp 2
+  var sLow = {};
+  // hộp 1 rỗng: Q001..Q010 ở hộp 5, đến hạn muộn -> không đến hạn
+  for (var j = 0; j < 10; j++) sLow['Q' + ('00' + (j + 1)).slice(-3)] = { box: 5, due: '2025-12-31' };
+  // hộp 2: Q011..Q020 đến hạn
+  for (var j = 0; j < 10; j++) sLow['Q' + ('00' + (11 + j)).slice(-3)] = { box: 2, due: T };
+  // hộp 5 còn lại: đến hạn muộn -> không đến hạn
+  for (var j = 20; j < 63; j++) sLow['Q' + ('00' + (j + 1)).slice(-3)] = { box: 5, due: '2025-12-31' };
+  var due = LOGIC.leitnerDueQids(ids, sLow, T);
+  check('ưu tiên hộp thấp nhất: hộp1 rỗng -> lấy hộp 2', due.every(function (q) { return LOGIC.leitnerBox(sLow, q) === 2; }) && due.length === 10);
+  // hộp 1 còn câu đến hạn thì chỉ lấy hộp 1 (bỏ qua hộp 2)
+  var sA = {};
+  for (var j = 0; j < 10; j++) sA['Q' + ('00' + (j + 1)).slice(-3)] = { box: 1, due: T };
+  for (var j = 0; j < 10; j++) sA['Q' + ('00' + (11 + j)).slice(-3)] = { box: 2, due: T };
+  for (var j = 20; j < 63; j++) sA['Q' + ('00' + (j + 1)).slice(-3)] = { box: 5, due: '2025-12-31' };
+  var dueA = LOGIC.leitnerDueQids(ids, sA, T);
+  check('ưu tiên hộp thấp nhất: hộp1 có -> chỉ hộp 1', dueA.every(function (q) { return LOGIC.leitnerBox(sA, q) === 1; }) && dueA.length === 10);
+
+  // chưa đến hạn không được rút
+  var sNoDue = {};
+  sNoDue['Q050'] = { box: 1, due: LOGIC.addDaysISO(T, 3) };
+  check('chưa đến hạn: Q050 không trong danh', LOGIC.leitnerDueQids(['Q050'], sNoDue, T).length === 0);
+  var s4 = { Q050: { box: 1, due: LOGIC.addDaysISO(T, 3) }, Q051: { box: 2, due: T }, Q052: { box: 2, due: T } };
+  check('leitnerPick rnd=0 -> Q051', LOGIC.leitnerPick(['Q050','Q051','Q052'], s4, T, function () { return 0; }) === 'Q051');
+  check('leitnerPick rnd=0.9 -> Q052', LOGIC.leitnerPick(['Q050','Q051','Q052'], s4, T, function () { return 0.9; }) === 'Q052');
+  check('leitnerPick không có câu đến hạn -> null', LOGIC.leitnerPick(['Q050'], {Q050:{box:1,due:LOGIC.addDaysISO(T,30)}}, T) === null);
+
+  // hằng số + dateISO
+  check('LEITNER_INTERVALS tăng dần, 5 hộp', LOGIC.LEITNER_INTERVALS.length === 5 && LOGIC.LEITNER_INTERVALS.every(function (v, i, a) { return i === 0 || v > a[i - 1]; }));
+  var iso = LOGIC.dateISO(new Date());
+  check('dateISO format YYYY-MM-DD', /^\d{4}-\d{2}-\d{2}$/.test(iso));
+
+  // leitnerLoad: payload hỏng bị bỏ, không ném
+  check('leitnerLoad: không JSON -> {}', JSON.stringify(LOGIC.leitnerLoad('x')) === '{}');
+  check('leitnerLoad: box 7 bị bỏ', JSON.stringify(LOGIC.leitnerLoad('{"Q99":{"box":7,"due":"2025-01-01"}}')) === '{}');
+  check('leitnerLoad: due sai format bị bỏ', JSON.stringify(LOGIC.leitnerLoad('{"Q99":{"box":2,"due":"2025/01/01"}}')) === '{}');
+  check('leitnerLoad: array input -> {}', JSON.stringify(LOGIC.leitnerLoad('[]')) === '{}');
+  check('leitnerLoad: null input -> {}', JSON.stringify(LOGIC.leitnerLoad(null)) === '{}');
+  var okLoad = LOGIC.leitnerLoad('{"Q88":{"box":3,"due":"2025-10-10"}}');
+  check('leitnerLoad: hợp lệ', okLoad.Q88 && okLoad.Q88.box === 3 && okLoad.Q88.due === '2025-10-10');
+
+  // leitnerDump: chỉ ghi entry hợp lệ
+  var mixed = { Q001: { box: 2, due: T }, Q002: { box: 7, due: T }, Q003: { box: 3, due: 'bad' }, Q004: { box: 2 } };
+  var d = JSON.parse(LOGIC.leitnerDump(mixed));
+  check('leitnerDump giữ entry hợp lệ', d.Q001 !== undefined);
+  check('leitnerDump bỏ box 7', d.Q002 === undefined);
+  check('leitnerDump bỏ due sai', d.Q003 === undefined);
+  check('leitnerDump bỏ thiếu due', d.Q004 === undefined);
 }
 
 // ---- data-level invariants the UI relies on ----------------------------
@@ -205,8 +290,10 @@ try {
   check('every question has oral+deep', Q.every((q) => q && q.oral && q.deep));
   check('every predict/debug has expected',
     Q.filter((q) => q && (q.type === 'predict' || q.type === 'debug')).every((q) => str(q.expected).length > 20));
-  check('no <script> in deep',
-    !Q.some((q) => q && (/<script/i.test(str(q.deep)) || /<script/i.test(str(q.code)))));
+  // code is rendered through esc() inside <pre><code>, so SFC samples like <script setup> are inert text;
+  // only deep is rendered as (sanitized) HTML.
+  check('no <script>/<img>/inline handler in deep',
+    !Q.some((q) => q && /<script|<img|onerror\s*=|onload\s*=/i.test(str(q.deep))));
   check('svg have viewBox + no script',
     FS.every((f) => f && /viewBox=/.test(str(f.svg)) && !/<script/i.test(str(f.svg))));
   check('>=15 P0 3-tier chains', chains3 >= 15, `got ${chains3}`);

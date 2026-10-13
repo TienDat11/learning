@@ -26,3 +26,14 @@ assets/images/*.png
 # digest tags, deploy files and API keys. The public repo carries the redacted
 # page (cloud-cost-lessons-gcp-aws.html); this raw file stays local.
 cloud-cost-lessons-gcp-aws.md
+
+# headless-browser profiles created by render/verify runs — pure cache, never publish
+edge-desk/
+edge-mob/
+edge-profile/
+**/edge-desk/
+**/edge-mob/
+**/edge-profile/
+
+# stray single-lesson dumps from content work
+artifact_*.txt

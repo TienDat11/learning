@@ -37,7 +37,8 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var Q_BY_ID = {};
     QS.forEach(function (q) { if (q && q.id) Q_BY_ID[q.id] = q; });
     var LESSON_BY_ID = {};
-    LESSONSARR.forEach(function (l) { if (l && l.id) LESSON_BY_ID[l.id] = l; });
+    var LESSON_POS = {};
+    LESSONSARR.forEach(function (l, i) { if (l && l.id) { LESSON_BY_ID[l.id] = l; LESSON_POS[l.id] = i; } });
     // The L01 backbone: every later bài hangs off exactly one of these nodes.
     var LESSON_NODES = [['client', 'Trình duyệt'], ['gateway', 'API Gateway'], ['compute', 'Lambda / code'], ['data', 'DB / S3'], ['queue', 'SQS / worker']];
     var shortLessonTitle = function (t) {
@@ -49,7 +50,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       return cut + '…';
     };
 
-    var VIEWS = ['learn', 'intro', 'questions', 'flashcard', 'quiz', 'mock', 'plan', 'case', 'sources'];
+    var VIEWS = ['today', 'learn', 'intro', 'questions', 'flashcard', 'quiz', 'mock', 'plan', 'case', 'sources'];
     var PR = { P0: 0, P1: 1, P2: 2 };
     var STATUSES = [
       { v: 'new', t: 'Chưa học' },
@@ -58,13 +59,18 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       { v: 'weak', t: 'Yếu' },
     ];
 
+    var statusLabel = function (v) {
+      for (var i = 0; i < STATUSES.length; i++) { if (STATUSES[i].v === v) return STATUSES[i].t; }
+      return str(v);
+    };
+
     // HTML that is allowed through (deep, case body, svg) still gets script and
     // inline-handler tags cut out — data files are content, not trusted markup.
     var sanitize = function (html) {
       return str(html)
         .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<script[\s\S]*?>/gi, '')
-        .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+        .replace(/[\s\/]on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, ' ')
         .replace(/javascript:/gi, '');
     };
 
@@ -87,6 +93,66 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
 
     var PROGRESS_KEY = 'hcp-progress-v1';
     var THEME_KEY = 'hcp-theme-v1';
+    var LESSON_KEY = 'hcp-lessons-v1';
+    var lessonsDone = (function () {
+      var out = {};
+      try {
+        var raw = JSON.parse(store.get(LESSON_KEY) || '[]');
+        if (Array.isArray(raw)) raw.forEach(function (id) { if (typeof id === 'string') out[id] = true; });
+      } catch (e) { /* corrupt payload — start clean */ }
+      return out;
+    })();
+    var saveLessons = function () { store.set(LESSON_KEY, JSON.stringify(Object.keys(lessonsDone))); };
+
+    // ---- code blocks: wrap each <pre> once and add a copy button ----
+    var copyText = function (text, btn) {
+      var done = function (ok) {
+        btn.textContent = ok ? 'Đã chép' : 'Chưa chép được';
+        setTimeout(function () { btn.textContent = 'Chép'; }, 1600);
+      };
+      var fallback = function () {
+        var ta = doc.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        doc.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = doc.execCommand('copy'); } catch (e) { ok = false; }
+        doc.body.removeChild(ta);
+        done(ok);
+      };
+      if (window.navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+      } else {
+        fallback();
+      }
+    };
+    var decorate = function (root) {
+      if (!root || !root.querySelectorAll) return;
+      var pres = root.querySelectorAll('pre');
+      for (var i = 0; i < pres.length; i++) {
+        var pre = pres[i];
+        if (pre.parentNode.classList && pre.parentNode.classList.contains('pre-wrap')) continue;
+        var wrap = doc.createElement('div');
+        wrap.className = 'pre-wrap';
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+        var btn = doc.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-btn';
+        btn.textContent = 'Chép';
+        btn.setAttribute('aria-label', 'Chép đoạn code');
+        wrap.appendChild(btn);
+      }
+    };
+    on(doc, 'click', function (ev) {
+      var b = ev.target && ev.target.closest && ev.target.closest('.copy-btn');
+      if (!b) return;
+      var pre = b.parentNode && b.parentNode.querySelector('pre');
+      copyText(pre ? pre.textContent : '', b);
+    });
 
     var loadProgress = function () {
       var out = {};
@@ -109,6 +175,9 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var saveProgress = function () { store.set(PROGRESS_KEY, JSON.stringify(progress)); };
     var statusOf = function (id) { return progress[id] || 'new'; };
 
+    // Cue indices are bounded by the lesson's own askFirst list, never a fixed count.
+    var cueCap = function (id) { return arr((obj(LESSON_BY_ID[str(id)]) || {}).askFirst).length; };
+
     // ---- small HTML builders ----
     var chip = function (text, cls) {
       return '<span class="chip' + (cls ? ' ' + cls : '') + '">' + esc(str(text)) + '</span>';
@@ -116,6 +185,12 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var prioChip = function (p) {
       var c = p === 'P0' ? 'p0' : p === 'P1' ? 'p1' : p === 'P2' ? 'p2' : '';
       return chip(p || '—', c);
+    };
+
+    // Vietnamese labels for question types; an unmapped value is shown as-is.
+    var TYPE_LABELS = { concept: 'Khái niệm', predict: 'Dự đoán', debug: 'Gỡ lỗi', situation: 'Tình huống', code: 'Viết code' };
+    var typeLabel = function (t) {
+      return Object.prototype.hasOwnProperty.call(TYPE_LABELS, t) ? TYPE_LABELS[t] : str(t);
     };
     var lbl = function (t) { return '<div class="lbl">' + esc(t) + '</div>'; };
 
@@ -251,7 +326,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         spokenBox('Trả lời 90 giây', 'spoken-90', q.say90);
       return '<article class="card" data-id="' + esc(str(q.id)) + '">' +
         '<div class="qhead"><span class="qid">' + esc(str(q.id)) + '</span><span class="chips">' +
-        prioChip(q.prio) + chip(q.group) + chip(q.level) + chip(q.type, 't') + chip(q.topic) +
+        prioChip(q.prio) + chip(q.group) + chip(q.level) + chip(typeLabel(q.type), 't') + chip(q.topic) +
         '</span></div>' +
         '<p class="qtext">' + esc(str(q.q)) + '</p>' +
         lead +
@@ -280,7 +355,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       if (f.prio) p.push('ưu tiên ' + f.prio);
       if (f.level) p.push('độ sâu ' + f.level);
       if (f.group) p.push('nhóm ' + f.group);
-      if (f.status) p.push('trạng thái ' + f.status);
+      if (f.status) p.push('trạng thái ' + statusLabel(f.status));
       if (f.weakOnly) p.push('chỉ câu đánh dấu yếu');
       return p.length
         ? 'Đang lọc: ' + p.join(' · ') + '. Bấm “Xoá lọc” để bỏ hết.'
@@ -291,7 +366,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       var f = readFilters();
       var list = LOGIC.filterQuestions(QS, f);
       var listEl = $('q-list');
-      if (listEl) listEl.innerHTML = list.map(qCard).join('');
+      if (listEl) { listEl.innerHTML = list.map(qCard).join(''); decorate(listEl); }
       var empty = $('q-empty');
       if (empty) empty.hidden = list.length > 0;
       var count = $('q-count');
@@ -352,6 +427,15 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         if ($('fc-front') && fcIndex != null && DECK[fcIndex] && DECK[fcIndex].id === id) renderFlash(fcIndex);
       });
 
+      on($('toggle-all'), 'click', function () {
+        var list = $('q-list');
+        if (!list) return;
+        var open = this.getAttribute('aria-pressed') !== 'true';
+        var dets = list.querySelectorAll('details.ans');
+        for (var i = 0; i < dets.length; i++) dets[i].open = open;
+        this.setAttribute('aria-pressed', open ? 'true' : 'false');
+        this.textContent = open ? 'Thu gọn tất cả đáp án' : 'Mở tất cả đáp án';
+      });
       on($('search'), 'input', renderQuestions);
       ['f-prio', 'f-level', 'f-group', 'f-status', 'weak-only'].forEach(function (id) {
         on($(id), 'change', function () {
@@ -387,8 +471,11 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       on($('reset-btn'), 'click', function () {
         if (!window.confirm('Xoá toàn bộ tiến độ học đã lưu trên trình duyệt này?')) return;
         store.del(PROGRESS_KEY);
+        store.del(LESSON_KEY);
         progress = {};
+        lessonsDone = {};
         renderProgress();
+        renderLearn();
         renderQuestions();
         renderFlash(fcIndex || 0);
       });
@@ -413,10 +500,10 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       }
       if (meta) {
         meta.innerHTML = chip(q.id, 't') + prioChip(q.prio) + chip(q.group) + chip(q.level) +
-          chip(q.topic) + chip(statusOf(q.id));
+          chip(q.topic) + chip(statusLabel(statusOf(q.id)));
       }
       if (front) front.textContent = str(q.q);
-      if (back) back.innerHTML = oralBlock(q) + deepBlock(q) + expectedBlock(q);
+      if (back) { back.innerHTML = oralBlock(q) + deepBlock(q) + expectedBlock(q); decorate(back); }
       if (count) count.textContent = 'Câu ' + (idx + 1) + ' / ' + DECK.length;
       fcRevealed = false;
       if (back) back.hidden = true;
@@ -739,6 +826,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         return '<div class="case-sec"><h3>' + esc(str(s.h || s.id)) + '</h3>' +
           '<div class="deep">' + sanitize(s.body) + '</div>' + flowFigure(s.flow) + '</div>';
       }).join('');
+      decorate(body);
     };
 
     // ---- sources ----
@@ -788,7 +876,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         '<h3 class="sub">Cách dùng</h3>' +
         '<ul class="tight">' +
         '<li><strong>Một lượt ôn = một vòng.</strong> Lọc theo nhóm, trả lời miệng trước khi mở đáp án, xong mới đọc phần giải thích sâu.</li>' +
-        '<li>Mỗi câu có bốn phần: trả lời miệng 30–60 giây, giải thích sâu, ví dụ code (kèm kết quả đúng và nguyên nhân) và chuỗi hỏi đào sâu 3 tầng.</li>' +
+        '<li>Mỗi câu có bốn phần: trả lời miệng 30–60 giây, giải thích sâu, ví dụ code khi có (kèm kết quả đúng và nguyên nhân) và chuỗi hỏi đào sâu.</li>' +
         '<li>Đánh dấu <em>Đã nắm</em> hoặc <em>Cần ôn lại</em> ngay dưới mỗi câu. Tiến độ lưu trong trình duyệt; bật “Chỉ hiện câu đánh dấu yếu” để ôn đúng chỗ đứng.</li>' +
         '<li>Flashcard luyện nhịp trả lời nhanh, Quiz kiểm tra hiểu bằng trắc nghiệm, Mock interview luyện to nhỏ có đồng hồ đếm ngược.</li>' +
         '<li>Case study là một hệ thống duy nhất, đi hết happy path rồi đi hết từng failure mode.</li>' +
@@ -812,7 +900,165 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
           '<tbody>' + rows + '</tbody></table>');
     };
 
-    // ---- learning path (lessons) ----
+    // ---- "Hôm nay": Leitner boxes over the P0 deck ----
+    // Two new keys, kept apart from hcp-progress-v1 / hcp-lessons-v1:
+    // hcp-leitner-v1 = { [qid]: { box, due } }, hcp-recall-v1 = { [lessonId]: [cueIndex] }.
+    var LEITNER_KEY = 'hcp-leitner-v1';
+    var RECALL_KEY = 'hcp-recall-v1';
+    var P0_IDS = (function () {
+      var out = [];
+      for (var i = 0; i < QS.length; i++) {
+        var q = obj(QS[i]);
+        if (q && q.id && q.prio === 'P0') out.push(str(q.id));
+      }
+      return out;
+    })();
+    var leitner = LOGIC.leitnerLoad(store.get(LEITNER_KEY));
+    var saveLeitner = function () { store.set(LEITNER_KEY, LOGIC.leitnerDump(leitner)); };
+    var recall = (function () {
+      var out = {};
+      try {
+        var parsed = obj(JSON.parse(store.get(RECALL_KEY) || '{}'));
+        if (parsed) {
+          for (var k in parsed) {
+            if (Array.isArray(parsed[k])) out[k] = parsed[k].map(Number).filter(function (v) { return v >= 0 && v < cueCap(k); });
+          }
+        }
+      } catch (e) { /* corrupt payload — start clean */ }
+      return out;
+    })();
+    var saveRecall = function () { store.set(RECALL_KEY, JSON.stringify(recall)); };
+    var todayISO = function () { return LOGIC.dateISO(new Date()); };
+    var todayQid = null;
+    var todayOpen = false;
+
+    var answerOf = function (q) {
+      // Never author an answer: take whatever the question already carries.
+      if (str(q.expected).trim()) return { label: 'Kết quả đúng và nguyên nhân', text: str(q.expected), html: false };
+      if (str(q.oral).trim()) return { label: 'Trả lời miệng', text: str(q.oral), html: false };
+      return null;
+    };
+
+    var renderTodayBoxes = function (counts, activeBox) {
+      var html = '';
+      for (var i = 0; i < 5; i++) {
+        var n = i + 1;
+        html += '<div class="today-box' + (n === activeBox ? ' is-now' : '') + '">' +
+          '<p class="today-box-label">Hộp ' + n + '</p>' +
+          '<p class="today-box-n">' + counts[i] + '</p>' +
+          '<p class="today-box-int">ôn mỗi ' + LOGIC.LEITNER_INTERVALS[i] + ' ngày</p>' +
+          '</div>';
+      }
+      return html;
+    };
+
+    var renderToday = function () {
+      var deck = $('today-deck');
+      if (deck) deck.textContent = 'Bộ P0 · ' + P0_IDS.length + ' câu';
+      var today = todayISO();
+      var counts = LOGIC.leitnerCounts(P0_IDS, leitner);
+      var due = LOGIC.leitnerDueQids(P0_IDS, leitner, today);
+      // One card is always on the table when something is due: the design's bottom
+      // card is the resting state, not a button-press result.
+      if (!todayQid && due.length) {
+        todayQid = LOGIC.leitnerPick(P0_IDS, leitner, today);
+        todayOpen = false;
+      }
+      var activeBox = 0;
+      if (todayQid && Q_BY_ID[todayQid]) activeBox = LOGIC.leitnerBox(leitner, todayQid);
+      else if (due.length) activeBox = LOGIC.leitnerBox(leitner, due[0]);
+      var boxes = $('today-boxes');
+      if (boxes) boxes.innerHTML = renderTodayBoxes(counts, activeBox);
+
+      var q = todayQid ? obj(Q_BY_ID[todayQid]) : null;
+      var card = $('today-card');
+      var eyebrow = $('today-card-eyebrow');
+      var question = $('today-card-q');
+      var ans = $('today-card-ans');
+      var openBtn = $('today-open');
+      var grade = $('today-grade');
+
+      if (!q) {
+        if (card) card.classList.add('is-empty');
+        if (eyebrow) eyebrow.textContent = 'Còn ' + counts[0] + ' câu ở hộp 1';
+        if (question) question.textContent = due.length
+          ? 'Bấm Enter hoặc nút bên dưới để rút một thẻ đến hạn.'
+          : 'Hôm nay không có thẻ đến hạn.';
+        if (ans) { ans.hidden = true; ans.innerHTML = ''; }
+        if (openBtn) { openBtn.hidden = false; openBtn.disabled = !due.length; openBtn.textContent = 'Rút thẻ'; openBtn.setAttribute('aria-expanded', 'false'); }
+        if (grade) grade.hidden = true;
+      } else {
+        if (card) card.classList.remove('is-empty');
+        var box = LOGIC.leitnerBox(leitner, str(q.id));
+        if (eyebrow) eyebrow.textContent = 'Rút từ hộp ' + box + ' · ' + str(q.id) + ' · ' + str(q.prio);
+        if (question) question.textContent = str(q.q);
+        var answer = answerOf(q);
+        if (ans) {
+          ans.hidden = !todayOpen;
+          if (todayOpen && answer) {
+            ans.innerHTML = '<div class="lbl">' + esc(answer.label) + '</div><p>' + esc(answer.text) + '</p>';
+          } else if (todayOpen) {
+            ans.innerHTML = '<div class="lbl">Đáp án</div><p>Câu này chưa có đáp án mẫu.</p>';
+          } else {
+            ans.innerHTML = '';
+          }
+        }
+        if (openBtn) {
+          openBtn.hidden = false;
+          openBtn.disabled = false;
+          openBtn.textContent = todayOpen ? 'Thu đáp án' : 'Mở đáp án';
+          openBtn.setAttribute('aria-expanded', todayOpen ? 'true' : 'false');
+        }
+        if (grade) grade.hidden = !todayOpen;
+
+      }
+
+      var ready = $('today-ready');
+      if (ready) {
+        ready.textContent = 'Ngưỡng “Sẵn sàng” (đề xuất, chưa chốt): ' + counts[4] + ' / ' + P0_IDS.length +
+          ' câu P0 đã ở hộp 5. Số này là tỉ lệ câu đã lên hộp cao nhất, không phải điều kiện bắt buộc để đi phỏng vấn.';
+      }
+      var note = $('today-note');
+      if (note) {
+        note.textContent = 'Khoảng ôn 1 · 2 · 4 · 8 · 16 ngày là đề xuất, chưa có nguồn kiểm chứng và không phải lịch chuẩn của phương pháp Leitner.';
+      }
+    };
+
+    var drawToday = function () {
+      todayQid = LOGIC.leitnerPick(P0_IDS, leitner, todayISO());
+      todayOpen = false;
+      renderToday();
+    };
+
+    var gradeToday = function (ok) {
+      if (!todayQid) return;
+      leitner = LOGIC.leitnerGrade(leitner, todayQid, ok, todayISO());
+      saveLeitner();
+      drawToday();
+    };
+
+    var wireToday = function () {
+      on($('today-open'), 'click', function () {
+        if (!todayQid) { drawToday(); return; }
+        todayOpen = !todayOpen;
+        renderToday();
+      });
+      on($('today-ok'), 'click', function () { gradeToday(true); });
+      on($('today-no'), 'click', function () { gradeToday(false); });
+      on($('today-reset'), 'click', function () {
+        if (!window.confirm('Đặt lại tiến độ Leitner? Toàn bộ trạng thái hộp và bộ đếm gợi nhớ sẽ bị xoá.')) return;
+        store.del(LEITNER_KEY);
+        store.del(RECALL_KEY);
+        leitner = {};
+        recall = {};
+        todayQid = null;
+        todayOpen = false;
+        renderToday();
+        renderLearn();
+      });
+    };
+
+    // ---- lessons: one Cornell sheet per lesson ----
     // BFS over buildsOn parent edges from every lesson back to the L01 anchor.
     // Computed ONCE per renderLearn pass (id -> ordered path of ids), never per card.
     var buildChainMap = function () {
@@ -841,33 +1087,72 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       return map;
     };
 
-    var lessonCard = function (l, idx, chainMap) {
-      l = obj(l) || {};
-      chainMap = obj(chainMap) || {};
-      if (typeof idx !== 'number' || idx < 0) {
-        idx = 0;
-        for (var k = 0; k < LESSONSARR.length; k++) {
-          var cand = obj(LESSONSARR[k]);
-          if (cand && cand.id === l.id) { idx = k; break; }
-        }
-      }
-      var total = LESSONSARR.length || 22;
+    var recallCount = function (id) {
+      var list = arr(recall[str(id)]);
+      var n = 0;
+      for (var k = 0; k < list.length; k++) { if (list[k] >= 0 && list[k] < cueCap(id)) n++; }
+      return n;
+    };
+    var recallDone = function (id, i) {
+      var list = arr(recall[str(id)]);
+      for (var k = 0; k < list.length; k++) { if (list[k] === i) return true; }
+      return false;
+    };
+    var toggleRecall = function (id, i) {
+      var key = str(id);
+      var list = arr(recall[key]).slice();
+      var at = list.indexOf(i);
+      if (at >= 0) list.splice(at, 1); else list.push(i);
+      list.sort(function (a, b) { return a - b; });
+      recall[key] = list;
+      saveRecall();
+    };
+
+    var cueColumn = function (l, id) {
+      var cues = arr(l.askFirst);
+      var html = cues.map(function (t, i) {
+        var n = (i + 1 < 10 ? '0' : '') + (i + 1);
+        var done = recallDone(id, i);
+        return '<div class="cue"><div class="cue-head"><span class="cue-no">' + n + '</span>' +
+          '<p class="cue-text">' + esc(str(t)) + '</p></div>' +
+          '<button type="button" class="cue-btn" data-recall="' + esc(id) + '" data-recall-i="' + i + '" aria-pressed="' +
+          (done ? 'true' : 'false') + '" aria-label="Gợi nhớ ' + n + ': ' + (done ? 'đã trả lời' : 'chưa trả lời') + '">' +
+          (done ? 'Đã trả lời' : 'Trả lời miệng') + '</button></div>';
+      }).join('');
+      return '<div class="cornell-cue"><p class="cue-label">Gợi nhớ</p>' + html + '</div>';
+    };
+
+    var notesColumn = function (l, id, chainMap) {
+      var cueTotal = arr(l.askFirst).length;
+      var p = obj(l.predict) || {};
+      var predictHtml = str(p.q).trim()
+        ? '<div class="predict-card"><p class="predict-label">Dự đoán trước khi đọc</p>' +
+          '<p class="predict-q">' + sanitize(str(p.q)) + '</p>' +
+          when(str(p.a).trim(),
+            '<button type="button" class="btn" data-predict="' + esc(id) + '" aria-pressed="false" aria-expanded="false">Hiện đáp án</button>' +
+            '<div class="predict-a" id="predict-a-' + esc(id) + '" hidden><p>' + sanitize(str(p.a)) + '</p></div>') +
+          '</div>'
+        : '';
+      var covered = '<div class="covered" id="covered-' + esc(id) + '">' +
+        '<p class="covered-title">Ghi chú đang được che</p>' +
+        '<p class="covered-hint">Trả lời các câu gợi nhớ bên trái trước. Nhớ rồi mới đọc</p>' +
+        '<button type="button" class="btn btn-primary" data-notes="' + esc(id) + '" aria-pressed="false">Mở ghi chú</button></div>';
+
       var say = arr(l.sayIt).map(function (s) { return '<li>' + esc(str(s)) + '</li>'; }).join('');
-      var qbtns = arr(l.qids).map(function (id) {
-        var q = obj(Q_BY_ID[str(id)]);
-        return '<button type="button" class="btn" data-qid="' + esc(str(id)) + '">' + esc(str(id)) +
+      var qbtns = arr(l.qids).map(function (qid) {
+        var q = obj(Q_BY_ID[str(qid)]);
+        return '<button type="button" class="btn" data-qid="' + esc(str(qid)) + '">' + esc(str(qid)) +
           (q ? ' · ' + esc(str(q.topic)) : '') + '</button>';
       }).join(' ');
       var refs = arr(l.refs).map(str).join(' · ');
-      var bridgeHead = idx === 0 ? 'Bắt đầu từ đây' : 'Nối tiếp bài trước';
-      var builds = arr(l.buildsOn).map(function (id) {
-        var t = obj(LESSON_BY_ID[str(id)]);
+      var builds = arr(l.buildsOn).map(function (bid) {
+        var t = obj(LESSON_BY_ID[str(bid)]);
         var label = t ? shortLessonTitle(t.title) : '';
-        return '<button type="button" class="lesson-link" data-lesson="' + esc(str(id)) + '">' + esc(str(id)) +
+        return '<button type="button" class="lesson-link" data-lesson="' + esc(str(bid)) + '">' + esc(str(bid)) +
           (label ? ' · ' + esc(label) : '') + '</button>';
       }).join(' ');
-      var prev = LESSONSARR[idx - 1] ? obj(LESSONSARR[idx - 1]) : null;
-      var next = LESSONSARR[idx + 1] ? obj(LESSONSARR[idx + 1]) : null;
+      var prev = LESSONSARR[LESSON_POS[str(id)] - 1] ? obj(LESSONSARR[LESSON_POS[str(id)] - 1]) : null;
+      var next = LESSONSARR[LESSON_POS[str(id)] + 1] ? obj(LESSONSARR[LESSON_POS[str(id)] + 1]) : null;
       var navBtns = (prev && prev.id
         ? '<button type="button" class="btn lesson-link" data-lesson="' + esc(str(prev.id)) + '">← Bài trước: ' + esc(str(prev.id)) + '</button>'
         : '') +
@@ -876,13 +1161,13 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         : '');
       var node = str(l.spineNode);
       var isAll = node === 'all';
-      var pathItems = LESSON_NODES.map(function (n) {
-        var on = isAll || node === n[0];
+      var pathItems = LESSON_NODES.map(function (nd) {
+        var on = isAll || node === nd[0];
         return '<li class="spine-node' + (on ? ' is-on' : '') + '"' + (on ? ' aria-current="true"' : '') + '>' +
-          esc(n[1]) + (on ? '<span class="sr-only"> (bài này)</span>' : '') + '</li>';
+          esc(nd[1]) + (on ? '<span class="sr-only"> (bài này)</span>' : '') + '</li>';
       }).join('');
-      var chain = chainMap[str(l.id)];
-      var chainHtml = (str(l.id) !== 'L01' && arr(chain).length)
+      var chain = chainMap[str(id)];
+      var chainHtml = (str(id) !== 'L01' && arr(chain).length)
         ? '<div class="spine-chain"><span class="lb-h">Đường về L01</span>' +
           arr(chain).map(function (cid) {
             return '<button type="button" class="lesson-link" data-lesson="' + esc(str(cid)) + '">' + esc(str(cid)) + '</button>';
@@ -892,36 +1177,27 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         '<ol class="spine-path">' + pathItems + '</ol>' +
         when(l.spine, '<p class="spine-say">' + esc(str(l.spine)) + '</p>') +
         chainHtml + '</div>';
-      // Causal teaching chain. Every field is optional: a lesson that has none of
-      // them renders exactly like before, and a lesson that has them reads as an
-      // incident solved step by step instead of a definition dump.
-      var chain = '';
-      chain += when(l.incident, blockBox('pb pb-incident', 'Sự cố', l.incident));
-      chain += asksBox(l.askFirst);
-      chain += predictBox(l.predict);
-      chain += when(l.naive, blockBox('pb pb-naive', 'Cách làm ngây thơ và vì sao nó có vẻ hợp lý',
+
+      // The rail keeps the causal teaching chain. askFirst lives in the cue column and
+      // predict in its own card, so neither is repeated here.
+      var rail = '';
+      rail += when(l.incident, blockBox('pb pb-incident', 'Sự cố', l.incident));
+      rail += when(l.naive, blockBox('pb pb-naive', 'Cách làm ngây thơ và vì sao nó có vẻ hợp lý',
         l.naive, l.naiveCode, l.naiveOut));
-      chain += timelineBox(l.timeline);
-      chain += when(l.rootCause, blockBox('pb pb-root', 'Nguyên nhân gốc', l.rootCause));
-      chain += when(l.concept, blockBox('pb pb-concept', 'Bây giờ mới gọi tên khái niệm', l.concept));
-      chain += when(l.mechanism, blockBox('pb pb-mech', 'Cơ chế bên trong', l.mechanism));
-      chain += when(l.failureModes, blockBox('pb pb-fail', 'Những kiểu hỏng mới mà cách sửa này tạo ra', l.failureModes));
-      chain += when(l.tradeoff, blockBox('pb pb-tradeoff', 'Đánh đổi', l.tradeoff));
-      chain += when(l.alternatives, blockBox('pb pb-alt', 'Lựa chọn thay thế', l.alternatives));
-      chain += when(l.observe, blockBox('pb pb-observe', 'Quan sát và gỡ lỗi trên production', l.observe));
-      chain += attacksBox(l.attacks);
-      chain += anchorBox(l.anchor);
-      chain = '<div class="lesson-rail">' + chain + '</div>';
-      return '<article class="lesson" id="lesson-' + esc(str(l.id)) + '" data-lesson="' + esc(str(l.id)) + '">' +
-        '<div class="lesson-head"><span class="lesson-idx">Bài ' + (idx + 1) + '/' + total + '</span>' +
-        '<span class="lesson-id">' + esc(str(l.id)) + '</span></div>' +
-        when(l.bridge, '<p class="lesson-bridge"><span class="lb-h">' + bridgeHead + '</span>' + esc(str(l.bridge)) + '</p>') +
-        spineHtml +
-        '<h4 class="lesson-h">' + esc(str(l.title)) + '</h4>' +
-        '<p class="lesson-goal">' + esc(str(l.goal)) + '</p>' +
-        lessonFig(str(l.id)) +
-        chain +
-        '<div class="deep">' + sanitize(l.body) + '</div>' +
+      rail += timelineBox(l.timeline);
+      rail += when(l.rootCause, blockBox('pb pb-root', 'Nguyên nhân gốc', l.rootCause));
+      rail += when(l.concept, blockBox('pb pb-concept', 'Bây giờ mới gọi tên khái niệm', l.concept));
+      rail += when(l.mechanism, blockBox('pb pb-mech', 'Cơ chế bên trong', l.mechanism));
+      rail += when(l.failureModes, blockBox('pb pb-fail', 'Những kiểu hỏng mới mà cách sửa này tạo ra', l.failureModes));
+      rail += when(l.tradeoff, blockBox('pb pb-tradeoff', 'Đánh đổi', l.tradeoff));
+      rail += when(l.alternatives, blockBox('pb pb-alt', 'Lựa chọn thay thế', l.alternatives));
+      rail += when(l.observe, blockBox('pb pb-observe', 'Quan sát và gỡ lỗi trên production', l.observe));
+      rail += attacksBox(l.attacks);
+      rail = '<div class="lesson-rail">' + rail + '</div>';
+
+      var body = '<div class="notes-body" id="notes-' + esc(id) + '" hidden>' +
+        spineHtml + lessonFig(str(id)) + rail +
+        when(l.body, '<div class="deep">' + sanitize(l.body) + '</div>') +
         when(l.code, '<pre><code>' + esc(str(l.code)) + '</code></pre>') +
         when(l.codeNote, '<p class="small">' + sanitize(str(l.codeNote)) + '</p>') +
         flowFigure(l.flow) +
@@ -932,6 +1208,33 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         when(qbtns, '<p class="lesson-qids">Luyện ngay: ' + qbtns + '</p>') +
         when(refs, '<span class="status-note">Nguồn: ' + esc(refs) + '</span>') +
         when(navBtns, '<div class="lesson-nav">' + navBtns + '</div>') +
+        '</div>';
+
+      return '<div class="cornell-notes">' +
+        '<div class="notes-head"><p class="notes-label">Ghi chú</p>' +
+        '<button type="button" class="btn notes-toggle" data-notes="' + esc(id) + '" aria-pressed="false" hidden>Che ghi chú</button>' +
+        '<p class="recall-state" id="recall-' + esc(id) + '" aria-live="polite">' + recallCount(id) + ' / ' + cueTotal + ' gợi nhớ đã trả lời</p></div>' +
+        predictHtml + covered + body + '</div>';
+    };
+
+    var lessonCard = function (l, chainMap) {
+      l = obj(l) || {};
+      var id = str(l.id);
+      var idx = LESSON_POS[id] == null ? 0 : LESSON_POS[id];
+      var total = LESSONSARR.length;
+      var stageName = str(l.stageTitle);
+      return '<article class="lesson" id="lesson-' + esc(id) + '" data-lesson="' + esc(id) + '">' +
+        '<div class="lesson-head"><div class="lesson-head-main">' +
+        '<p class="lesson-crumb">Vở ôn · ' + esc(stageName) + ' · Bài ' + (idx + 1) + '/' + total + '</p>' +
+        '<h3 class="lesson-h">' + esc(id) + ' · ' + esc(str(l.title)) + '</h3>' +
+        '<p class="lesson-goal">' + esc(str(l.goal)) + '</p>' +
+        '</div>' +
+        '<button type="button" class="btn lesson-done" data-lesson-done="' + esc(id) + '" aria-pressed="' +
+        (lessonsDone[id] ? 'true' : 'false') + '">' + (lessonsDone[id] ? '✓ Đã học' : 'Đánh dấu đã học') + '</button></div>' +
+        when(l.bridge, '<p class="lesson-bridge"><span class="lb-h">Nối tiếp bài trước</span>' + esc(str(l.bridge)) + '</p>') +
+        '<div class="cornell">' + cueColumn(l, id) + notesColumn(l, id, chainMap) + '</div>' +
+        when(l.anchor, '<div class="lesson-anchor"><p class="anchor-label">Tóm tắt · Câu neo</p>' +
+          '<p class="anchor">' + esc(str(l.anchor)) + '</p></div>') +
         '</article>';
     };
 
@@ -942,11 +1245,6 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         body.innerHTML = '<p class="stat-line">Chưa có bài học.</p>';
         return;
       }
-      var pos = {};
-      LESSONSARR.forEach(function (raw, i) {
-        var ll = obj(raw);
-        if (ll && ll.id) pos[str(ll.id)] = i;
-      });
       var byStage = {};
       LESSONSARR.forEach(function (raw) {
         var l = obj(raw) || {};
@@ -956,68 +1254,50 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       });
       var order = Object.keys(byStage).map(Number).sort(function (a, b) { return a - b; });
       var chains = buildChainMap();
-      // Most frequent spineNode among a stage's lessons; ties -> first in LESSON_NODES order; 'all' ignored.
-      var dominantNode = function (items) {
-        var counts = {};
-        items.forEach(function (l) {
-          var n = str(l.spineNode);
-          if (!n || n === 'all') return;
-          counts[n] = (counts[n] || 0) + 1;
-        });
-        var best = '';
-        var bestN = 0;
-        LESSON_NODES.forEach(function (nd) {
-          var c = counts[nd[0]] || 0;
-          if (c > bestN) { bestN = c; best = nd[1]; }
-        });
-        return best;
-      };
-      // Whole-path attention map: one row per backbone node, origin first. Single pass
-      // over LESSONSARR into per-node id lists; buttons reuse the delegated handler.
-      var byNode = {};
-      LESSON_NODES.forEach(function (nd) { byNode[nd[0]] = []; });
-      var originIds = [];
-      LESSONSARR.forEach(function (raw) {
-        var l = obj(raw) || {};
-        var id = str(l.id);
-        if (!id) return;
-        var n = str(l.spineNode);
-        if (n === 'all') { originIds.push(id); return; }
-        if (byNode[n]) byNode[n].push(id);
-      });
-      var mapBtn = function (id) {
-        return '<button type="button" class="lesson-link" data-lesson="' + esc(id) + '">' + esc(id) + '</button>';
-      };
-      var spineMap = '<div class="spine-map"><div class="lb-h">Bản đồ sợi chỉ L01</div>' +
-        '<p class="spine-map-note">Bài 1 dựng cả đường đi một request; ' + (LESSONSARR.length - 1) + ' bài sau mỗi bài bám vào một khớp của đường đó, và mọi bài đều có đường quay về L01. Bấm một mã để nhảy tới bài.</p>' +
-        '<ol class="spine-map-list">' +
-        '<li class="sm-row sm-origin"><span class="sm-node">L01 · cả đường đi</span><span class="sm-links">' +
-        originIds.map(mapBtn).join('') + '</span><span class="sm-count">' + originIds.length + ' bài</span></li>' +
-        LESSON_NODES.map(function (nd) {
-          var ids = arr(byNode[nd[0]]);
-          return '<li class="sm-row"><span class="sm-node">' + esc(nd[1]) + '</span><span class="sm-links">' +
-            ids.map(mapBtn).join('') +
-            when(!ids.length, '<span class="sm-none">chưa có bài</span>') +
-            '</span><span class="sm-count">' + ids.length + ' bài</span></li>';
-        }).join('') + '</ol></div>';
-      var thread = '<div class="lesson-thread"><div class="lb-h">Đường dây ' + LESSONSARR.length + ' bài</div>' +
-        order.map(function (n) {
-          var st = byStage[n];
-          var dom = dominantNode(st.items);
-          return '<div class="thread-stage"><span class="thread-stage-t">Chặng ' + esc(str(st.n)) + '</span>' +
-            st.items.map(function (l) {
-              return '<button type="button" class="lesson-link" data-lesson="' + esc(str(l.id)) + '">' + esc(str(l.id)) + '</button>';
-            }).join('') +
-            when(dom, '<span class="thread-stage-n">' + esc(dom) + '</span>') + '</div>';
-        }).join('') + '</div>';
-      body.innerHTML = spineMap + thread + order.map(function (n) {
+      body.innerHTML = order.map(function (n) {
         var st = byStage[n];
-        // lesson data may already open the title with "Chặng N — "; number shows once
-        var title = st.title.replace(/^\s*Chặng\s*\d+\s*[—–:.\-]?\s*/i, '');
-        return '<h3 class="sub learn-stage">Chặng ' + esc(st.n + '. ' + title) + '</h3>' +
+        // The stage label is the string the data carries — never shortened.
+        return '<h3 class="sub learn-stage">' + esc(st.title) + '</h3>' +
           when(st.intro, '<div class="deep">' + sanitize(st.intro) + '</div>') +
-          st.items.map(function (l) { return lessonCard(l, pos[str(l.id)], chains); }).join('');
+          st.items.map(function (l) { return lessonCard(l, chains); }).join('');
       }).join('');
+      decorate(body);
+      renderLessonBar(currentLessonId());
+    };
+
+    // ---- lesson position bar: 23 segments, done = green, current = indigo ----
+    var posBar = null, posId = null, posT = null, posN = null, posBarEl = null;
+    var currentLessonId = function () {
+      for (var k = 0; k < LESSONSARR.length; k++) {
+        var l = obj(LESSONSARR[k]);
+        if (l && l.id && !lessonsDone[str(l.id)]) return str(l.id);
+      }
+      var first = obj(LESSONSARR[0]);
+      return first ? str(first.id) : '';
+    };
+    var renderLessonBar = function (id) {
+      if (!posBar) posBar = $('lesson-pos');
+      if (!posId) posId = $('lp-id');
+      if (!posT) posT = $('lp-t');
+      if (!posN) posN = $('lp-n');
+      if (!posBarEl) posBarEl = $('lp-bar');
+      if (!posBar) return;
+      var idx = LESSON_POS[str(id)] == null ? -1 : LESSON_POS[str(id)];
+      if (idx < 0) return;
+      var l = obj(LESSONSARR[idx]) || {};
+      if (posId) posId.textContent = 'Vở ôn · ' + str(l.stageTitle);
+      if (posT) posT.textContent = shortLessonTitle(l.title);
+      if (posN) posN.textContent = (idx + 1) + ' / ' + LESSONSARR.length;
+      if (posBarEl) {
+        var segs = LESSONSARR.map(function (raw, i) {
+          var ll = obj(raw) || {};
+          var cls = i === idx ? ' is-now' : (lessonsDone[str(ll.id)] ? ' is-done' : '');
+          return '<i class="seg' + cls + '" aria-hidden="true"></i>';
+        }).join('');
+        posBarEl.innerHTML = segs;
+        posBarEl.setAttribute('aria-valuenow', String(Math.round((idx + 1) / LESSONSARR.length * 100)));
+      }
+      posBar.removeAttribute('hidden');
     };
 
     var jumpToQuestion = function (id) {
@@ -1046,48 +1326,82 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       card.scrollIntoView({ block: 'start' });
       card.classList.add('flash-hi');
       setTimeout(function () { card.classList.remove('flash-hi'); }, 1600);
+      renderLessonBar(id);
+    };
+
+    var toggleLessonDone = function (btn) {
+      var id = btn.getAttribute('data-lesson-done');
+      if (lessonsDone[id]) delete lessonsDone[id]; else lessonsDone[id] = true;
+      saveLessons();
+      btn.setAttribute('aria-pressed', lessonsDone[id] ? 'true' : 'false');
+      btn.textContent = lessonsDone[id] ? '✓ Đã học' : 'Đánh dấu đã học';
+      renderLessonBar(id);
+    };
+
+    var togglePredict = function (btn) {
+      var id = btn.getAttribute('data-predict');
+      var open = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.setAttribute('aria-pressed', open ? 'true' : 'false');
+      btn.textContent = open ? 'Ẩn đáp án' : 'Hiện đáp án';
+      var panel = $('predict-a-' + id);
+      if (panel) panel.hidden = !open;
+    };
+
+    var toggleNotes = function (btn) {
+      var id = btn.getAttribute('data-notes');
+      var open = btn.getAttribute('aria-pressed') !== 'true';
+      var panel = $('notes-' + id);
+      if (panel) panel.hidden = !open;
+      var covered = $('covered-' + id);
+      if (covered) covered.hidden = open;
+      var btns = doc.querySelectorAll('[data-notes="' + id + '"]');
+      for (var i = 0; i < btns.length; i++) {
+        var b = btns[i];
+        var isHead = b.classList && b.classList.contains('notes-toggle');
+        b.setAttribute('aria-pressed', open ? 'true' : 'false');
+        if (isHead) {
+          b.hidden = !open;
+          b.textContent = 'Che ghi chú';
+        } else {
+          b.textContent = open ? 'Che ghi chú' : 'Mở ghi chú';
+        }
+      }
+      if (open && panel) decorate(panel);
     };
 
     var wireLearn = function () {
       on($('learn-body'), 'click', function (ev) {
         var t = ev.target;
         if (!t || !t.closest) return;
+        var dbtn = t.closest('[data-lesson-done]');
+        if (dbtn) { toggleLessonDone(dbtn); return; }
+        var rbtn = t.closest('[data-recall]');
+        if (rbtn) {
+          var rid = rbtn.getAttribute('data-recall');
+          var ri = Number(rbtn.getAttribute('data-recall-i'));
+          toggleRecall(rid, ri);
+          var done = recallDone(rid, ri);
+          rbtn.setAttribute('aria-pressed', done ? 'true' : 'false');
+          rbtn.textContent = done ? 'Đã trả lời' : 'Trả lời miệng';
+          rbtn.setAttribute('aria-label', 'Gợi nhớ ' + (ri + 1 < 10 ? '0' : '') + (ri + 1) + ': ' + (done ? 'đã trả lời' : 'chưa trả lời'));
+          var state = $('recall-' + rid);
+          var ll = obj(LESSON_BY_ID[rid]) || {};
+          if (state) state.textContent = recallCount(rid) + ' / ' + arr(ll.askFirst).length + ' gợi nhớ đã trả lời';
+          return;
+        }
+        var pbtn = t.closest('[data-predict]');
+        if (pbtn) { togglePredict(pbtn); return; }
+        var nbtn = t.closest('[data-notes]');
+        if (nbtn) { toggleNotes(nbtn); return; }
         var qbtn = t.closest('[data-qid]');
         if (qbtn) { jumpToQuestion(qbtn.getAttribute('data-qid')); return; }
         var lbtn = t.closest('button[data-lesson]');
         if (lbtn) jumpToLesson(lbtn.getAttribute('data-lesson'));
       });
     };
-    var posBar = null, posId = null, posT = null, posN = null, posBarEl = null;
-    var updateLessonPos = function (id) {
-      if (!posBar) posBar = $('lesson-pos');
-      if (!posId) posId = $('lp-id');
-      if (!posT) posT = $('lp-t');
-      if (!posN) posN = $('lp-n');
-      if (!posBarEl) posBarEl = $('lp-bar');
-      if (!posBar) return;
-      var idx = -1;
-      for (var k = 0; k < LESSONSARR.length; k++) {
-        var cand = obj(LESSONSARR[k]);
-        if (cand && cand.id === id) { idx = k; break; }
-      }
-      if (idx < 0) return;
-      var l = obj(LESSONSARR[idx]) || {};
-      if (posId) posId.textContent = id;
-      if (posT) posT.textContent = shortLessonTitle(l.title);
-      if (posN) posN.textContent = (idx + 1) + '/' + LESSONSARR.length;
-      if (posBarEl) {
-        var fill = posBarEl.querySelector('i');
-        if (fill) fill.style.width = ((idx + 1) / LESSONSARR.length * 100) + '%';
-        posBarEl.setAttribute('aria-valuenow', String(Math.round((idx + 1) / LESSONSARR.length * 100)));
-      }
-      posBar.removeAttribute('hidden');
-    };
+
     var lessonPosRefresh = null;
-    var hideLessonPos = function () {
-      if (!posBar) posBar = $('lesson-pos');
-      if (posBar) posBar.setAttribute('hidden', '');
-    };
     var wireLessonPos = function () {
       if (typeof IntersectionObserver === 'undefined') return;
       var body = $('learn-body');
@@ -1096,16 +1410,14 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       var pick = function () {
         // Observer callbacks fire only on threshold crossings, so entry.boundingClientRect
         // is stale by the time we choose. Read live geometry instead: the current lesson
-        // is the last one whose top has scrolled up to the sticky bar; before the first
-        // lesson nothing qualifies and the bar stays hidden.
+        // is the last one whose top has scrolled up to the sticky bar.
         var sec = $('view-learn');
         if (!sec || !sec.classList || !sec.classList.contains('active')) return;
         var best = null;
         for (var c = 0; c < cards.length; c++) {
           if (cards[c].getBoundingClientRect().top <= 56) best = cards[c];
         }
-        if (best && best.getAttribute) updateLessonPos(best.getAttribute('data-lesson'));
-        else hideLessonPos();
+        renderLessonBar(best && best.getAttribute ? best.getAttribute('data-lesson') : currentLessonId());
       };
       var ob = new IntersectionObserver(pick, { rootMargin: '-56px 0px -70% 0px' });
       for (var c = 0; c < cards.length; c++) ob.observe(cards[c]);
@@ -1119,7 +1431,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       var btn = $('theme-btn');
       if (btn) {
         btn.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
-        btn.textContent = t === 'dark' ? '☀️ Chế độ sáng' : '🌙 Chế độ tối';
+        btn.textContent = t === 'dark' ? 'Chế độ sáng' : 'Chế độ tối';
       }
     };
 
@@ -1158,14 +1470,15 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         if (v === 'learn') {
           lessonPosRefresh();
           if (typeof requestAnimationFrame === 'function') requestAnimationFrame(lessonPosRefresh);
-        } else {
-          hideLessonPos();
+        } else if (posBar) {
+          posBar.setAttribute('hidden', '');
         }
       }
     };
 
     var renderCounts = function () {
       var counts = {
+        today: P0_IDS.length,
         intro: QS.filter(function (q) { return q && q.prio === 'P0'; }).length,
         learn: LESSONSARR.length,
         questions: QS.length,
@@ -1183,7 +1496,48 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       }
     };
 
+    var wireKeys = function () {
+      on(doc, 'keydown', function (ev) {
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+        var t = ev.target || {};
+        var tag = t.tagName || '';
+        var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag) || !!t.isContentEditable;
+        if (!typing && ev.key === '/') {
+          var s = $('search');
+          if (s) { ev.preventDefault(); showView('questions'); s.focus(); }
+          return;
+        }
+        var tv = $('view-today');
+        if (tv && tv.classList && tv.classList.contains('active') && !typing) {
+          if (/^(BUTTON|A|INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+          if (ev.key === 'Enter') { ev.preventDefault(); drawToday(); return; }
+          if (ev.key === ' ' || ev.key === 'Spacebar') {
+            ev.preventDefault();
+            if (!todayQid) { drawToday(); return; }
+            todayOpen = !todayOpen;
+            renderToday();
+            return;
+          }
+          if (ev.key === '1') { if (todayOpen) gradeToday(true); return; }
+          if (ev.key === '2') { if (todayOpen) gradeToday(false); return; }
+          return;
+        }
+        var fv = $('view-flashcard');
+        if (typing || !fv || !fv.classList.contains('active')) return;
+        if (ev.key === ' ') {
+          if (/^(BUTTON|A)$/.test(tag)) return;
+          ev.preventDefault();
+          $('fc-reveal').click();
+        } else if (ev.key === 'ArrowRight') { $('fc-next').click(); }
+        else if (ev.key === 'ArrowLeft') { $('fc-prev').click(); }
+        else if (ev.key === '1') { $('fc-know').click(); }
+        else if (ev.key === '2') { $('fc-weak').click(); }
+      });
+    };
+
     var init = function () {
+      var sideEl = doc.querySelector('.side');
+      if (sideEl && window.matchMedia && window.matchMedia('(max-width: 900px)').matches) sideEl.classList.add('collapsed');
       navBtns = doc.querySelectorAll('#nav-list [data-view]');
       for (var i = 0; i < navBtns.length; i++) {
         (function (btn) {
@@ -1191,13 +1545,16 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         })(navBtns[i]);
       }
       wireChrome();
+      wireKeys();
       wireQuestions();
       wireProgress();
       wireFlash();
       wireQuiz();
       wireMock();
+      wireToday();
       wireLearn();
       renderCounts();
+      renderToday();
       renderLearn();
       wireLessonPos();
       renderIntro();
@@ -1208,7 +1565,8 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       renderProgress();
       renderFlash(0);
       renderQuiz();
-      showView(str(window.location && window.location.hash).replace(/^#/, '') || 'learn');
+      var hash = str(window.location && window.location.hash).replace(/^#/, '');
+      showView(VIEWS.indexOf(hash) >= 0 ? hash : 'today');
     };
 
     init();

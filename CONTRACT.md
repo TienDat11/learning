@@ -43,6 +43,8 @@ No `const QUESTIONS`. No IIFE. No `module.exports`.
 
 ## Question object — exact keys, no extras
 
+Optional keys (được phép, không bắt buộc, không phải "extras"): incident, askFirst, predict, anchor, attacks, tradeoff, alternatives, observe, say30, say90.
+
 ```js
 {
   id: 'A01',
@@ -62,6 +64,12 @@ No `const QUESTIONS`. No IIFE. No `module.exports`.
   refs: ['py-datamodel']
 }
 ```
+
+### Type `situation`
+
+- `type: 'situation'` dùng cho câu hỏi tình huống (ví dụ G19, G20, G27, G28).
+- `expected` có thể là `null`. G19, G20, G27 và G28 đều dùng `null`.
+- Các trường còn lại theo hình dạng của object concept ở trên, gồm `attacks` hoặc `followups` và `selfcheck`.
 
 ### Hard validation rules — build fails otherwise
 
@@ -136,22 +144,34 @@ Every question must cover, across `deep` and `followups`:
 ## Source keys — `refs` may only use these
 
 ```
-python:     py-datamodel, py-expressions, py-exceptions, py-asyncio, py-asyncio-task,
-            py-faq-gil, py-typing, py-venv, py-unittest
-javascript: mdn-execution-model, mdn-promise, mdn-closure, mdn-this, mdn-abortcontroller,
-            mdn-cors, mdn-cookies, mdn-http-headers, ts-handbook, ts-narrowing
-vue:        vue-reactivity, vue-computed, vue-watchers, vue-components, vue-lifecycle,
-            vue-composables, vue-router, vue-pinia, vue-sfc
-web:        mdn-http-overview, mdn-cache-control, mdn-csp, owasp-api-security, owasp-top10
-pyweb:      fastapi-tutorial, fastapi-dependencies, fastapi-background, fastapi-testing,
-            django-queries, django-serializers, django-permissions, django-testing
-sql:        pg-indexes, pg-explain, pg-mvcc, pg-transactions, pg-constraints, pg-upsert, pg-limit
-aws:        aws-lambda-permissions, aws-lambda-best, aws-iam, aws-api-gateway, aws-s3,
-            aws-s3-presigned, aws-rds, aws-dynamodb-query, aws-dynamodb-model,
-            aws-sqs-visibility, aws-sqs-dlq, aws-vpc, aws-cloudwatch, aws-secrets,
-            aws-cloudfront, aws-ecs, aws-cfn, aws-cost
-ops:        dockerfile-ref, docker-multi-stage, docker-compose, docker-security,
-            gh-actions, signal-man
+python:     py-asyncio, py-asyncio-task, py-datamodel, py-exceptions, py-expressions,
+            py-faq-gil, py-typing, py-unittest, py-venv
+javascript: mdn-abortcontroller, mdn-closure, mdn-cookies, mdn-cors, mdn-execution-model,
+            mdn-http-headers, mdn-promise, mdn-this, ts-handbook, ts-narrowing
+vue:        vue-components, vue-composables, vue-computed, vue-lifecycle, vue-pinia,
+            vue-reactivity, vue-router, vue-sfc, vue-watchers
+web:        mdn-cache-control, mdn-csp, mdn-http-overview, owasp-api-security, owasp-top10
+pyweb:      django-permissions, django-queries, django-serializers, django-testing,
+            fastapi-background, fastapi-dependencies, fastapi-testing, fastapi-tutorial
+sql:        pg-constraints, pg-explain, pg-indexes, pg-limit, pg-mvcc, pg-transactions, pg-upsert
+aws:        aws-acm, aws-acm-regions, aws-api-gateway, aws-apigw-jwt-authorizer, aws-autoscaling,
+            aws-cfn, aws-cloudfront, aws-cloudfront-oac, aws-cloudwatch, aws-cognito,
+            aws-cognito-access-token, aws-cognito-id-token, aws-cost, aws-cost-anomaly, aws-dax,
+            aws-dynamodb-model, aws-dynamodb-query, aws-ec2, aws-ecs, aws-elasticache,
+            aws-elasticache-public-endpoint, aws-elasticache-strategies, aws-elasticache-tls,
+            aws-elasticache-vpc-access, aws-elb, aws-eventbridge, aws-iam, aws-kms,
+            aws-lambda-best, aws-lambda-permissions, aws-lambda-recursion, aws-rds, aws-route53,
+            aws-s3, aws-s3-bpa, aws-s3-cors, aws-s3-cors-troubleshoot, aws-s3-delete-marker,
+            aws-s3-encryption, aws-s3-event-destinations, aws-s3-event-structure, aws-s3-events,
+            aws-s3-glacier-classes, aws-s3-lifecycle, aws-s3-lifecycle-rules, aws-s3-mpu-abort,
+            aws-s3-presigned, aws-s3-put-notification, aws-s3-storage-classes, aws-s3-storage-lens,
+            aws-s3-versioning, aws-secrets, aws-sns, aws-sqs-dlq, aws-sqs-visibility,
+            aws-step-functions, aws-vpc
+ops:        dockerfile-ref, docker-multi-stage, docker-compose, docker-security, gh-actions,
+            signal-man
+ddos:       ddos-aws-shield-tlr, ddos-azure-trends, ddos-cf-3-8tbps, ddos-cf-q4-2024,
+            ddos-cisa-ta14-017a, ddos-github, ddos-google-46m, ddos-ntp-400, ddos-rapid-reset,
+            ddos-rfc2644, ddos-spamhaus
 ```
 
 ## Definition of done

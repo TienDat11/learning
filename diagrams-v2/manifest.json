@@ -1,0 +1,211 @@
+{
+  "generatedAt": "2026-10-11T17:58:28.039Z",
+  "source": "D:/research/src/60-flows.js",
+  "tokens": {
+    "note": "fg/muted/accent/ground đọc từ GetVariables() của untitled.pen (fc-*). Panel #151B23 KHÔNG có trong H5, là màu do script chọn.",
+    "map": {
+      "--fg": "fc-ink #E8EDF2",
+      "--muted": "fc-ink-2 #9AA6B2",
+      "--accent": "fc-amber #FFB000",
+      "ground": "fc-ground #0B0F14",
+      "panel (không phải token H5)": "#151B23"
+    },
+    "fonts": {
+      "body": "Chivo",
+      "mono": "Share Tech Mono (đã đọc nhưng không dùng trong SVG)",
+      "head": "Barlow Condensed (không dùng trong SVG)"
+    }
+  },
+  "flows": [
+    {
+      "id": "flow-request-lifecycle",
+      "status": "PENDING-REVIEW",
+      "note": "Vẽ đúng chuỗi CloudFront, API Gateway, ECS Fargate, RDS như bản gốc. L01 mô tả serverless nên cần chủ dự án xác nhận chuỗi này.",
+      "caption": "Vòng đời của một HTTP request đi qua CloudFront, API Gateway, service FastAPI trên ECS Fargate và RDS, kèm đường response trả ngược về client trên cùng một keep-alive connection.",
+      "desktop": {
+        "file": "diagrams/flow-request-lifecycle.svg",
+        "viewBox": "0 0 640 220"
+      },
+      "mobile": {
+        "file": "diagrams/flow-request-lifecycle.mobile.svg",
+        "viewBox": "0 0 360 452"
+      }
+    },
+    {
+      "id": "flow-cors-preflight",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Cơ chế CORS: trình duyệt gửi preflight OPTIONS cho request không đơn giản, nhận header Access-Control-Allow-Origin rồi mới gửi request thật và kiểm tra kết quả.",
+      "desktop": {
+        "file": "diagrams/flow-cors-preflight.svg",
+        "viewBox": "0 0 640 226"
+      },
+      "mobile": {
+        "file": "diagrams/flow-cors-preflight.mobile.svg",
+        "viewBox": "0 0 360 648"
+      }
+    },
+    {
+      "id": "flow-vue-reactivity",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Phản ứng của Vue 3: đọc thuộc tính qua Proxy sẽ track phụ thuộc, ghi giá trị sẽ trigger effect, effect chạy lại và vá DOM tối thiểu.",
+      "desktop": {
+        "file": "diagrams/flow-vue-reactivity.svg",
+        "viewBox": "0 0 640 236"
+      },
+      "mobile": {
+        "file": "diagrams/flow-vue-reactivity.mobile.svg",
+        "viewBox": "0 0 360 360"
+      }
+    },
+    {
+      "id": "flow-upload-presign",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Luồng upload tệp an toàn bằng presigned URL: API chỉ cấp quyền có thời hạn, client PUT thẳng lên S3, sau đó API mới ghi bản ghi vào cơ sở dữ liệu.",
+      "desktop": {
+        "file": "diagrams/flow-upload-presign.svg",
+        "viewBox": "0 0 640 236"
+      },
+      "mobile": {
+        "file": "diagrams/flow-upload-presign.mobile.svg",
+        "viewBox": "0 0 360 360"
+      }
+    },
+    {
+      "id": "flow-queue-worker",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Mô hình hàng đợi với worker: producer đẩy message vào SQS, worker poll và xử lý, xoá message sau khi thành công, hết hạn retry thì rơi vào DLQ.",
+      "desktop": {
+        "file": "diagrams/flow-queue-worker.svg",
+        "viewBox": "0 0 640 240"
+      },
+      "mobile": {
+        "file": "diagrams/flow-queue-worker.mobile.svg",
+        "viewBox": "0 0 360 476"
+      }
+    },
+    {
+      "id": "flow-lambda-cold-start",
+      "status": "PENDING-REVIEW",
+      "note": "Caption gốc ghi \"ba giai đoạn\" nhưng chỉ liệt kê Init và Handler; sơ đồ vẽ ba khối Tải ảnh chứa, Init, Handler. Chủ dự án cần xác nhận số giai đoạn.",
+      "caption": "Ba giai đoạn của một lần gọi Lambda khi phải khởi động lạnh: Init (khởi tạo runtime, import, biến global) chạy một lần cho mỗi môi trường thực thi, phần Handler chạy mỗi lần gọi. Môi trường ấm tái sử dụng thì bỏ qua Init.",
+      "desktop": {
+        "file": "diagrams/flow-lambda-cold-start.svg",
+        "viewBox": "0 0 640 210"
+      },
+      "mobile": {
+        "file": "diagrams/flow-lambda-cold-start.mobile.svg",
+        "viewBox": "0 0 360 340"
+      }
+    },
+    {
+      "id": "flow-failure-retry",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Chiến lược retry với exponential backoff và jitter: lỗi tạm thì chờ tăng dần rồi thử lại, hết số lần cho phép thì đưa sang DLQ và phát cảnh báo.",
+      "desktop": {
+        "file": "diagrams/flow-failure-retry.svg",
+        "viewBox": "0 0 640 240"
+      },
+      "mobile": {
+        "file": "diagrams/flow-failure-retry.mobile.svg",
+        "viewBox": "0 0 360 432"
+      }
+    },
+    {
+      "id": "flow-db-transaction",
+      "status": "PENDING-REVIEW",
+      "note": "Sơ đồ chỉ thể hiện BEGIN, ghi, COMMIT và ROLLBACK như bản gốc. Check-then-act (L11) không được thể hiện; không tự đổi nội dung bài.",
+      "caption": "Ranh giới transaction trong PostgreSQL: BEGIN rồi ghi nhiều bảng, cuối cùng COMMIT khi mọi câu lệnh thành công, nếu lỗi thì ROLLBACK trả cơ sở dữ liệu về trạng thái ban đầu.",
+      "desktop": {
+        "file": "diagrams/flow-db-transaction.svg",
+        "viewBox": "0 0 640 240"
+      },
+      "mobile": {
+        "file": "diagrams/flow-db-transaction.mobile.svg",
+        "viewBox": "0 0 360 410"
+      }
+    },
+    {
+      "id": "flow-idempotency",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Idempotency với khóa phía server: cùng một Idempotency-Key gửi lại sẽ trả về đúng response đã lưu thay vì thực thi tác vụ lần nữa.",
+      "desktop": {
+        "file": "diagrams/flow-idempotency.svg",
+        "viewBox": "0 0 640 240"
+      },
+      "mobile": {
+        "file": "diagrams/flow-idempotency.mobile.svg",
+        "viewBox": "0 0 360 352"
+      }
+    },
+    {
+      "id": "flow-ddos-defense",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Phòng thủ DDoS phân tầng: lưu lượng volumetric bị hấp thụ ở mạng biên mà không phải trả thêm phí thuê bao, tầng WAF và giới hạn tốc độ chặn phần còn lại, còn người dùng thật đi qua khe hở xuống tầng tính toán và cơ sở dữ liệu đã có trần.",
+      "desktop": {
+        "file": "diagrams/flow-ddos-defense.svg",
+        "viewBox": "0 0 640 240"
+      },
+      "mobile": {
+        "file": "diagrams/flow-ddos-defense.mobile.svg",
+        "viewBox": "0 0 360 476"
+      }
+    },
+    {
+      "id": "flow-auth-jwt",
+      "status": "PASS-PENDING-RENDER",
+      "note": "",
+      "caption": "Xác thực bằng JWT: API Gateway hoặc middleware kiểm tra chữ ký, hạn dùng và scope, rồi mới cấp quyền; token hỏng hoặc hết hạn trả về 401.",
+      "desktop": {
+        "file": "diagrams/flow-auth-jwt.svg",
+        "viewBox": "0 0 640 240"
+      },
+      "mobile": {
+        "file": "diagrams/flow-auth-jwt.mobile.svg",
+        "viewBox": "0 0 360 404"
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "id": "flow-sqs-visibility",
+      "reason": "Theo yêu cầu không vẽ. Nhưng 50-case.js dòng 81 (cs-05) vẫn tham chiếu id này; cần xác nhận trước khi merge."
+    },
+    {
+      "id": "flow-cicd-pipeline",
+      "reason": "Theo yêu cầu không vẽ. Nhưng 50-case.js dòng 138 (cs-10) vẫn tham chiếu id này; cần xác nhận trước khi merge."
+    },
+    {
+      "id": "flow-L01-02",
+      "reason": "Không có trong src. Chờ chủ dự án xác nhận có tạo hay không."
+    }
+  ],
+  "noFlowLessons": [
+    "L07",
+    "L08",
+    "L13",
+    "L14",
+    "L15",
+    "L16"
+  ],
+  "contrast": {
+    "fg": {
+      "onBg": 16.32,
+      "onPanel": 14.7
+    },
+    "muted": {
+      "onBg": 7.75,
+      "onPanel": 6.98
+    },
+    "accent": {
+      "onBg": 10.49,
+      "onPanel": 9.45
+    }
+  }
+}

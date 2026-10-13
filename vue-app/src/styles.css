@@ -1,0 +1,93 @@
+/* Tokens from original hitechcloud-interview-prep.html :root / html[data-theme="dark"] */
+:root {
+  --bg: #FAFAFA;
+  --surface: #FFFFFF;
+  --sunken: #F2F2F4;
+  --fg: #0A0A0A;
+  --fg-2: #4A4A54;
+  --fg-3: #5F5F6A;
+  --line: #E8E8EC;
+  --line-2: #C9C9D1;
+  --accent: #4F46E5;
+  --accent-hover: #4338CA;
+  --accent-ink: #4338CA;
+  --accent-soft: #EEF2FF;
+  --focus: #6366F1;
+  --ok: #047857;
+  --ok-fill: #10B981;
+  --ok-soft: #ECFDF5;
+  --warn: #92400E;
+  --warn-fill: #F59E0B;
+  --warn-soft: #FEF3C7;
+  --err: #B91C1C;
+  --err-fill: #EF4444;
+  --err-soft: #FEF2F2;
+  --neutral-fill: #A1A1AA;
+  --code-bg: #0F0F12;
+  --code-fg: #E6E6EA;
+  --r: 8px;
+  --r-sm: 6px;
+  --r-card: 12px;
+  /* Height of the fixed bottom nav (<=720px, two-line labels). Fixed action bars stack above it. */
+  --nav-h: 69px;
+  --ring: 0 0 0 3px var(--accent-soft);
+  --ease: 150ms ease;
+  --sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+html[data-theme="dark"] {
+  --bg: #0B0B0D;
+  --surface: #141418;
+  --sunken: #1C1C22;
+  --fg: #F4F4F5;
+  --fg-2: #C4C4CC;
+  --fg-3: #A6A6B0;
+  --line: #2A2A32;
+  --line-2: #44444F;
+  --accent: #818CF8;
+  --accent-hover: #A5B4FC;
+  --accent-ink: #C7D2FE;
+  --accent-soft: #1E1B4B;
+  --focus: #818CF8;
+  --ok: #6EE7B7;
+  --ok-fill: #10B981;
+  --ok-soft: #062E22;
+  --warn: #FCD34D;
+  --warn-fill: #F59E0B;
+  --warn-soft: #2A1F05;
+  --err: #FCA5A5;
+  --err-fill: #EF4444;
+  --err-soft: #2D0F0F;
+  --neutral-fill: #6B6B78;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--sans);
+  font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+}
+strong, b, th, h1, h2, h3, h4 { font-weight: 600; }
+::selection { background: var(--accent-soft); color: var(--fg); }
+a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; }
+code { font-family: var(--mono); font-size: 14px; background: var(--sunken); padding: 1px 4px; border-radius: 4px; }
+pre { font-family: var(--mono); font-size: 13px; background: var(--code-bg); color: var(--code-fg); padding: 12px; border-radius: var(--r); overflow: auto; }
+/* `code` mang nền --sunken (xám nhạt); trong <pre> nền đã là --code-bg nên phải bỏ nền
+   và padding của code, nếu không mỗi dòng thành một thanh xám trên nền tối. */
+pre code { background: transparent; padding: 0; border-radius: 0; font-size: inherit; color: inherit; }
+button { font-family: var(--sans); }
+
+/* focus */
+button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* print */
+@media print {
+  .hcp-app-header, .hcp-header-actions, .hcp-footer, .hcp-next,
+  .hcp-rail, .hcp-phase-toggle, .hcp-done-btn, .hcp-next-btn,
+  .hcp-today-actions, .hcp-today-kbd, .hcp-chip-dot { display: none !important; }
+  body { background: white; color: black; }
+  .hcp-card, .hcp-phase, .hcp-today-box, .hcp-today-card { break-inside: avoid; border: 1px solid #999; }
+  h1, h2, h3 { page-break-after: avoid; }
+  a { text-decoration: none; color: black; }
+  pre { white-space: pre-wrap; }
+}

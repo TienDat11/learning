@@ -129,3 +129,109 @@ LOGIC.resolvePick = function (spec, list) {
   return out;
 };
 
+// ============================================================================
+// Leitner spaced-repetition engine (pure, no DOM)
+// ============================================================================
+LOGIC.LEITNER_INTERVALS = [1, 2, 4, 8, 16];  // số ngày cho các hộp 1..5
+
+LOGIC.dateISO = function (d) {
+  return '' + d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+};
+
+LOGIC.addDaysISO = function (iso, n) {
+  var d = new Date(iso);
+  d.setUTCDate(d.getUTCDate() + n);
+  return '' + d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+};
+
+LOGIC.leitnerLoad = function (raw) {
+  var out = {};
+  try {
+    var data = JSON.parse(raw || '');
+  } catch (e) { return out; }
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return out;
+  var re = /^\d{4}-\d{2}-\d{2}$/;
+  for (var k in data) {
+    if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+    var v = data[k];
+    if (typeof v !== 'object' || v === null) continue;
+    var box = v.box;
+    if (!isFinite(box) || Math.floor(box) !== box || box < 1 || box > 5) continue;
+    var due = v.due;
+    if (typeof due !== 'string' || !re.test(due)) continue;
+    out[k] = { box: box, due: due };
+  }
+  return out;
+};
+
+LOGIC.leitnerDump = function (state) {
+  var out = {};
+  var re = /^\d{4}-\d{2}-\d{2}$/;
+  if (typeof state !== 'object' || state === null || Array.isArray(state)) return JSON.stringify(out);
+  for (var k in state) {
+    if (!Object.prototype.hasOwnProperty.call(state, k)) continue;
+    var v = state[k];
+    if (typeof v !== 'object' || v === null) continue;
+    var box = v.box;
+    if (!isFinite(box) || Math.floor(box) !== box || box < 1 || box > 5) continue;
+    if (typeof v.due === 'string' && re.test(v.due)) out[k] = { box: box, due: v.due };
+  }
+  return JSON.stringify(out);
+};
+
+LOGIC.leitnerBox = function (state, qid) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return 1;
+  var v = state[qid];
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return 1;
+  var box = v.box;
+  if (!isFinite(box) || Math.floor(box) !== box || box < 1 || box > 5) return 1;
+  return box;
+};
+
+LOGIC.leitnerCounts = function (ids, state) {
+  var counts = [0, 0, 0, 0, 0];
+  var a = Array.isArray(ids) ? ids : [];
+  for (var i = 0; i < a.length; i++) {
+    counts[LOGIC.leitnerBox(state, a[i]) - 1]++;
+  }
+  return counts;
+};
+
+LOGIC.leitnerDueQids = function (ids, state, todayISO) {
+  var a = Array.isArray(ids) ? ids : [];
+  var byBox = [[], [], [], [], []];
+  for (var i = 0; i < a.length; i++) {
+    var qid = a[i];
+    var box = LOGIC.leitnerBox(state, qid);
+    var entry = state && typeof state === 'object' && !Array.isArray(state) ? state[qid] : null;
+    var due = (entry && typeof entry === 'object') ? entry.due : null;
+    if ((due === null ? todayISO : due) <= todayISO) byBox[box - 1].push(qid);
+  }
+  for (var b = 0; b < 5; b++) {
+    if (byBox[b].length) return byBox[b];
+  }
+  return [];
+};
+
+LOGIC.leitnerPick = function (ids, state, todayISO, rnd) {
+  rnd = typeof rnd === 'function' ? rnd : Math.random;
+  var list = LOGIC.leitnerDueQids(ids, state, todayISO);
+  if (list.length === 0) return null;
+  return list[Math.floor(rnd() * list.length)];
+};
+
+LOGIC.leitnerGrade = function (state, qid, ok, todayISO) {
+  var out = {};
+  if (state && typeof state === 'object' && !Array.isArray(state)) {
+    for (var k in state) if (Object.prototype.hasOwnProperty.call(state, k)) out[k] = state[k];
+  }
+  var box = LOGIC.leitnerBox(state, qid);
+  if (ok) {
+    box = Math.min(box + 1, 5);
+    out[qid] = { box: box, due: LOGIC.addDaysISO(todayISO, LOGIC.LEITNER_INTERVALS[box - 1]) };
+  } else {
+    out[qid] = { box: 1, due: todayISO };
+  }
+  return out;
+};
+

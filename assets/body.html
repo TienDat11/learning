@@ -3,17 +3,18 @@
 <div class="wrap">
   <aside class="side" aria-label="Điều hướng và bộ lọc">
     <div class="mobile-bar">
-      <button class="btn" id="side-toggle" aria-expanded="false" aria-controls="side-body">☰ Bộ lọc &amp; mục lục</button>
+      <button class="btn" id="side-toggle" aria-expanded="false" aria-controls="side-body">Bộ lọc &amp; mục lục</button>
     </div>
-    <div class="side-body" id="side-body">
-      <div class="brand">
+    <div class="brand">
+        <span class="brand-mark" aria-hidden="true">H</span>
         <h1>Ôn phỏng vấn Fullstack</h1>
       </div>
-      <p class="subtitle">AWS · Python · VueJS — chuẩn bị 2–3 ngày</p>
+      <p class="subtitle">AWS · Python · VueJS — chuẩn bị 20/10</p>
 
       <nav aria-label="Các chế độ học">
         <h2 id="nav-list-heading">Chế độ</h2>
         <ul class="navlist" id="nav-list" aria-labelledby="nav-list-heading">
+          <li><button type="button" data-view="today" aria-current="true">Hôm nay <span class="n" data-count-for="today"></span></button></li>
           <li><button type="button" data-view="learn" aria-current="false">Lộ trình học <span class="n" data-count-for="learn"></span></button></li>
           <li><button type="button" data-view="intro" aria-current="false">Bắt đầu &amp; lộ trình <span class="n" data-count-for="intro"></span></button></li>
           <li><button type="button" data-view="questions" aria-current="true">Câu hỏi &amp; đáp án <span class="n" data-count-for="questions"></span></button></li>
@@ -25,7 +26,7 @@
           <li><button type="button" data-view="sources" aria-current="false">Nguồn tham khảo <span class="n" data-count-for="sources"></span></button></li>
         </ul>
       </nav>
-
+    <div class="side-body" id="side-body">
       <form id="filter-form" role="search" aria-label="Tìm kiếm và lọc câu hỏi">
         <div class="field">
           <label for="search">Tìm kiếm (không phân biệt dấu)</label>
@@ -97,8 +98,8 @@
 
       <h2>Tài liệu</h2>
       <div class="btn-row">
-        <button type="button" class="btn" id="theme-btn" aria-pressed="false">🌙 Chế độ tối</button>
-        <button type="button" class="btn" id="print-btn">🖨 In tài liệu</button>
+        <button type="button" class="btn" id="theme-btn" aria-pressed="false">Chế độ tối</button>
+        <button type="button" class="btn" id="print-btn">In tài liệu</button>
         <button type="button" class="btn btn-danger" id="reset-btn">Xoá tiến độ</button>
       </div>
       <p class="small" id="storage-note">Tiến độ lưu trong localStorage của trình duyệt. Nếu trình duyệt chặn lưu trữ, tài liệu vẫn dùng được trong phiên hiện tại.</p>
@@ -107,15 +108,49 @@
 
   <main class="main" id="main" tabindex="-1">
 
+    <section class="view" id="view-today" aria-labelledby="today-h">
+      <div class="today-top">
+        <span class="today-brand">Ôn phỏng vấn Fullstack</span>
+        <span class="today-deck" id="today-deck">Bộ P0 · 63 câu</span>
+      </div>
+      <div class="today-grid">
+        <div class="today-statement">
+          <p class="eyebrow today-eyebrow">Phương pháp Leitner</p>
+          <h2 class="today-title" id="today-h">Đúng thì lên hộp. Sai thì về hộp một.</h2>
+          <p class="today-lede">Mỗi câu bắt đầu ở hộp một và được ôn thường xuyên nhất. Trả lời đúng, câu sang hộp kế tiếp và lâu hơn mới gặp lại. Trả lời sai, câu quay về hộp một.</p>
+        </div>
+        <div class="today-boxes" id="today-boxes" aria-label="Năm hộp Leitner"></div>
+      </div>
+      <div class="today-card" id="today-card">
+        <div class="today-card-text">
+          <p class="today-card-eyebrow" id="today-card-eyebrow"></p>
+          <p class="today-card-q" id="today-card-q"></p>
+          <div class="today-card-ans" id="today-card-ans" hidden></div>
+        </div>
+        <div class="today-card-actions">
+          <button type="button" class="btn btn-primary today-open" id="today-open" aria-expanded="false">Mở đáp án</button>
+          <div class="today-grade" id="today-grade" hidden>
+            <button type="button" class="btn today-ok" id="today-ok">Nhớ được</button>
+            <button type="button" class="btn today-no" id="today-no">Chưa nhớ</button>
+          </div>
+        </div>
+      </div>
+      <p class="today-kbd kbd-hint"><kbd>Enter</kbd> rút thẻ · <kbd>Space</kbd> mở đáp án · <kbd>1</kbd> nhớ được · <kbd>2</kbd> chưa nhớ</p>
+      <div class="today-foot">
+        <p class="small" id="today-ready"></p>
+        <button type="button" class="btn btn-danger" id="today-reset">Đặt lại tiến độ Leitner</button>
+      </div>
+      <p class="small" id="today-note"></p>
+    </section>
+
     <section class="view" id="view-learn" aria-labelledby="learn-h">
       <div class="lesson-pos" id="lesson-pos" hidden>
         <span class="lp-id" id="lp-id"></span>
         <span class="lp-t" id="lp-t"></span>
+        <span class="lp-bar" id="lp-bar" role="progressbar" aria-labelledby="lp-n" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span>
         <span class="lp-n" id="lp-n"></span>
-        <span class="lp-bar" id="lp-bar" role="progressbar" aria-labelledby="lp-n" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
       </div>
-      <h2 class="page-title" id="learn-h">Lộ trình học liền mạch</h2>
-      <p class="page-lede">Đọc theo thứ tự: AWS nền tảng → Python/FastAPI gắn AWS → VueJS → cách hai mảng gọi nhau. Mỗi bài mở đầu bằng đoạn cầu nối với bài trước, ghi rõ bài nó dùng lại, rồi mới tới mục tiêu, giải thích cơ chế, ví dụ và câu hỏi liên quan để luyện ngay.</p>
+      <h2 class="sr-only" id="learn-h">Bài học theo vở Cornell</h2>
       <div id="learn-body"></div>
     </section>
 
@@ -129,6 +164,7 @@
       <p class="page-lede">Mỗi câu có trả lời miệng 30–60 giây, giải thích sâu, ví dụ, câu hỏi đào sâu kèm gợi ý đáp án, hiểu nhầm thường gặp và tiêu chí tự đánh giá.</p>
       <div class="filterbar">
         <span class="stat-line" id="stat-line" role="status" aria-live="polite"></span>
+        <button type="button" class="btn" id="toggle-all" aria-pressed="false">Mở tất cả đáp án</button>
       </div>
       <p class="stat-line" id="q-count"></p>
       <div id="q-list"></div>
@@ -138,6 +174,7 @@
     <section class="view" id="view-flashcard" aria-labelledby="fc-h">
       <h2 class="page-title" id="fc-h">Flashcard</h2>
       <p class="page-lede">Đọc câu hỏi, trả lời miệng, rồi mới bật đáp án. Tự chấm: <em>biết</em> hoặc <em>yếu</em> — trạng thái lưu vào tiến độ.</p>
+      <p class="kbd-hint"><kbd>Space</kbd> hiện đáp án · <kbd>←</kbd> <kbd>→</kbd> đổi câu · <kbd>1</kbd> biết · <kbd>2</kbd> yếu · <kbd>/</kbd> tìm kiếm</p>
       <div class="fc-stage">
         <div class="fc-card">
           <div class="fc-meta" id="fc-progress"></div>

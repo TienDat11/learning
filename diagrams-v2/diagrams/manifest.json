@@ -1,0 +1,207 @@
+[
+  {
+    "id": "flow-request-lifecycle",
+    "lessons": [
+      "L01",
+      "L18",
+      "L22"
+    ],
+    "viewBoxDesktop": "0 0 640 248",
+    "viewBoxMobile": "0 0 360 512",
+    "readOrder": "1 Trình duyệt gọi API → 2 CloudFront → 3 API Gateway → 4 ECS Fargate → 5 RDS; response 200 đi ngược về trình duyệt (nét đứt)",
+    "status": "pending-review",
+    "notes": "PENDING-REVIEW: caption gốc vẽ CloudFront, API Gateway, ECS Fargate, RDS. L01 mô tả kiến trúc serverless; cần chủ dự án xác nhận chuỗi này trước khi dùng cho L01. Caption cũng nhắc keep-alive, sơ đồ chỉ thể hiện response ngược đường."
+  },
+  {
+    "id": "flow-auth-jwt",
+    "lessons": [
+      "L02",
+      "L19"
+    ],
+    "viewBoxDesktop": "0 0 640 216",
+    "viewBoxMobile": "0 0 360 608",
+    "readOrder": "1 Login → 2 Ký token → 3 Bearer token gửi kèm → 4 Verify (chữ ký, hạn, scope) → 5 200 + dữ liệu; nhánh nét đứt: 401",
+    "status": "ready",
+    "notes": "Nhánh 401 là nhánh lỗi, không đánh số."
+  },
+  {
+    "id": "flow-cors-preflight",
+    "lessons": [
+      "L04"
+    ],
+    "viewBoxDesktop": "0 0 640 168",
+    "viewBoxMobile": "0 0 360 416",
+    "readOrder": "1 Trình duyệt gửi OPTIONS → 2 Server trả header CORS → 3 Trình duyệt gửi request thật → 4 Server kiểm tra origin; Allow-Origin quay về trình duyệt (nét đứt)",
+    "status": "ready",
+    "notes": "Caption dùng \"Access-Control-Allow-Origin\"; nhãn ngắn hoá thành Allow-Origin."
+  },
+  {
+    "id": "flow-upload-presign",
+    "lessons": [
+      "L05",
+      "L20"
+    ],
+    "viewBoxDesktop": "0 0 640 216",
+    "viewBoxMobile": "0 0 360 416",
+    "readOrder": "1 Client xin presigned URL → 2 API ký URL có hạn → 3 Client PUT thẳng lên S3 → 4 API ghi bản ghi vào RDS",
+    "status": "ready",
+    "notes": "Bước 3 đi thẳng từ client lên S3, không qua API. URL ký là presigned URL."
+  },
+  {
+    "id": "flow-queue-worker",
+    "lessons": [
+      "L06",
+      "L21"
+    ],
+    "viewBoxDesktop": "0 0 640 200",
+    "viewBoxMobile": "0 0 360 512",
+    "readOrder": "1 Producer đẩy message → 2 SQS → 3 Worker poll và xử lý → 4 Xoá message; nhánh nét đứt: quá 3 lần lỗi → DLQ",
+    "status": "ready",
+    "notes": "Mốc visibility timeout nằm ở flow-sqs-visibility, không lặp lại ở đây."
+  },
+  {
+    "id": "flow-sqs-visibility",
+    "lessons": [],
+    "caseStudies": [
+      "cs-05"
+    ],
+    "viewBoxDesktop": "0 0 640 208",
+    "viewBoxMobile": "0 0 360 512",
+    "readOrder": "1 Gửi message vào queue → 2 Worker A nhận, message ẩn 30 giây → 3 Worker A xoá message; nhánh nét đứt: hết 30 giây chưa xoá → message hiện lại → Worker B nhận lại",
+    "status": "ready",
+    "notes": "Được cs-05 trong 50-case.js tham chiếu. Chưa có bài nào trong L01–L23 dùng flow này. Giá trị 30 giây là ví dụ minh hoạ, không phải cấu hình thật của dự án."
+  },
+  {
+    "id": "flow-db-transaction",
+    "lessons": [
+      "L11"
+    ],
+    "viewBoxDesktop": "0 0 640 208",
+    "viewBoxMobile": "0 0 360 512",
+    "readOrder": "1 BEGIN → 2 UPDATE orders → 3 UPDATE stock → 4 COMMIT khi mọi bước xong; nhánh nét đứt: có lỗi → ROLLBACK",
+    "status": "pending-review",
+    "notes": "PENDING-REVIEW: L11 dạy check-then-act dưới READ COMMITTED (hai giao dịch cùng kiểm tra rồi cùng ghi). BEGIN/COMMIT không thể hiện được tình huống đó. Chưa đổi nội dung bài. Cần thêm sơ đồ riêng hoặc chủ dự án xác nhận."
+  },
+  {
+    "id": "flow-idempotency",
+    "lessons": [
+      "L17"
+    ],
+    "viewBoxDesktop": "0 0 640 208",
+    "viewBoxMobile": "0 0 360 512",
+    "readOrder": "1 Client gửi kèm key → 2 Server tra khóa đã lưu chưa → 3 Thực thi và lưu kết quả → 4 Trả response; nhánh nét đứt: đã có key → trả response cũ",
+    "status": "ready",
+    "notes": "Khóa phía server. Gửi lại không kèm key vẫn có thể tạo bản ghi trùng; sơ đồ không thể hiện điều này."
+  },
+  {
+    "id": "flow-lambda-cold-start",
+    "lessons": [
+      "L03",
+      "L10"
+    ],
+    "viewBoxDesktop": "0 0 640 216",
+    "viewBoxMobile": "0 0 360 416",
+    "readOrder": "1 Init (import, biến global) → 2 Handler; hàng dưới, nét đứt: môi trường ấm bỏ qua Init → Handler",
+    "status": "pending-review",
+    "notes": "PENDING-REVIEW: theo brief chỉ vẽ Init và Handler. Caption gốc trong 60-flows.js ghi \"Ba giai đoạn\" và aria-label có thêm Runtime, nhưng số giai đoạn trong sơ đồ chỉ có hai. Cần chủ dự án chốt số giai đoạn trước khi giao. Init chạy một lần cho mỗi môi trường thực thi, Handler chạy mỗi lần gọi."
+  },
+  {
+    "id": "flow-failure-retry",
+    "lessons": [
+      "L09"
+    ],
+    "viewBoxDesktop": "0 0 640 208",
+    "viewBoxMobile": "0 0 360 512",
+    "readOrder": "1 Gọi dịch vụ → 2 Lỗi tạm thời → 3 Chờ backoff → 4 Còn lượt? Còn thì thử lại (nét đứt); hết lượt thì DLQ + cảnh báo (nét đứt)",
+    "status": "ready",
+    "notes": "Chỉ retry lỗi tạm thời; lỗi 4xx không nằm trong vòng lặp. Jitter có trong caption gốc nhưng không vẽ chi tiết."
+  },
+  {
+    "id": "flow-vue-reactivity",
+    "lessons": [
+      "L12"
+    ],
+    "viewBoxDesktop": "0 0 640 144",
+    "viewBoxMobile": "0 0 360 416",
+    "readOrder": "1 Đọc state qua Proxy get → 2 Ghi state qua Proxy set → 3 Effect chạy lại → 4 Vá DOM phần thay đổi; nét đứt: effect đã ghi nhớ phụ thuộc lúc đọc",
+    "status": "ready",
+    "notes": "Mô hình đơn giản. Batching (nhiều lần ghi trong một tick chỉ render một lần) không được thể hiện."
+  },
+  {
+    "id": "flow-cicd-pipeline",
+    "lessons": [],
+    "caseStudies": [
+      "cs-10"
+    ],
+    "viewBoxDesktop": "0 0 640 208",
+    "viewBoxMobile": "0 0 360 608",
+    "readOrder": "1 Commit → 2 Test + lint → 3 Build image → 4 Push ECR → 5 Deploy ECS; nhánh nét đứt: test lỗi → dừng pipeline",
+    "status": "ready",
+    "notes": "Được cs-10 trong 50-case.js tham chiếu. Tên công cụ CI cụ thể không được vẽ vì caption gốc không nêu."
+  },
+  {
+    "id": "flow-ddos-defense",
+    "lessons": [
+      "L23"
+    ],
+    "viewBoxDesktop": "0 0 640 208",
+    "viewBoxMobile": "0 0 360 608",
+    "readOrder": "1 Người thật gửi request → 2 WAF và giới hạn → 3 Lambda (trần đồng thời) → 4 Database (trần kết nối); botnet nét đứt bị hấp thụ ở Biên",
+    "status": "ready",
+    "notes": "Không phải kiến trúc thật của dự án; mô hình tầng. Chi phí và tên dịch vụ biên không vẽ."
+  },
+  {
+    "id": "flow-L07",
+    "lessons": [
+      "L07"
+    ],
+    "status": "placeholder",
+    "flowGap": "RESEARCH_GAP: flow-L07, sơ đồ chưa có",
+    "notes": "Bài L07 chưa có flow trong src/60-flows.js. Không vẽ hình thay thế; cần owner cung cấp luồng hoặc xác nhận không cần."
+  },
+  {
+    "id": "flow-L08",
+    "lessons": [
+      "L08"
+    ],
+    "status": "placeholder",
+    "flowGap": "RESEARCH_GAP: flow-L08, sơ đồ chưa có",
+    "notes": "Bài L08 chưa có flow trong src/60-flows.js. Không vẽ hình thay thế; cần owner cung cấp luồng hoặc xác nhận không cần."
+  },
+  {
+    "id": "flow-L13",
+    "lessons": [
+      "L13"
+    ],
+    "status": "placeholder",
+    "flowGap": "RESEARCH_GAP: flow-L13, sơ đồ chưa có",
+    "notes": "Bài L13 chưa có flow trong src/60-flows.js. Không vẽ hình thay thế; cần owner cung cấp luồng hoặc xác nhận không cần."
+  },
+  {
+    "id": "flow-L14",
+    "lessons": [
+      "L14"
+    ],
+    "status": "placeholder",
+    "flowGap": "RESEARCH_GAP: flow-L14, sơ đồ chưa có",
+    "notes": "Bài L14 chưa có flow trong src/60-flows.js. Không vẽ hình thay thế; cần owner cung cấp luồng hoặc xác nhận không cần."
+  },
+  {
+    "id": "flow-L15",
+    "lessons": [
+      "L15"
+    ],
+    "status": "placeholder",
+    "flowGap": "RESEARCH_GAP: flow-L15, sơ đồ chưa có",
+    "notes": "Bài L15 chưa có flow trong src/60-flows.js. Không vẽ hình thay thế; cần owner cung cấp luồng hoặc xác nhận không cần."
+  },
+  {
+    "id": "flow-L16",
+    "lessons": [
+      "L16"
+    ],
+    "status": "placeholder",
+    "flowGap": "RESEARCH_GAP: flow-L16, sơ đồ chưa có",
+    "notes": "Bài L16 chưa có flow trong src/60-flows.js. Không vẽ hình thay thế; cần owner cung cấp luồng hoặc xác nhận không cần."
+  }
+]

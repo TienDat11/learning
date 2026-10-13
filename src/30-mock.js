@@ -24,7 +24,7 @@ MOCK_SETS.vue_focus = {
   label: 'Bù khoảng trống VueJS',
   brief: 'Nhóm C (VueJS) là trọng tâm, nhóm B (JavaScript, TypeScript) là nền để bạn đủ tự tin về reactivity, lifecycle và typing.',
   pick: [
-    { group: 'C', limit: 20 },
+    { group: 'C', limit: 15 },
     { group: 'B', limit: 8 }
   ]
 };
@@ -43,7 +43,7 @@ MOCK_SETS.python_sql_core = {
 // 5. API surface plus the security questions that come attached to it.
 MOCK_SETS.web_api_security = {
   label: 'API, web và bảo mật',
-  brief: 'Nhóm D (HTTP, CORS, cookie, CSP) gặp nhóm H (secret, CloudWatch, chi phí) ở các câu hỏi về presigned URL, token và lỗ hổng khi nói chuyện về sản phẩm thật.',
+  brief: 'Nhóm D (HTTP, CORS, cookie, CSP) gặp nhóm H (secret, CloudWatch (công cụ theo dõi metric/log của AWS), chi phí) ở các câu hỏi về presigned URL (địa chỉ ký sẵn, cho phép một thao tác như GET hoặc PUT trên đúng một object, dùng lại được cho tới khi hết hạn), token và lỗ hổng khi nói chuyện về sản phẩm thật.',
   pick: [
     { group: 'D', limit: 12 },
     { group: 'H', limit: 10 }
