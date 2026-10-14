@@ -1,214 +1,484 @@
 var QUESTIONS = QUESTIONS || [];
 QUESTIONS.push(
-  {
-    id: 'I01',
-    group: 'I',
-    topic: 'Big-O và array, hash map, set, stack, queue',
-    prio: 'P0',
-    level: 'L2',
-    type: 'concept',
-    attacks: [{"q":"Vì sao tra cứu trong bảng băm được coi là O(1) khi vẫn có va chạm?","a":"Vì đó là độ phức tạp trung bình, không phải trường hợp xấu nhất. Với một hàm băm phân bố đều và hệ số tải được kiểm soát, số phần tử trung bình trong mỗi ô là một hằng số, nên số phép so sánh trung bình cũng là hằng số. Trường hợp xấu nhất là O(n) khi mọi khoá va chạm vào cùng một ô. Điều quan trọng trong phỏng vấn là nói rõ giả định: kết quả O(1) phụ thuộc vào hàm băm tốt và vào việc bảng được giãn nở khi đầy — nếu không kiểm soát hệ số tải, chi phí tăng và tính chất đó mất."},{"q":"Bạn chọn ngăn xếp hay hàng đợi cho bài toán duyệt theo chiều rộng và chiều sâu?","a":"Duyệt theo chiều sâu dùng ngăn xếp, vì bạn muốn xử lý nút vừa thêm vào trước — vào sau ra trước. Duyệt theo chiều rộng dùng hàng đợi, vì bạn muốn xử lý theo thứ tự phát hiện — vào trước ra trước, nhờ đó mọi nút ở một mức được xử lý trước khi sang mức sau. Điểm đáng nói thêm là duyệt theo chiều sâu viết bằng đệ quy cũng dùng ngăn xếp, chỉ là ngăn xếp của lời gọi hàm, nên với dữ liệu sâu có thể tràn ngăn xếp — và khi đó phải chuyển sang ngăn xếp tường minh."}],
-incident: '<p>Hôm qua, endpoint tra cứu mã giảm giá trả về chậm dần theo thời gian. Dev E đọc mã: vòng lặp <code>for code in all_codes</code> chạy trên danh sách 200.000 mã mỗi request, sau đó <code>for order in orders</code> tìm mã khớp. Với 1.000 request một phút, mỗi request O(n^2) với kích thước danh sách, dịch vụ 504 trong 45 phút. Customer service báo 200 khách đang chờ mã khuyến mãi.</p>',
-askFirst: [
-  'Cấu trúc dữ liệu nào cho phép kiểm tra tồn tại mã với chi phí trung bình O(1)?',
-  'Vì sao vòng lặp lồng nhau trên danh sách lớn là mối nguy hiệu năng?'
-],
-predict: { q: 'Bạn đoán thay vòng lặp tuyến tính bằng set sẽ giảm thời gian mỗi request từ O(n^2) xuống mức nào?', a: '<p>Truy vấn set với <code>in</code> là O(1) trung bình nhờ băm, còn kiểm tra tồn tại trước đó là O(n) khi phải duyệt mảng. Chuyển danh sách mã sang set giảm chi phí mỗi request từ O(n) xuống O(1) trung bình, và nếu vòng ngoài vẫn duyệt orders thì tổng là O(n) thay vì O(n^2). Với 200.000 mã, đây là sự khác biệt giữa vài phút và vài giây.</p>' },
-anchor: 'Chọn array cho kiểm tra tồn tại mà không có cấu trúc băm = mỗi request tuyến tính qua toàn bộ danh sách, O(n^2) khi lồng vòng.',
-    q: 'Khi nào bạn chọn array, hash map, set, stack hay queue cho một bài toán cụ thể, và Big-O của các thao tác chính trên từng cấu trúc là gì?',
-    oral: 'Big-O mô tả cách chi phí tăng theo kích thước đầu vào nên bạn dùng nó để so sánh phương án trước khi tối ưu vi mô. Array cho truy cập theo chỉ số O(1), thêm cuối mảng O(1) trung bình, nhưng chèn hoặc xóa ở giữa tốn O(n) vì phải dời phần tử. Hash map và set có thêm, xóa, tìm kiếm trung bình O(1) nhờ hàm băm, nhưng trường hợp xấu có thể lùi về O(n) khi đụng độ nhiều. Stack là LIFO còn queue là FIFO: stack thêm và lấy ở cùng một đầu, queue thêm ở đuôi và lấy ở đầu, với deque các thao tác này đều đạt O(1). Bạn chọn theo hành vi truy cập: cần thứ tự và chỉ số thì dùng array, cần tra cứu theo khóa thì dùng hash map, cần kiểm tra tồn tại thì dùng set, cần hoàn tác thì dùng stack, cần hàng đợi công việc thì dùng queue.',
-    deep: '<p>Tối thứ sáu, endpoint tra cứu mã giảm giá lăn ra 504 suốt 45 phút với 200.000 mã trong danh sách. Mỗi request duyệt tuyến tính cả danh sách rồi lồng thêm vòng orders, tổng thành <code>O(n^2)</code>. Bạn chuyển danh sách mã sang <code>set</code> là hết nghẽn.</p><p>Array cho bạn truy cập theo chỉ số với <code>O(1)</code> và thêm cuối mảng <code>O(1)</code> khấu hao. Chèn hoặc xóa giữa mảng tốn <code>O(n)</code> vì phải dời phần còn lại. Hash map băm khóa để nhảy thẳng tới xô chứa giá trị nên thêm, xóa, tìm trung bình <code>O(1)</code>. <code>Set</code> là hash map chỉ lưu khóa nên kiểm tra tồn tại cũng <code>O(1)</code> trung bình. Stack là LIFO với push và pop cùng một đầu. Queue là FIFO với thêm đuôi và lấy đầu, <code>deque</code> làm cả hai đầu <code>O(1)</code>.</p><p>Array giữ thứ tự và cho chỉ số, còn <code>set</code> bỏ thứ tự để đổi lấy tra cứu <code>O(1)</code>. Dùng array khi bạn cần thứ tự, dùng <code>set</code> khi bạn chỉ cần trả lời có hay không.</p><ul><li><strong>Dùng khi:</strong> tra cứu theo khóa thì dùng hash map, kiểm tra tồn tại thì dùng <code>set</code>, hoàn tác thì dùng stack, hàng đợi việc thì dùng queue với <code>deque</code>.</li><li><strong>Không dùng khi:</strong> đừng duyệt array trong vòng lặp lớn để tìm tồn tại, đừng lấy đầu mảng bằng pop đầu vì tốn <code>O(n)</code> mỗi lần.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: dữ liệu vài trăm phần tử thì array đơn giản vẫn thắng, còn khi va chạm băm dày đặc hoặc khóa do người dùng điều khiển thì hash map lùi về <code>O(n)</code> và bạn phải chia nhỏ hoặc đổi khóa.</p>',
-    code: 'from collections import deque\nindex = {"an": 101, "binh": 102}\nprint("an" in index)\nseen = set(["an", "binh", "an"])\nprint(len(seen))\nstack = ["a", "b"]\nstack.append("c")\nstack.pop()\nqueue = deque(["job1", "job2"])\nqueue.append("job3")\nqueue.popleft()\nprint(list(queue))',
-expected: 'In ra True, 2, và danh sách [job2, job3]. Phân tích: "an" in index là tra cứu hash map nên O(1) bất kể có bao nhiêu khóa. set loại trùng nên ["an","binh","an"] chỉ còn 2 phần tử. Với stack, append("c") rồi pop() lấy đúng "c" ra nên stack quay lại ["a","b"]. Với queue, append("job3") thêm vào đuôi còn popleft() lấy "job1" ở đầu, để lại ["job2","job3"] — đây chính là khác biệt giữa LIFO và FIFO. Điểm cần nhớ: list.pop() ở đầu mảng là O(n) vì phải dịch toàn bộ phần tử, còn deque.popleft() là O(1).',
-    followups: [
-      { q: 'Vì sao thêm cuối array là O(1) trung bình chứ không phải O(1) mọi lúc?', a: 'Vì mảng động thường cấp phát dư dung lượng nên lần thêm thông thường chỉ ghi vào ô trống với O(1). Thỉnh thoảng mảng đầy và phải cấp phát mảng lớn hơn rồi chép toàn bộ phần tử sang, lần đó tốn O(n). Chia đều chi phí chép cho nhiều lần thêm thì chi phí trung bình mỗi lần vẫn là O(1), gọi là O(1) khấu hao.' },
-      { q: 'Khi nào hash map lùi về O(n) và bạn xử lý ra sao trong bài toán thực tế?', a: 'Khi nhiều khóa đụng độ vào cùng một xô băm hoặc hàm băm kém thì các thao tác phải duyệt chuỗi dài trong xô đó nên lùi về O(n). Trong thực tế bạn chọn khóa có hàm băm tốt, tránh khóa do người dùng điều khiển trực tiếp mà không giới hạn, và tách dữ liệu thành nhiều phân đoạn nhỏ. Nếu cần thứ tự thì kết hợp thêm cấu trúc có thứ tự thay vì ép hash map làm mọi việc.' },
-      { q: 'Vì sao không dùng mảng với pop ở đầu làm queue, và deque khắc phục điều gì?', a: 'Vì mảng lưu liên tục nên mỗi lần lấy phần tử đầu phải dời toàn bộ phần tử còn lại sang trái một vị trí, tốn O(n). Nếu hàng đợi xử lý hàng nghìn tác vụ thì chi phí đó cộng dồn rất lớn. Deque lưu theo khối rời rạc nên thêm ở đuôi và lấy ở đầu đều O(1), đúng với hành vi FIFO của queue.' }
-    ],
-    pitfalls: ['Nhầm lẫn giữa chi phí trung bình và chi phí tệ nhất của hash map, cho rằng O(1) đúng trong mọi trường hợp', 'Dùng array để tìm kiếm tồn tại trong vòng lặp lớn thay vì set, biến bài toán O(n) thành O(n bình phương', 'Dùng mảng làm queue với thao tác lấy đầu mảng mà không biết nó tốn O(n) mỗi lần'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là khi nào đụng độ băm kéo hash map về O(n) trong hệ thống thật', 'Tôi giải thích được bằng ví dụ vì sao tra cứu theo khóa dùng hash map còn kiểm tra tồn tại dùng set với thao tác O(1) trung bình', 'Trong tình huống API chậm do tìm kiếm tuyến tính lặp lại, tôi đổi sang set hoặc hash map và đo lại thời gian phản hồi'],
-    refs: ['py-datamodel', 'py-expressions']
+{
+  "id": "I01",
+  "group": "I",
+  "topic": "Big-O và array, hash map, set, stack, queue",
+  "prio": "P0",
+  "level": "L2",
+  "type": "concept",
+  "attacks": [
+    {
+      "q": "Vì sao tra cứu trong bảng băm được coi là O(1) khi vẫn có va chạm?",
+      "a": "Vì đó là độ phức tạp trung bình, không phải trường hợp xấu nhất. Với một hàm băm phân bố đều và hệ số tải được kiểm soát, số phần tử trung bình trong mỗi ô là một hằng số, nên số phép so sánh trung bình cũng là hằng số. Trường hợp xấu nhất là O(n) khi mọi khoá va chạm vào cùng một ô. Điều quan trọng trong phỏng vấn là nói rõ giả định: kết quả O(1) phụ thuộc vào hàm băm tốt và vào việc bảng được giãn nở khi đầy — nếu không kiểm soát hệ số tải, chi phí tăng và tính chất đó mất."
+    },
+    {
+      "q": "Bạn chọn ngăn xếp hay hàng đợi cho bài toán duyệt theo chiều rộng và chiều sâu?",
+      "a": "Duyệt theo chiều sâu dùng ngăn xếp, vì bạn muốn xử lý nút vừa thêm vào trước — vào sau ra trước. Duyệt theo chiều rộng dùng hàng đợi, vì bạn muốn xử lý theo thứ tự phát hiện — vào trước ra trước, nhờ đó mọi nút ở một mức được xử lý trước khi sang mức sau. Điểm đáng nói thêm là duyệt theo chiều sâu viết bằng đệ quy cũng dùng ngăn xếp, chỉ là ngăn xếp của lời gọi hàm, nên với dữ liệu sâu có thể tràn ngăn xếp — và khi đó phải chuyển sang ngăn xếp tường minh."
+    }
+  ],
+  "incident": "<p>Hôm qua, endpoint tra cứu mã giảm giá trả về chậm dần theo thời gian. Dev E đọc mã: vòng lặp <code>for code in all_codes</code> chạy trên danh sách 200.000 mã mỗi request, sau đó <code>for order in orders</code> tìm mã khớp. Với 1.000 request một phút, mỗi request O(n^2) với kích thước danh sách, dịch vụ 504 trong 45 phút. Customer service báo 200 khách đang chờ mã khuyến mãi.</p>",
+  "askFirst": [
+    "Vì sao tra cứu trong bảng băm được O(1) khi vẫn có va chạm?",
+    "Bạn chọn ngăn xếp hay hàng đợi cho duyệt theo chiều rộng và chiều sâu?"
+  ],
+  "predict": {
+    "q": "Bạn đoán thay vòng lặp tuyến tính bằng set sẽ giảm thời gian mỗi request từ O(n^2) xuống mức nào?",
+    "a": "<p>Truy vấn set với <code>in</code> là O(1) trung bình nhờ băm, còn kiểm tra tồn tại trước đó là O(n) khi phải duyệt mảng. Chuyển danh sách mã sang set giảm chi phí mỗi request từ O(n) xuống O(1) trung bình, và nếu vòng ngoài vẫn duyệt orders thì tổng là O(n) thay vì O(n^2). Với 200.000 mã, đây là sự khác biệt giữa vài phút và vài giây.</p>"
   },
-  {
-    id: 'I02',
-    group: 'I',
-    topic: 'Khử trùng lặp và đếm tần suất bằng hash map và set',
-    prio: 'P0',
-    level: 'L2',
-    type: 'predict',
-    attacks: [{"q":"Khử trùng lặp bằng tập hợp có nhược điểm gì?","a":"Nó không giữ thứ tự, nên nếu bạn cần giữ thứ tự xuất hiện đầu tiên thì kết quả sai. Và nó đòi hỏi các phần tử phải băm được, nên với object hoặc cấu trúc lồng nhau thì không dùng trực tiếp được. Ngoài ra nó chỉ trả lời câu hỏi đã xuất hiện hay chưa, không cho biết xuất hiện bao nhiêu lần. Cách làm đúng cho khử trùng lặp giữ thứ tự là duyệt tuần tự, giữ một tập hợp các giá trị đã thấy, và thêm vào kết quả nếu chưa có — cách này vẫn là O(n) nhưng bảo toàn thứ tự."},{"q":"Đếm tần suất có thể sai ở đâu khi dữ liệu tới từ nhiều nguồn?","a":"Ở ba chỗ:\nMột là khoá chưa được chuẩn hoá, nên cùng một giá trị có nhiều biểu diễn và bị đếm thành nhiều nhóm — chữ hoa chữ thường, khoảng trắng thừa, hoặc khác biệt Unicode.\nHai là dữ liệu bị cắt cụt ở ranh giới lô, nếu bạn đếm riêng từng lô rồi cộng lại thì đúng, nhưng nếu bạn khử trùng lặp trong từng lô rồi cộng thì sai.\nBa là giá trị rỗng, vì nó thường bị bỏ qua một cách âm thầm và làm tổng số đếm nhỏ hơn số bản ghi.\nCả ba đều là lỗi im lặng, nên cần kiểm tra tổng số đếm khớp với số bản ghi đầu vào."}],
-incident: '<p>Sáng nay, dev F báo API đếm lượt bình chọn chạy 40 giây cho 50.000 sự kiện vì dùng vòng lặp lồng nhau kiểm tra từng sự kiện mới. 10.000 user ở phiên sáng bị kẹt ở màn chờ, và sự kiện của 3.000 người dùng bị trùng không bị phát hiện nên số liệu ban điều hành sai. Log ghi <code>count() called 50.000 times</code>.</p>',
-askFirst: [
-  'Cấu trúc nào cho phép đếm tần suất và khử trùng lặp trong một lần duyệt O(n)?',
-  'Vì sao dùng set để khử trùng lặp rồi mong giữ thứ tự là cách làm sai?'
-],
-predict: { q: 'Bạn đoán <code>list(dict.fromkeys(nums))</code> sẽ in ra gì và tại sao thứ tự giữ nguyên?', a: '<p>In ra <code>[3, 1, 2, 4]</code>. Từ Python 3.7, dict giữ thứ tự chèn: lần đầu gặp 3, 1, 2, 4 được chèn lần lượt; lần lặp sau cùng một khóa chỉ ghi đè giá trị, không tạo vị trí mới. Chuyển dict về list giữ nguyên thứ tự xuất hiện đầu tiên. Đây là lý do <code>dict.fromkeys</code> là cách khử trùng lặp giữ thứ tự đúng, trong khi set không cam kết thứ tự.</p>' },
-anchor: 'Dùng set để khử trùng lặp mà không có dict giữ thứ tự chèn = danh sách mất thứ tự xuất hiện đầu tiên khi cần báo cáo.',
-    q: 'Đoạn mã Python sau in ra gì, và vì sao danh sách unique vẫn giữ đúng thứ tự xuất hiện đầu tiên?',
-    oral: 'Bạn khử trùng lặp mà vẫn giữ thứ tự bằng cách tận dụng dict giữ thứ tự chèn, còn đếm tần suất bằng hash map với giá trị mặc định. Cách làm này chạy O(n) vì mỗi phần tử chỉ xử lý một lần. Bạn không nên dùng vòng lặp lồng nhau để đếm vì nó thành O(n^2). Lỗi phổ biến là dùng set để khử trùng rồi mong thứ tự giữ nguyên, hoặc quên giá trị khởi tạo khi đếm nên gặp lỗi khóa thiếu. Trong API thật, mẫu này dùng để chuẩn hóa danh sách email, đếm lượt bình chọn hoặc phát hiện mã giảm giá bị lặp.',
-    deep: '<p>API đếm bình chọn kẹt 40 giây với 50.000 sự kiện vì mỗi sự kiện mới lại gọi count quét cả danh sách. Log ghi <code>count() called 50.000 times</code>, tổng thành <code>O(n^2)</code>. Bạn duyệt một lần với dict là còn chưa tới một giây.</p><p>Từ Python 3.7 dict giữ thứ tự chèn nên <code>dict.fromkeys(nums)</code> giữ đúng vị trí xuất hiện đầu tiên của 3, 1, 2, 4. Khóa lặp sau chỉ ghi đè giá trị mà không tạo vị trí mới. Vòng đếm dùng <code>get(n, 0) + 1</code> để khởi tạo bộ đếm ngay lần gặp đầu. Mỗi phần tử băm đúng một lần nên tổng là <code>O(n)</code> trung bình.</p><p><code>dict.fromkeys</code> giữ thứ tự để hiển thị, còn <code>set</code> chỉ trả lời đã thấy hay chưa nên nhanh nhưng mất thứ tự. Cần báo cáo theo thứ tự thì dùng dict, chỉ cần kiểm tra tồn tại thì dùng <code>set</code>.</p><ul><li><strong>Dùng khi:</strong> khử trùng email, đếm lượt bình chọn, phát hiện mã giảm giá lặp trong một lần duyệt.</li><li><strong>Không dùng khi:</strong> đừng gọi count trong vòng lặp, đừng ném <code>set</code> qua list rồi mong thứ tự giữ nguyên, đừng đếm dict hay list lồng nhau khi chưa rút khóa băm được.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: phần tử không băm được thì bạn rút email hay mã người dùng làm khóa, còn dữ liệu đa nguồn chưa chuẩn hóa thì bạn chuẩn hóa hoa thường và khoảng trắng trước khi đếm.</p>',
-    code: 'nums = [3, 1, 2, 3, 2, 1, 4]\nunique = list(dict.fromkeys(nums))\nfreq = {}\nfor n in nums:\n    freq[n] = freq.get(n, 0) + 1\nprint(unique)\nprint(freq)',
-    expected: 'In ra hai dòng:\nDòng một là [3, 1, 2, 4] vì dict.fromkeys giữ thứ tự xuất hiện đầu tiên và bỏ lần lặp sau.\nDòng hai là {3: 2, 1: 2, 2: 2, 4: 1} vì mỗi phần tử được đếm đúng số lần xuất hiện sau một lần duyệt.\nTừ Python 3.7 dict giữ thứ tự chèn nên kết quả này ổn định.',
-    followups: [
-      { q: 'Vì sao dict.fromkeys giữ được thứ tự còn set thì không nên dùng khi cần thứ tự?', a: 'Vì từ Python 3.7 dict được đảm bảo giữ thứ tự chèn nên khóa xuất hiện đầu tiên giữ nguyên vị trí, khóa lặp sau chỉ ghi đè giá trị mà không tạo vị trí mới. Set không cam kết thứ tự lặp lại theo ý bạn nên dùng nó rồi chuyển thành list có thể cho thứ tự khác. Khi yêu cầu giữ thứ tự thì dict là lựa chọn đúng.' },
-      { q: 'Độ phức tạp của cách đếm một lần duyệt là gì, và cách nào khiến nó thành O(n^2)?', a: 'Cách một lần duyệt là O(n) trung bình vì mỗi phần tử chỉ băm và cập nhật một lần. Nếu trong vòng lặp bạn gọi count trên cả danh sách cho từng phần tử khác nhau thì mỗi lần gọi lại duyệt hết danh sách nên thành O(n^2). Với danh sách lớn thì sự chênh lệch này quyết định API còn đáp ứng được hay không.' },
-      { q: 'Nếu phần tử là dict hoặc list không băm được thì bạn xử lý ra sao?', a: 'Vì dict và list không băm được nên không thể làm khóa trực tiếp. Bạn cần rút ra một trường băm được làm khóa, ví dụ mã người dùng hoặc email đã chuẩn hóa, hoặc chuyển list thành tuple nếu thứ tự có ý nghĩa. Khi không có khóa tự nhiên thì phải chuẩn hóa dữ liệu trước rồi mới khử trùng và đếm.' }
-    ],
-    pitfalls: ['Tưởng set giữ thứ tự chèn nên khử trùng bằng set rồi ngạc nhiên khi thứ tự đổi', 'Dùng count trong vòng lặp khiến thuật toán phình thành O(n^2) mà không hay', 'Quên giá trị mặc định khi đếm nên code rẽ nhánh phức tạp hoặc gặp lỗi khóa thiếu'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là cách chọn khóa băm được khi phần tử là dict lồng nhau phức tạp', 'Tôi giải thích được bằng ví dụ vì sao dict.fromkeys cho [3, 1, 2, 4] và vòng đếm cho tần suất đúng', 'Trong tình huống danh sách email trùng lặp, tôi viết hàm khử trùng giữ thứ tự và đếm tần suất bằng một lần duyệt'],
-    refs: ['py-expressions', 'py-datamodel']
+  "q": "Khi nào bạn chọn array, hash map, set, stack hay queue cho một bài toán cụ thể, và Big-O của các thao tác chính trên từng cấu trúc là gì?",
+  "oral": "Big-O mô tả cách chi phí tăng theo kích thước đầu vào nên bạn dùng nó để so sánh phương án trước khi tối ưu vi mô. Array cho truy cập theo chỉ số O(1), thêm cuối mảng O(1) trung bình, nhưng chèn hoặc xóa ở giữa tốn O(n) vì phải dời phần tử. Hash map và set có thêm, xóa, tìm kiếm trung bình O(1) nhờ hàm băm, nhưng trường hợp xấu có thể lùi về O(n) khi đụng độ nhiều. Stack là LIFO còn queue là FIFO: stack thêm và lấy ở cùng một đầu, queue thêm ở đuôi và lấy ở đầu, với deque các thao tác này đều đạt O(1). Bạn chọn theo hành vi truy cập: cần thứ tự và chỉ số thì dùng array, cần tra cứu theo khóa thì dùng hash map, cần kiểm tra tồn tại thì dùng set, cần hoàn tác thì dùng stack, cần hàng đợi công việc thì dùng queue.",
+  "deep": "<p><strong>Thuật ngữ cần biết:</strong> Array, Hash Map, Set, Stack, Queue, Big-O, O(1), O(n), LIFO, FIFO, Deque.</p><p>Tối thứ sáu, endpoint tra cứu mã giảm giá lăn ra 504 suốt 45 phút với 200.000 mã trong danh sách. Mỗi request duyệt tuyến tính cả danh sách rồi lồng thêm vòng orders, tổng thành <code>O(n^2)</code>. Bạn chuyển danh sách mã sang <code>set</code> là hết nghẽn.</p><p>Array cho bạn truy cập theo chỉ số với <code>O(1)</code> và thêm cuối mảng <code>O(1)</code> khấu hao. Chèn hoặc xóa giữa mảng tốn <code>O(n)</code> vì phải dời phần còn lại. Hash map băm khóa để nhảy thẳng tới xô chứa giá trị nên thêm, xóa, tìm trung bình <code>O(1)</code>. <code>Set</code> là hash map chỉ lưu khóa nên kiểm tra tồn tại cũng <code>O(1)</code> trung bình. Stack là LIFO với push và pop cùng một đầu. Queue là FIFO với thêm đuôi và lấy đầu, <code>deque</code> làm cả hai đầu <code>O(1)</code>.</p><p>Array giữ thứ tự và cho chỉ số, còn <code>set</code> bỏ thứ tự để đổi lấy tra cứu <code>O(1)</code>. Dùng array khi bạn cần thứ tự, dùng <code>set</code> khi bạn chỉ cần trả lời có hay không.</p><ul><li><strong>Dùng khi:</strong> tra cứu theo khóa thì dùng hash map, kiểm tra tồn tại thì dùng <code>set</code>, hoàn tác thì dùng stack, hàng đợi việc thì dùng queue với <code>deque</code>.</li><li><strong>Không dùng khi:</strong> đừng duyệt array trong vòng lặp lớn để tìm tồn tại, đừng lấy đầu mảng bằng pop đầu vì tốn <code>O(n)</code> mỗi lần.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: dữ liệu vài trăm phần tử thì array đơn giản vẫn thắng, còn khi va chạm băm dày đặc hoặc khóa do người dùng điều khiển thì hash map lùi về <code>O(n)</code> và bạn phải chia nhỏ hoặc đổi khóa.</p>",
+  "code": "from collections import deque\n# ❌ Cách làm sai phổ biến: dùng list.pop(0) cho queue, điều này tốn O(n) mỗi lần. Một cách sai khác là dùng set cho dữ liệu cần giữ thứ tự. \n# ✅ Cách làm chuẩn: import deque từ collections cho FIFO O(1). Sử dụng set cho kiểm tra tồn tại O(1) trung bình.\nindex = {\"an\": 101, \"binh\": 102}\nprint(\"an\" in index)\nseen = set([\"an\", \"binh\", \"an\"])\nprint(len(seen))\nstack = [\"a\", \"b\"]\nstack.append(\"c\")\nstack.pop()\nqueue = deque([\"job1\", \"job2\"])\nqueue.append(\"job3\")\nqueue.popleft()\nprint(list(queue))",
+  "expected": "In ra True, 2, và danh sách [job2, job3]. Phân tích: \"an\" in index là tra cứu hash map nên O(1) bất kể có bao nhiêu khóa. set loại trùng nên [\"an\",\"binh\",\"an\"] chỉ còn 2 phần tử. Với stack, append(\"c\") rồi pop() lấy đúng \"c\" ra nên stack quay lại [\"a\",\"b\"]. Với queue, append(\"job3\") thêm vào đuôi còn popleft() lấy \"job1\" ở đầu, để lại [\"job2\",\"job3\"] — đây chính là khác biệt giữa LIFO và FIFO. Điểm cần nhớ: list.pop() ở đầu mảng là O(n) vì phải dịch toàn bộ phần tử, còn deque.popleft() là O(1).",
+  "followups": [
+    {
+      "q": "Vì sao thêm cuối array là O(1) trung bình chứ không phải O(1) mọi lúc?",
+      "a": "Vì mảng động thường cấp phát dư dung lượng nên lần thêm thông thường chỉ ghi vào ô trống với O(1). Thỉnh thoảng mảng đầy và phải cấp phát mảng lớn hơn rồi chép toàn bộ phần tử sang, lần đó tốn O(n). Chia đều chi phí chép cho nhiều lần thêm thì chi phí trung bình mỗi lần vẫn là O(1), gọi là O(1) khấu hao."
+    },
+    {
+      "q": "Khi nào hash map lùi về O(n) và bạn xử lý ra sao trong bài toán thực tế?",
+      "a": "Khi nhiều khóa đụng độ vào cùng một xô băm hoặc hàm băm kém thì các thao tác phải duyệt chuỗi dài trong xô đó nên lùi về O(n). Trong thực tế bạn chọn khóa có hàm băm tốt, tránh khóa do người dùng điều khiển trực tiếp mà không giới hạn, và tách dữ liệu thành nhiều phân đoạn nhỏ. Nếu cần thứ tự thì kết hợp thêm cấu trúc có thứ tự thay vì ép hash map làm mọi việc."
+    },
+    {
+      "q": "Vì sao không dùng mảng với pop ở đầu làm queue, và deque khắc phục điều gì?",
+      "a": "Vì mảng lưu liên tục nên mỗi lần lấy phần tử đầu phải dời toàn bộ phần tử còn lại sang trái một vị trí, tốn O(n). Nếu hàng đợi xử lý hàng nghìn tác vụ thì chi phí đó cộng dồn rất lớn. Deque lưu theo khối rời rạc nên thêm ở đuôi và lấy ở đầu đều O(1), đúng với hành vi FIFO của queue."
+    }
+  ],
+  "pitfalls": [
+    "Nhầm lẫn giữa chi phí trung bình và chi phí tệ nhất của hash map, cho rằng O(1) đúng trong mọi trường hợp",
+    "Dùng array để tìm kiếm tồn tại trong vòng lặp lớn thay vì set, biến bài toán O(n) thành O(n bình phương)",
+    "Dùng mảng làm queue với thao tác lấy đầu mảng mà không biết nó tốn O(n) mỗi lần"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là khi nào đụng độ băm kéo hash map về O(n) trong hệ thống thật",
+    "Tôi giải thích được bằng ví dụ vì sao tra cứu theo khóa dùng hash map còn kiểm tra tồn tại dùng set với thao tác O(1) trung bình",
+    "Trong tình huống API chậm do tìm kiếm tuyến tính lặp lại, tôi đổi sang set hoặc hash map và đo lại thời gian phản hồi"
+  ],
+  "refs": [
+    "py-datamodel",
+    "py-expressions"
+  ]
+},
+{
+  "id": "I02",
+  "group": "I",
+  "topic": "Khử trùng lặp và đếm tần suất bằng hash map và set",
+  "prio": "P0",
+  "level": "L2",
+  "type": "predict",
+  "attacks": [
+    {
+      "q": "Khử trùng lặp bằng tập hợp có nhược điểm gì?",
+      "a": "Nó không giữ thứ tự, nên nếu bạn cần giữ thứ tự xuất hiện đầu tiên thì kết quả sai. Và nó đòi hỏi các phần tử phải băm được, nên với object hoặc cấu trúc lồng nhau thì không dùng trực tiếp được. Ngoài ra nó chỉ trả lời câu hỏi đã xuất hiện hay chưa, không cho biết xuất hiện bao nhiêu lần. Cách làm đúng cho khử trùng lặp giữ thứ tự là duyệt tuần tự, giữ một tập hợp các giá trị đã thấy, và thêm vào kết quả nếu chưa có — cách này vẫn là O(n) nhưng bảo toàn thứ tự."
+    },
+    {
+      "q": "Đếm tần suất có thể sai ở đâu khi dữ liệu tới từ nhiều nguồn?",
+      "a": "Ở ba chỗ:\nMột là khoá chưa được chuẩn hoá, nên cùng một giá trị có nhiều biểu diễn và bị đếm thành nhiều nhóm — chữ hoa chữ thường, khoảng trắng thừa, hoặc khác biệt Unicode.\nHai là dữ liệu bị cắt cụt ở ranh giới lô, nếu bạn đếm riêng từng lô rồi cộng lại thì đúng, nhưng nếu bạn khử trùng lặp trong từng lô rồi cộng thì sai.\nBa là giá trị rỗng, vì nó thường bị bỏ qua một cách âm thầm và làm tổng số đếm nhỏ hơn số bản ghi.\nCả ba đều là lỗi im lặng, nên cần kiểm tra tổng số đếm khớp với số bản ghi đầu vào."
+    }
+  ],
+  "incident": "<p>Sáng nay, dev F báo API đếm lượt bình chọn chạy 40 giây cho 50.000 sự kiện vì dùng vòng lặp lồng nhau kiểm tra từng sự kiện mới. 10.000 user ở phiên sáng bị kẹt ở màn chờ, và sự kiện của 3.000 người dùng bị trùng không bị phát hiện nên số liệu ban điều hành sai. Log ghi <code>count() called 50.000 times</code>.</p>",
+  "askFirst": [
+    "Cấu trúc dữ liệu nào cho phép đếm tần suất và khử trùng lặp trong một lần duyệt O(n)?",
+    "Vì sao dùng set để khử trùng lặp rồi mong giữ thứ tự là cách làm sai?"
+  ],
+  "predict": {
+    "q": "Bạn đoán <code>list(dict.fromkeys(nums))</code> sẽ in ra gì và tại sao thứ tự giữ nguyên?",
+    "a": "<p>In ra <code>[3, 1, 2, 4]</code>. Từ Python 3.7, dict giữ thứ tự chèn: lần đầu gặp 3, 1, 2, 4 được chèn lần lượt; lần lặp sau cùng một khóa chỉ ghi đè giá trị, không tạo vị trí mới. Chuyển dict về list giữ nguyên thứ tự xuất hiện đầu tiên. Đây là lý do <code>dict.fromkeys</code> là cách khử trùng lặp giữ thứ tự đúng, trong khi set không cam kết thứ tự.</p>"
   },
-  {
-    id: 'I03',
-    group: 'I',
-    topic: 'Nhóm dữ liệu theo khóa bằng hash map',
-    prio: 'P1',
-    level: 'L2',
-    type: 'code',
-    incident: "<p>Một endpoint tổng hợp số liệu theo phòng ban nhận danh sách 80.000 bản ghi. Code cũ duyệt từng bản ghi rồi, với mỗi bản ghi, duyệt lại toàn bộ danh sách kết quả để tìm nhóm tương ứng. Endpoint mất 34 giây và tiêu tốn 100% một nhân CPU. Khi số bản ghi tăng gấp đôi, thời gian tăng gần gấp bốn.</p>",
-    askFirst: ["Vì sao thời gian tăng nhanh hơn số bản ghi?","Cấu trúc dữ liệu nào làm phép tra cứu theo khoá trở nên rẻ?","Khi nào nên để database làm việc gộp nhóm thay vì làm trong ứng dụng?"],
-    predict: {"q":"Với <code>n</code> bản ghi, nếu mỗi bản ghi phải duyệt lại toàn bộ danh sách kết quả để tìm nhóm thì độ phức tạp là bao nhiêu?","a":"<p>O(n²) trong trường hợp xấu nhất, vì với mỗi bản ghi bạn thực hiện một phép tìm kiếm tuyến tính trên danh sách kết quả — mà danh sách đó cũng có thể lớn tới <code>n</code> phần tử. Đó là lý do tăng gấp đôi dữ liệu làm thời gian tăng gần gấp bốn. Thay danh sách bằng một bảng băm khoá theo tên nhóm đưa phép tra cứu về trung bình O(1), nên toàn bộ vòng lặp còn O(n) và thời gian tăng tuyến tính theo dữ liệu.</p>"},
-    anchor: "Tìm kiếm tuyến tính trong một vòng lặp là O(n²) trá hình, và bảng băm là thứ biến nó về O(n).",
-    attacks: [{"q":"Khi nào nên để database gộp nhóm thay vì làm trong ứng dụng?","a":"Khi dữ liệu lớn hơn mức bạn muốn truyền qua mạng, hoặc khi bạn chỉ cần kết quả tổng hợp chứ không cần từng bản ghi. Database có chỉ mục và có thể dùng nhiều nhân, và quan trọng hơn là nó không phải chuyển toàn bộ dữ liệu thô cho ứng dụng. Ngược lại, làm trong ứng dụng phù hợp khi logic gộp nhóm phức tạp, khi cần gọi dịch vụ ngoài cho từng nhóm, hoặc khi dữ liệu đã nằm sẵn trong bộ nhớ. Điểm cân nhắc thực tế là chi phí truyền: 80.000 bản ghi qua mạng có thể tốn nhiều thời gian hơn chính phép gộp."},{"q":"Bảng băm có nhược điểm gì trong trường hợp này?","a":"Nó đổi thời gian lấy bộ nhớ: bạn cần giữ một khoá cho mỗi nhóm riêng biệt, nên nếu số nhóm xấp xỉ số bản ghi thì bộ nhớ tăng tuyến tính theo dữ liệu. Nó cũng không giữ thứ tự, nên nếu kết quả cần sắp xếp thì phải sắp thêm một bước. Và nếu khoá không băm được — ví dụ khoá là một cấu trúc phức tạp — bạn phải tự định nghĩa cách so sánh và băm. Với dữ liệu rất lớn, có thể cần cách tiếp cận chia để trị hoặc để database làm, thay vì gộp tất cả trong bộ nhớ."}],
-    q: 'Hãy viết hàm nhóm danh sách user theo phòng ban bằng hash map, và giải thích vì sao dùng setdefault hoặc defaultdict thay vì kiểm tra khóa thủ công?',
-    oral: 'Bạn nhóm theo khóa bằng cách duyệt danh sách một lần và đẩy từng phần tử vào xô tương ứng trong hash map. Mỗi khóa là một phòng ban, mỗi giá trị là danh sách thành viên. Dùng setdefault hoặc defaultdict giúp bạn khỏi viết nhánh kiểm tra khóa tồn tại, code ngắn hơn và ít lỗi hơn. Cách này chạy O(n) trung bình và là mẫu rất phổ biến trong API báo cáo, trang quản trị và xử lý đơn hàng theo trạng thái. Lỗi hay gặp là quên khởi tạo danh sách cho khóa mới, hoặc dùng chung một danh sách cho nhiều khóa.',
-    deep: '<p>Endpoint gom 80.000 bản ghi theo phòng ban mất 34 giây và đốt 100% một nhân CPU. Thủ phạm là vòng lặp ngoài duyệt từng bản ghi rồi quét lại danh sách nhóm để tìm xô, tổng thành <code>O(n^2)</code>. Dữ liệu tăng gấp đôi là thời gian tăng gần gấp bốn.</p><p>Bạn thay danh sách nhóm bằng hash map với khóa là tên phòng ban. Mỗi bản ghi băm đúng một lần rồi append vào xô của nó, mỗi thao tác trung bình <code>O(1)</code> nên toàn bộ còn <code>O(n)</code>. <code>setdefault</code> gộp kiểm tra và khởi tạo thành một bước nên bạn không thể quên tạo list cho khóa mới.</p><p><code>setdefault</code> viết tường minh từng bước nên dễ đọc, còn <code>defaultdict(list)</code> tự tạo xô nên gọn hơn. Kiểm tra khóa thủ công dài dòng và dễ quên nhánh khởi tạo.</p><ul><li><strong>Dùng khi:</strong> gom đơn theo trạng thái, gom bài theo chuyên mục, dữ liệu đã nằm sẵn trong bộ nhớ với số nhóm vừa phải.</li><li><strong>Không dùng khi:</strong> đừng tải hàng triệu dòng về chỉ để đếm theo nhóm, lúc đó truy vấn gom nhóm trực tiếp rẻ hơn nhiều.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: khóa thiếu hay Web khác web tách nhóm sai nên bạn chuẩn hóa bằng strip và lower, còn số nhóm xấp xỉ số bản ghi thì hash map tốn bộ nhớ và bạn cân nhắc gom ở tầng truy vấn.</p>',
-    code: 'users = [\n    {"name": "An", "dept": "web"},\n    {"name": "Binh", "dept": "api"},\n    {"name": "Chi", "dept": "web"},\n]\ngroups = {}\nfor u in users:\n    groups.setdefault(u["dept"], []).append(u["name"])\nprint(groups)',
-expected: 'In ra {\'web\': [\'An\', \'Chi\'], \'api\': [\'Binh\']}. Phân tích: setdefault tra khóa, nếu chưa có thì chèn giá trị mặc định rồi trả về nó, nên mỗi phòng ban có đúng một list và các phần tử cùng khóa được nối vào đó. Thứ tự khóa giữ nguyên theo lần xuất hiện đầu tiên vì dict của Python bảo toàn thứ tự chèn. Nếu thay bằng defaultdict(list) thì code gọn hơn nhưng đọc hơi khó hơn; nếu tự viết if key not in groups thì dài dòng. Độ phức tạp O(n) vì mỗi phần tử chỉ được tra và chèn một lần.',
-    followups: [
-      { q: 'setdefault giúp tránh lỗi gì so với kiểm tra khóa thủ công?', a: 'Nó gộp kiểm tra và khởi tạo thành một thao tác nguyên tử ở mức logic nên bạn không thể quên nhánh khởi tạo danh sách cho khóa mới. Code ngắn hơn và không lặp lại tên khóa hai lần. Với defaultdict thì việc khởi tạo còn tự động hoàn toàn, bạn chỉ cần gọi append mà không cần quan tâm khóa đã tồn tại hay chưa.' },
-      { q: 'Khi nào bạn đẩy việc nhóm xuống cơ sở dữ liệu thay vì nhóm trong Python?', a: 'Khi dữ liệu quá lớn không vừa bộ nhớ hoặc bạn chỉ cần số lượng theo nhóm chứ không cần chi tiết từng bản ghi. Cơ sở dữ liệu có chỉ mục và phép gom nhóm tối ưu nên tránh tải hàng triệu dòng về ứng dụng. Ngược lại khi dữ liệu đã có sẵn trong bộ nhớ và số lượng vừa phải thì nhóm trong Python đơn giản và linh hoạt hơn.' },
-      { q: 'Nếu trường dept bị thiếu hoặc viết hoa không nhất quán thì kết quả nhóm sai ra sao?', a: 'Truy cập trực tiếp khóa thiếu sẽ gây lỗi, còn giá trị Web và web sẽ tách thành hai nhóm khác nhau dù thực chất là một. Bạn cần dùng get với giá trị mặc định như Nhóm khác và chuẩn hóa chuỗi bằng strip và lower trước khi nhóm. Quy tắc này nên viết thành hàm chuẩn hóa dùng chung để mọi nơi nhóm giống nhau.' }
-    ],
-    pitfalls: ['Quên khởi tạo danh sách cho khóa mới nên gặp lỗi khi thêm phần tử đầu tiên của nhóm', 'Không chuẩn hóa khóa nhóm khiến Web và web tách thành hai nhóm khác nhau', 'Tải toàn bộ bảng lớn về bộ nhớ để nhóm trong khi truy vấn gom nhóm trực tiếp hiệu quả hơn'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là giới hạn bộ nhớ khi nhóm hàng triệu bản ghi trong một tiến trình', 'Tôi giải thích được bằng ví dụ nhóm user theo phòng ban với setdefault và độ phức tạp O(n)', 'Trong tình huống trang báo cáo cần gom đơn theo trạng thái, tôi viết hàm nhóm dùng chung kèm chuẩn hóa khóa'],
-    refs: ['py-expressions', 'ts-handbook']
+  "anchor": "Dùng set để khử trùng lặp mà không có dict giữ thứ tự chèn = danh sách mất thứ tự xuất hiện đầu tiên khi cần báo cáo.",
+  "q": "Đoạn mã Python sau in ra gì, và vì sao danh sách unique vẫn giữ đúng thứ tự xuất hiện đầu tiên?",
+  "oral": "Bạn khử trùng lặp mà vẫn giữ thứ tự bằng cách tận dụng dict giữ thứ tự chèn, còn đếm tần suất bằng hash map với giá trị mặc định. Cách làm này chạy O(n) vì mỗi phần tử chỉ xử lý một lần. Bạn không nên dùng vòng lặp lồng nhau để đếm vì nó thành O(n^2). Lỗi phổ biến là dùng set để khử trùng rồi mong thứ tự giữ nguyên, hoặc quên giá trị khởi tạo khi đếm nên gặp lỗi khóa thiếu. Trong API thật, mẫu này dùng để chuẩn hóa danh sách email, đếm lượt bình chọn hoặc phát hiện mã giảm giá bị lặp.",
+  "deep": "<p><strong>Thuật ngữ cần biết:</strong> Set, Dict (hash map), O(n), O(n²), Khử trùng lặp, Đếm tần suất.</p><p>API đếm bình chọn kẹt 40 giây với 50.000 sự kiện vì mỗi sự kiện mới lại gọi count quét cả danh sách. Log ghi <code>count() called 50.000 times</code>, tổng thành <code>O(n^2)</code>. Bạn duyệt một lần với dict là còn chưa tới một giây.</p><p>Từ Python 3.7 dict giữ thứ tự chèn nên <code>dict.fromkeys(nums)</code> giữ đúng vị trí xuất hiện đầu tiên của 3, 1, 2, 4. Khóa lặp sau chỉ ghi đè giá trị mà không tạo vị trí mới. Vòng đếm dùng <code>get(n, 0) + 1</code> để khởi tạo bộ đếm ngay lần gặp đầu. Mỗi phần tử băm đúng một lần nên tổng là <code>O(n)</code> trung bình.</p><p><code>dict.fromkeys</code> giữ thứ tự để hiển thị, còn <code>set</code> chỉ trả lời đã thấy hay chưa nên nhanh nhưng mất thứ tự. Cần báo cáo theo thứ tự thì dùng dict, chỉ cần kiểm tra tồn tại thì dùng <code>set</code>.</p><ul><li><strong>Dùng khi:</strong> khử trùng email, đếm lượt bình chọn, phát hiện mã giảm giá lặp trong một lần duyệt.</li><li><strong>Không dùng khi:</strong> đừng gọi count trong vòng lặp, đừng ném <code>set</code> qua list rồi mong thứ tự giữ nguyên, đừng đếm dict hay list lồng nhau khi chưa rút khóa băm được.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: phần tử không băm được thì bạn rút email hay mã người dùng làm khóa, còn dữ liệu đa nguồn chưa chuẩn hóa thì bạn chuẩn hóa hoa thường và khoảng trắng trước khi đếm.</p>",
+  "code": "nums = [3, 1, 2, 3, 2, 1, 4]\n# ❌ Cách làm sai phổ biến: dùng list.count(n) trong vòng lặp, điều này tạo O(n²). Set không giữ thứ tự nên cũng sai nếu cần báo cáo.\n# ✅ Cách làm chuẩn: dùng dict.fromkeys để khử trùng lặp giữ thứ tự, và hash map để đếm tần suất O(n).\nunique = list(dict.fromkeys(nums))\nfreq = {}\nfor n in nums:\n    freq[n] = freq.get(n, 0) + 1\nprint(unique)\nprint(freq)",
+  "expected": "In ra hai dòng:\nDòng một là [3, 1, 2, 4] vì dict.fromkeys giữ thứ tự xuất hiện đầu tiên và bỏ lần lặp sau.\nDòng hai là {3: 2, 1: 2, 2: 2, 4: 1} vì mỗi phần tử được đếm đúng số lần xuất hiện sau một lần duyệt.\nTừ Python 3.7 dict giữ thứ tự chèn nên kết quả này ổn định.",
+  "followups": [
+    {
+      "q": "Vì sao dict.fromkeys giữ được thứ tự còn set thì không nên dùng khi cần thứ tự?",
+      "a": "Vì từ Python 3.7 dict được đảm bảo giữ thứ tự chèn nên khóa xuất hiện đầu tiên giữ nguyên vị trí, khóa lặp sau chỉ ghi đè giá trị mà không tạo vị trí mới. Set không cam kết thứ tự lặp lại theo ý bạn nên dùng nó rồi chuyển thành list có thể cho thứ tự khác. Khi yêu cầu giữ thứ tự thì dict là lựa chọn đúng."
+    },
+    {
+      "q": "Độ phức tạp của cách đếm một lần duyệt là gì, và cách nào khiến nó thành O(n^2)?",
+      "a": "Cách một lần duyệt là O(n) trung bình vì mỗi phần tử chỉ băm và cập nhật một lần. Nếu trong vòng lặp bạn gọi count trên cả danh sách cho từng phần tử khác nhau thì mỗi lần gọi lại duyệt hết danh sách nên thành O(n^2). Với danh sách lớn thì sự chênh lệch này quyết định API còn đáp ứng được hay không."
+    },
+    {
+      "q": "Nếu phần tử là dict hoặc list không băm được thì bạn xử lý ra sao?",
+      "a": "Vì dict và list không băm được nên không thể làm khóa trực tiếp. Bạn cần rút ra một trường băm được làm khóa, ví dụ mã người dùng hoặc email đã chuẩn hóa, hoặc chuyển list thành tuple nếu thứ tự có ý nghĩa. Khi không có khóa tự nhiên thì phải chuẩn hóa dữ liệu trước rồi mới khử trùng và đếm."
+    }
+  ],
+  "pitfalls": [
+    "Tưởng set giữ thứ tự chèn nên khử trùng bằng set rồi ngạc nhiên khi thứ tự đổi",
+    "Dùng count trong vòng lặp khiến thuật toán phình thành O(n^2) mà không hay",
+    "Quên giá trị mặc định khi đếm nên code rẽ nhánh phức tạp hoặc gặp lỗi khóa thiếu"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là cách chọn khóa băm được khi phần tử là dict lồng nhau phức tạp",
+    "Tôi giải thích được bằng ví dụ vì sao dict.fromkeys cho [3, 1, 2, 4] và vòng đếm cho tần suất đúng",
+    "Trong tình huống danh sách email trùng lặp, tôi viết hàm khử trùng giữ thứ tự và đếm tần suất bằng một lần duyệt"
+  ],
+  "refs": [
+    "py-expressions",
+    "py-datamodel"
+  ]
+},
+{
+  "id": "I03",
+  "group": "I",
+  "topic": "Nhóm dữ liệu theo khóa bằng hash map",
+  "prio": "P1",
+  "level": "L2",
+  "type": "code",
+  "incident": "<p>Một endpoint tổng hợp số liệu theo phòng ban nhận danh sách 80.000 bản ghi. Code cũ duyệt từng bản ghi rồi, với mỗi bản ghi, duyệt lại toàn bộ danh sách kết quả để tìm nhóm tương ứng. Endpoint mất 34 giây và tiêu tốn 100% một nhân CPU. Khi số bản ghi tăng gấp đôi, thời gian tăng gần gấp bốn.</p>",
+  "askFirst": [
+    "Vì sao thời gian tăng nhanh hơn số bản ghi?",
+    "Cấu trúc dữ liệu nào làm phép tra cứu theo khoá trở nên rẻ?",
+    "Khi nào nên để database làm việc gộp nhóm thay vì làm trong ứng dụng?"
+  ],
+  "predict": {
+    "q": "Với <code>n</code> bản ghi, nếu mỗi bản ghi phải duyệt lại toàn bộ danh sách kết quả để tìm nhóm thì độ phức tạp là bao nhiêu?",
+    "a": "<p>O(n²) trong trường hợp xấu nhất, vì với mỗi bản ghi bạn thực hiện một phép tìm kiếm tuyến tính trên danh sách kết quả — mà danh sách đó cũng có thể lớn tới <code>n</code> phần tử. Đó là lý do tăng gấp đôi dữ liệu làm thời gian tăng gần gấp bốn. Thay danh sách bằng một bảng băm khoá theo tên nhóm đưa phép tra cứu về trung bình O(1), nên toàn bộ vòng lặp còn O(n) và thời gian tăng tuyến tính theo dữ liệu.</p>"
   },
-  {
-    id: 'I04',
-    group: 'I',
-    topic: 'Logic phân trang với slice và kiểm tra biên',
-    prio: 'P1',
-    level: 'L2',
-    type: 'debug',
-    incident: "<p>Một hàm phân trang nhận chỉ số trang từ tham số truy vấn. Với trang bằng 0, nó trả về mảng rỗng. Với trang vượt quá số trang, nó trả về mảng rỗng, và component hiển thị vòng lặp vô hạn vì hiểu mảng rỗng là \"còn dữ liệu\". Ngoài ra, backend đánh số trang từ 1 còn hàm dùng chỉ số từ 0, nên trang đầu tiên của người dùng thực chất là trang thứ hai của dữ liệu.</p>",
-    askFirst: ["Quy ước đánh số trang khác nhau ở đâu?","Giá trị nào là biên cần kiểm tra?","Làm sao để lỗi biên không lan ra giao diện?"],
-    predict: {"q":"Với mảng 10 phần tử, <code>items.slice(20, 30)</code> trả về gì?","a":"<p>Nó trả về mảng rỗng, không ném lỗi. Đây là điểm quan trọng: chỉ số vượt độ dài không phải là lỗi ở JavaScript mà là một kết quả hợp lệ — mảng rỗng. Vì vậy code gọi hàm này phải phân biệt \"không có dữ liệu ở trang này\" với \"đã hết dữ liệu\", và đó là hai chuyện khác nhau. Nếu giao diện dùng mảng rỗng làm điều kiện dừng thì nó dừng quá sớm hoặc lặp mãi, tuỳ theo cách nó diễn giải. Cách chắc chắn là chuẩn hoá chỉ số ở một chỗ và trả về kèm thông tin còn dữ liệu hay không.</p>"},
-    anchor: "Chỉ số vượt biên trong JavaScript trả về rỗng chứ không báo lỗi, nên biên phải được chuẩn hoá ở một chỗ thay vì tin vào hành vi im lặng.",
-    attacks: [{"q":"Làm sao để hai bên thống nhất quy ước phân trang?","a":"Chọn một quy ước và ghi rõ trong tài liệu API, rồi chuyển đổi ở đúng một chỗ — thường là lớp gọi API ở client. Điều nên tránh là để mỗi màn hình tự chuyển đổi, vì sẽ có chỗ làm đúng và chỗ làm sai. Một cách tốt hơn nữa là tránh hẳn việc đánh số trang và dùng con trỏ, vì khi đó không còn quy ước nào để lệch. Nếu buộc phải giữ số trang, hãy viết một test cho trường hợp trang đầu, trang cuối và trang vượt biên."},{"q":"Trả về tổng số trang hay con trỏ tới trang sau thì tốt hơn?","a":"Tuỳ vào giao diện cần gì. Nếu người dùng cần nhảy tới trang bất kỳ thì phải trả tổng số, và điều đó đồng nghĩa với việc phải đếm toàn bộ dữ liệu khớp — một phép đếm có thể đắt trên bảng lớn. Nếu giao diện chỉ cần cuộn tiếp, trả về con trỏ tới trang sau là đủ, rẻ hơn nhiều vì không phải đếm, và cũng ổn định hơn khi dữ liệu đang thay đổi. Điểm cần lưu ý với con trỏ là phải trả kèm cờ cho biết còn dữ liệu hay không, vì nếu không client lại phải suy đoán từ một trang rỗng."}],
-    q: 'Hàm phân trang JavaScript sau sai ở đâu, vì sao gọi với trang 1 lại trả về kết quả sai, và cách sửa đúng là gì?',
-    oral: 'Hàm này sai ở công thức tính vị trí bắt đầu vì trang mà người dùng thấy thường bắt đầu từ 1 còn chỉ số mảng bắt đầu từ 0. Công thức đúng phải trừ một trước khi nhân với kích thước trang. Ngoài lỗi lệch một, hàm còn thiếu kiểm tra biên cho trang vượt quá, kích thước trang không hợp lệ và trang không phải số nguyên. Bản sửa đúng chuẩn hóa đầu vào, kẹp trang trong khoảng hợp lệ và trả về mảng rỗng hoặc trang cuối thay vì để lỗi lan ra giao diện. Đây là lỗi rất hay gặp trong API danh sách và bạn nên có kiểm thử cho trang đầu, trang cuối và trang vượt quá.',
-    deep: '<p>Gọi <code>paginate(items, 1, 3)</code> mà màn hình hiện [4, 5, 6] thay vì [1, 2, 3]. Ba bản ghi đầu biến mất khỏi mọi trang. Nguyên nhân là <code>start = page * pageSize</code> cho ra 3 trong khi trang 1 phải bắt đầu từ chỉ số 0.</p><p>Công thức đúng là <code>(page - 1) * pageSize</code> rồi cắt <code>slice(start, start + pageSize)</code>. Trang người dùng thấy bắt đầu từ 1 còn chỉ số mảng bắt đầu từ 0 nên bạn luôn trừ một trước khi nhân. <code>slice</code> vượt biên trả về mảng rỗng chứ không ném lỗi, vì vậy trang vượt quá lặng lẽ cho kết quả rỗng và giao diện diễn giải sai thành vòng lặp vô hạn.</p><p>Cắt mảng trong bộ nhớ hợp với danh sách nhỏ đã tải sẵn, còn bảng lớn thì bạn phân trang ở truy vấn với giới hạn và mốc. Một bên cắt hết trong RAM, bên còn lại chỉ lấy đúng một trang.</p><ul><li><strong>Dùng khi:</strong> danh sách vừa phải, kiểm thử đủ trang đầu, trang cuối và trang vượt quá.</li><li><strong>Không dùng khi:</strong> đừng phân trang số trang trên dữ liệu chèn liên tục, đừng tin mảng rỗng là hết dữ liệu khi chưa kèm thông tin còn trang sau hay không.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: bản ghi mới chèn vào đầu làm số trang trỏ sai nội dung nên bạn chuyển sang con trỏ với mốc ổn định như mã tăng dần, còn đầu vào 0, âm hay không phải số thì bạn chuẩn hóa ở một chỗ duy nhất.</p>',
-    code: 'function paginate(items, page, pageSize) {\n  const start = page * pageSize;\n  const end = start + pageSize;\n  return items.slice(start, end);\n}\nconst items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];\nconsole.log(paginate(items, 1, 3));',
-    expected: 'In ra [4, 5, 6] thay vì [1, 2, 3] như mong đợi. Nguyên nhân gốc là công thức start dùng page nhân trực tiếp mà quên trang 1 tương ứng chỉ số 0, nên mọi trang đều lệch về sau một trang. Sửa đúng là const start = (page - 1) * pageSize, kèm kiểm tra page và pageSize là số nguyên dương và kẹp page trong tổng số trang.',
-    followups: [
-      { q: 'Ngoài công thức sai, hàm này còn thiếu những kiểm tra biên nào?', a: 'Hàm thiếu kiểm tra page nhỏ hơn 1, pageSize nhỏ hơn 1, đầu vào không phải số nguyên và page vượt quá tổng số trang. Bản sửa nên ép kiểu và kiểm tra số nguyên dương, tính tổng số trang từ độ dài mảng, rồi kẹp page vào khoảng hợp lệ hoặc trả về mảng rỗng có ý nghĩa. Mỗi nhánh này cần một kiểm thử riêng để không tái phát.' },
-      { q: 'Khi dữ liệu thay đổi liên tục thì phân trang theo số trang gặp vấn đề gì?', a: 'Khi có bản ghi mới chèn vào đầu danh sách giữa hai lần gọi thì cùng một số trang sẽ trỏ sang nội dung khác, gây trùng hoặc sót bản ghi. Giải pháp là phân trang theo con trỏ với mốc ổn định như mã tăng dần hoặc thời điểm tạo kèm mã. Mỗi phản hồi trả về con trỏ trang sau để lần gọi tiếp theo tiếp tục chính xác.' }
-    ],
-    pitfalls: ['Nhầm giữa số trang bắt đầu từ 1 và chỉ số mảng bắt đầu từ 0 nên mọi trang lệch một đơn vị', 'Quên kiểm tra trang vượt quá, kích thước trang bằng 0 hoặc đầu vào không phải số', 'Phân trang trong bộ nhớ cho bảng khổng lồ thay vì phân trang ở truy vấn dữ liệu'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là cách chọn mốc con trỏ ổn định khi sắp xếp theo nhiều cột', 'Tôi giải thích được bằng ví dụ vì sao paginate với trang 1 trả về [4, 5, 6] và công thức (page - 1) * pageSize sửa được lỗi', 'Trong tình huống API danh sách bỏ sót bản ghi đầu, tôi sửa công thức start và bổ sung kiểm thử trang đầu, trang cuối, trang vượt quá'],
-    refs: ['ts-handbook', 'mdn-execution-model']
+  "anchor": "Tìm kiếm tuyến tính trong một vòng lặp là O(n²) trá hình, và bảng băm là thứ biến nó về O(n).",
+  "attacks": [
+    {
+      "q": "Khi nào nên để database gộp nhóm thay vì làm trong ứng dụng?",
+      "a": "Khi dữ liệu lớn hơn mức bạn muốn truyền qua mạng, hoặc khi bạn chỉ cần kết quả tổng hợp chứ không cần từng bản ghi. Database có chỉ mục và có thể dùng nhiều nhân, và quan trọng hơn là nó không phải chuyển toàn bộ dữ liệu thô cho ứng dụng. Ngược lại, làm trong ứng dụng phù hợp khi logic gộp nhóm phức tạp, khi cần gọi dịch vụ ngoài cho từng nhóm, hoặc khi dữ liệu đã nằm sẵn trong bộ nhớ. Điểm cân nhắc thực tế là chi phí truyền: 80.000 bản ghi qua mạng có thể tốn nhiều thời gian hơn chính phép gộp."
+    },
+    {
+      "q": "Bảng băm có nhược điểm gì trong trường hợp này?",
+      "a": "Nó đổi thời gian lấy bộ nhớ: bạn cần giữ một khoá cho mỗi nhóm riêng biệt, nên nếu số nhóm xấp xỉ số bản ghi thì bộ nhớ tăng đáng kể. Ngoài ra, nếu nhóm được xác định bằng một chuỗi dài, việc băm sẽ tốn thời gian và bộ nhớ cho bảng băm. Cần cân nhắc giữa chi phí bộ nhớ và chi phí thời gian khi quyết định đặt đâu cấu trúc này."
+    }
+  ],
+  "q": "Hãy viết hàm nhóm danh sách user theo phòng ban bằng hash map, và giải thích vì sao dùng setdefault hoặc defaultdict thay vì kiểm tra khóa thủ công?",
+  "oral": "Bạn nhóm theo khóa bằng cách duyệt danh sách một lần và đẩy từng phần tử vào xô tương ứng trong hash map. Mỗi khóa là một phòng ban, mỗi giá trị là danh sách thành viên. Dùng setdefault hoặc defaultdict giúp bạn khỏi viết nhánh kiểm tra khóa tồn tại, code ngắn hơn và ít lỗi hơn. Cách này chạy O(n) trung bình và là mẫu rất phổ biến trong API báo cáo, trang quản trị và xử lý đơn hàng theo trạng thái. Lỗi hay gặp là quên khởi tạo danh sách cho khóa mới, hoặc dùng chung một danh sách cho nhiều khóa.",
+  "deep": "<p><strong>Thuật ngữ cần biết:</strong> Hash Map, Setdefault, Defaultdict, O(n), Nhóm dữ liệu, Trích xuất khóa.</p><p>Endpoint gom 80.000 bản ghi theo phòng ban mất 34 giây và đốt 100% một nhân CPU. Thủ phạm là vòng lặp ngoài duyệt từng bản ghi rồi quét lại danh sách nhóm để tìm xô, tổng thành <code>O(n^2)</code>. Dữ liệu tăng gấp đôi là thời gian tăng gần gấp bốn.</p><p>Bạn thay danh sách nhóm bằng hash map với khóa là tên phòng ban. Mỗi bản ghi băm đúng một lần rồi append vào xô của nó, mỗi thao tác trung bình <code>O(1)</code> nên toàn bộ còn <code>O(n)</code>. <code>setdefault</code> gộp kiểm tra và khởi tạo thành một bước nên bạn không thể quên tạo list cho khóa mới.</p><p><code>setdefault</code> viết tường minh từng bước nên dễ đọc, còn <code>defaultdict(list)</code> tự tạo xô nên gọn hơn. Kiểm tra khóa thủ công dài dòng và dễ quên nhánh khởi tạo.</p><ul><li><strong>Dùng khi:</strong> nhóm user theo phòng ban, gom đơn theo trạng thái, phân loại sản phẩm theo danh mục.</li><li><strong>Không dùng khi:</strong> dữ liệu lớn hơn bộ nhớ, hoặc bạn chỉ cần số lượng tổng hợp chứ không cần danh sách chi tiết.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: nếu số nhóm rất lớn hoặc dữ liệu động thì đẩy xuống database với GROUP BY và index, giữ ứng dụng ở mức vừa phải.</p>",
+  "code": "users = [\n    {\"name\": \"An\", \"dept\": \"web\"},\n    {\"name\": \"Binh\", \"dept\": \"api\"},\n    {\"name\": \"Chi\", \"dept\": \"web\"},\n]\n# ❌ Cách làm sai phổ biến: dùng if-else kiểm tra khóa và tạo danh sách, dễ quên nhánh khởi tạo và lặp tên khóa hai lần.\n# ✅ Cách làm chuẩn: dùng setdefault để gộp kiểm tra và khởi tạo, append phần tử vào danh sách tương ứng.\ngroups = {}\nfor u in users:\n    groups.setdefault(u[\"dept\"], []).append(u[\"name\"])\nprint(groups)",
+  "expected": "In ra {'web': ['An', 'Chi'], 'api': ['Binh']}. Phân tích: setdefault tra khóa, nếu chưa có thì chèn giá trị mặc định rồi trả về nó, nên mỗi phòng ban có đúng một list và các phần tử cùng khóa được nối vào đó. Thứ tự khóa giữ nguyên theo lần xuất hiện đầu tiên vì dict của Python bảo toàn thứ tự chèn. Nếu thay bằng defaultdict(list) thì code gọn hơn nhưng đọc hơi khó hơn; nếu tự viết if key not in groups thì dài dòng. Độ phức tạp O(n) vì mỗi phần tử chỉ được tra và chèn một lần.",
+  "followups": [
+    {
+      "q": "setdefault giúp tránh lỗi gì so với kiểm tra khóa thủ công?",
+      "a": "Nó gộp kiểm tra và khởi tạo thành một thao tác nguyên tử ở mức logic nên bạn không thể quên nhánh khởi tạo danh sách cho khóa mới. Code ngắn hơn và không lặp lại tên khóa hai lần. Với defaultdict thì việc khởi tạo còn tự động hoàn toàn, bạn chỉ cần gọi append mà không cần quan tâm khóa đã tồn tại hay chưa."
+    },
+    {
+      "q": "Khi nào bạn đẩy việc nhóm xuống cơ sở dữ liệu thay vì nhóm trong Python?",
+      "a": "Khi dữ liệu quá lớn không vừa bộ nhớ hoặc bạn chỉ cần số lượng theo nhóm chứ không cần chi tiết từng bản ghi. Cơ sở dữ liệu có chỉ mục và phép gom nhóm tối ưu nên tránh tải hàng triệu dòng về ứng dụng. Ngược lại khi dữ liệu đã có sẵn trong bộ nhớ và số lượng vừa phải thì nhóm trong Python đơn giản và linh hoạt hơn."
+    },
+    {
+      "q": "Nếu trường dept bị thiếu hoặc viết hoa không nhất quán thì kết quả nhóm sai ra sao?",
+      "a": "Truy cập trực tiếp khóa thiếu sẽ gây lỗi, còn giá trị Web và web sẽ tách thành hai nhóm khác nhau dù thực chất là một. Bạn cần dùng get với giá trị mặc định như Nhóm khác và chuẩn hóa chuỗi bằng strip và lower trước khi nhóm. Quy tắc này nên viết thành hàm chuẩn hóa dùng chung để mọi nơi nhóm giống nhau."
+    }
+  ],
+  "pitfalls": [
+    "Quên khởi tạo danh sách cho khóa mới nên gặp lỗi khi thêm phần tử đầu tiên của nhóm",
+    "Không chuẩn hóa khóa nhóm khiến Web và web tách thành hai nhóm khác nhau",
+    "Tải toàn bộ bảng lớn về bộ nhớ để nhóm trong khi truy vấn gom nhóm trực tiếp hiệu quả hơn"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là giới hạn bộ nhớ khi nhóm hàng triệu bản ghi trong một tiến trình",
+    "Tôi giải thích được bằng ví dụ nhóm user theo phòng ban với setdefault và độ phức tạp O(n)",
+    "Trong tình huống trang báo cáo cần gom đơn theo trạng thái, tôi viết hàm nhóm dùng chung kèm chuẩn hóa khóa"
+  ],
+  "refs": [
+    "py-expressions",
+    "ts-handbook"
+  ]
+},
+{
+  "id": "I04",
+  "group": "I",
+  "topic": "Logic phân trang với slice và kiểm tra biên",
+  "prio": "P1",
+  "level": "L2",
+  "type": "debug",
+  "incident": "<p>Một hàm phân trang nhận chỉ số trang từ tham số truy vấn. Với trang bằng 0, nó trả về mảng rỗng. Với trang vượt quá số trang, nó trả về mảng rỗng, và component hiển thị vòng lặp vô hạn vì hiểu mảng rỗng là \"còn dữ liệu\". Ngoài ra, backend đánh số trang từ 1 còn hàm dùng chỉ số từ 0, nên trang đầu tiên của người dùng thực chất là trang thứ hai của dữ liệu.</p>",
+  "askFirst": [
+    "Quy ước đánh số trang khác nhau ở đâu?",
+    "Giá trị nào là biên cần kiểm tra?",
+    "Làm sao để lỗi biên không lan ra giao diện?"
+  ],
+  "predict": {
+    "q": "Với mảng 10 phần tử, <code>items.slice(20, 30)</code> trả về gì?",
+    "a": "<p>Nó trả về mảng rỗng, không ném lỗi. Đây là điểm quan trọng: chỉ số vượt độ dài không phải là lỗi ở JavaScript mà là một kết quả hợp lệ — mảng rỗng. Vì vậy code gọi hàm này phải phân biệt \"không có dữ liệu ở trang này\" với \"đã hết dữ liệu\", và đó là hai chuyện khác nhau. Nếu giao diện dùng mảng rỗng làm điều kiện dừng thì nó dừng quá sớm hoặc lặp mãi, tuỳ theo cách nó diễn giải. Cách chắc chắn là chuẩn hoá chỉ số ở một chỗ và trả về kèm thông tin còn dữ liệu hay không.</p>"
   },
-  {
-    id: 'I05',
-    group: 'I',
-    topic: 'Xử lý chuỗi: chuẩn hóa, tách và ghép',
-    prio: 'P1',
-    level: 'L1',
-    type: 'predict',
-    incident: "<p>Một tính năng tìm kiếm so khớp tên khách hàng bằng phép so sánh chuỗi trực tiếp. Khách hàng tên có dấu khác nhau tuỳ theo thiết bị nhập, chữ hoa chữ thường không khớp, và khoảng trắng thừa ở đầu cuối làm phép so sánh thất bại. Kết quả là cùng một người có ba bản ghi khác nhau, và tìm kiếm bỏ sót.</p>",
-    askFirst: ["Chuẩn hoá chuỗi nên làm ở đâu và khi nào?","Vì sao so sánh trực tiếp chuỗi lại mong manh?","Nên lưu dạng gốc hay dạng đã chuẩn hoá?"],
-    predict: {"q":"Hai chuỗi <code>\"Nguyễn An\"</code> và <code>\"Nguyen An\"</code> so sánh bằng có bằng nhau không?","a":"<p>Không, chúng là hai chuỗi khác nhau ở mức mã điểm. Vấn đề sâu hơn là cùng một chữ cái có thể được biểu diễn bằng nhiều cách trong Unicode: một ký tự có dấu sẵn, hoặc một ký tự cơ bản cộng dấu tổ hợp. Hai cách này trông giống hệt nhau nhưng so sánh bằng lại khác nhau. Cách xử lý là chuẩn hoá Unicode về một dạng thống nhất trước khi so sánh, và với tìm kiếm không phân biệt dấu thì cần thêm một dạng đã bỏ dấu để tra cứu.</p>"},
-    anchor: "Cùng một chữ có thể có nhiều biểu diễn Unicode, nên so sánh chuỗi chỉ đáng tin sau khi đã chuẩn hoá về một dạng thống nhất.",
-    attacks: [{"q":"Nên lưu dạng gốc hay dạng đã chuẩn hoá?","a":"Lưu cả hai, với mục đích khác nhau. Dạng gốc để hiển thị, vì đó là thứ người dùng đã nhập và bạn không nên sửa nó. Dạng chuẩn hoá để so khớp, tìm kiếm và đặt ràng buộc duy nhất, vì đó là dạng đã loại bỏ khác biệt không mang nghĩa. Cách này tốn thêm dung lượng nhưng tránh được cả hai lỗi thường gặp: hiển thị sai tên người dùng, và bỏ sót kết quả tìm kiếm. Cột chuẩn hoá cũng nên có chỉ mục, nếu không phép tìm kiếm sẽ phải quét toàn bảng."},{"q":"Ràng buộc duy nhất trên email nên áp dụng thế nào?","a":"Trên dạng đã chuẩn hoá, và cần quyết định rõ có phân biệt chữ hoa chữ thường hay không. Trong thực tế phần lớn hệ thống coi email không phân biệt chữ hoa chữ thường ở phần tên miền và thường cả ở phần tên người dùng, nên lưu dạng chữ thường để tránh hai tài khoản cùng một địa chỉ. Cần cẩn thận với quy tắc của phần tên miền, vì về mặt kỹ thuật nó không phân biệt hoa thường. Và ràng buộc duy nhất phải nằm ở database chứ không chỉ ở tầng kiểm tra ứng dụng, vì chỉ database mới nguyên tử trước hai request đồng thời."}],
-    q: 'Đoạn mã Python sau in ra gì, và mỗi bước strip, lower, replace, split biến đổi chuỗi ra sao?',
-    oral: 'Chuỗi trong Python là bất biến nên mỗi phương thức trả về chuỗi mới chứ không sửa tại chỗ. Strip cắt khoảng trắng hai đầu, lower hạ toàn bộ về chữ thường, replace xóa dấu phẩy và split tách theo khoảng trắng thành danh sách từ. Kết quả cuối là danh sách hai từ viết thường. Mẫu này dùng hằng ngày để chuẩn hóa dữ liệu người dùng nhập như tên, email và từ khóa tìm kiếm. Lỗi phổ biến là quên gán lại kết quả, hoặc tách chuỗi khi chưa xóa dấu câu nên từ dính ký tự lạ.',
-    deep: '<p>Ô tìm kiếm bỏ sót khách hàng dù tên gõ đúng từng chữ. Hóa ra bản ghi lưu thừa khoảng trắng hai đầu, chỗ viết hoa chỗ không, và <code>"  Hello, World!  "</code> sau <code>strip</code>, <code>lower</code>, <code>replace</code>, <code>split</code> mới thành <code>[hello, world!]</code>. So sánh trực tiếp chuỗi thô không bao giờ đáng tin.</p><p>Chuỗi Python là bất biến nên mỗi phương thức trả về chuỗi mới. <code>strip</code> cắt khoảng trắng hai đầu, <code>lower</code> hạ chữ hoa, <code>replace(",", "")</code> xóa đúng dấu phẩy được chỉ định nên dấu chấm than còn lại. <code>split</code> không tham số tách theo cụm khoảng trắng bất kỳ và bỏ phần tử rỗng.</p><p><code>split</code> không tham số gom cụm khoảng trắng nên sạch với dữ liệu gõ tay, còn <code>split(" ")</code> cắt đúng từng dấu cách nên khoảng trắng đôi sinh chuỗi rỗng. Một bên chịu được nhập liệu cẩu thả, bên còn lại chỉ hợp văn bản đã chuẩn.</p><ul><li><strong>Dùng khi:</strong> chuẩn hóa tên, email và từ khóa trước khi lưu và trước khi so sánh.</li><li><strong>Không dùng khi:</strong> đừng gọi phương thức rồi quên gán lại, đừng tách trước khi xóa dấu câu, đừng dùng <code>lower</code> cho so sánh đa ngôn ngữ khắt khe.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: ký tự Đức hay Hy Lạp cần <code>casefold</code> thay vì <code>lower</code>, còn chữ có dấu đa biểu diễn Unicode thì bạn chuẩn hóa Unicode và lưu thêm cột chuẩn hóa để tìm kiếm.</p>',
-    code: 's = "  Hello, World!  "\nprint(s.strip().lower().replace(",", "").split())',
-    expected: 'In ra [hello, world!] dạng danh sách hai chuỗi. Chuỗi gốc mất khoảng trắng hai đầu sau strip, thành chữ thường sau lower, mất dấu phẩy sau replace rồi tách thành hai từ. Dấu chấm than còn lại vì replace chỉ xóa dấu phẩy được chỉ định.',
-    followups: [
-      { q: 'Vì sao phải gán lại kết quả khi xử lý chuỗi trong Python?', a: 'Vì chuỗi là bất biến nên mỗi phương thức tạo ra chuỗi mới thay vì sửa chuỗi gốc. Nếu bạn gọi s.strip() mà không gán lại thì kết quả bị bỏ đi và s vẫn giữ nguyên. Chuỗi các phương thức trong câu này hoạt động được vì mỗi bước trả về chuỗi mới làm đầu vào cho bước tiếp theo.' },
-      { q: 'split không tham số khác gì split theo một dấu cách đơn?', a: 'Split không tham số tách theo cụm khoảng trắng bất kỳ gồm cách, tab và xuống dòng, đồng thời bỏ qua khoảng trắng thừa và phần tử rỗng. Split theo một dấu cách đơn thì tách đúng tại từng ký tự đó nên khoảng trắng liên tiếp sẽ sinh chuỗi rỗng. Với dữ liệu nhập tay không đều thì bản không tham số cho kết quả sạch hơn.' },
-      { q: 'Khi nào lower chưa đủ và bạn cần casefold?', a: 'Khi so sánh không phân biệt hoa thường với ký tự ngoài bảng chữ cái tiếng Anh, ví dụ một số chữ Đức và Hy Lạp có quy tắc gập chữ đặc biệt. Casefold xử lý mạnh hơn lower cho mục đích so sánh. Với tên và email tiếng Việt thông thường thì lower đã đủ, nhưng với yêu cầu đa ngôn ngữ khắt khe bạn nên dùng casefold.' }
-    ],
-    pitfalls: ['Gọi phương thức xử lý chuỗi mà quên gán lại vì tưởng chuỗi sửa tại chỗ', 'Tách chuỗi trước khi xóa dấu câu nên từ kết quả còn dính ký tự lạ', 'Dùng lower cho mọi so sánh đa ngôn ngữ trong khi casefold phù hợp hơn'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là khác biệt đầy đủ giữa lower và casefold với ký tự ngoài tiếng Anh', 'Tôi giải thích được bằng ví dụ từng bước cho ra [hello, world!] và lý do dấu chấm than còn lại', 'Trong tình huống biểu mẫu nhập tên thừa khoảng trắng và lẫn chữ hoa, tôi viết pipeline chuẩn hóa trước khi lưu'],
-    refs: ['py-expressions', 'py-datamodel']
+  "anchor": "Chỉ số vượt biên trong JavaScript trả về rỗng chứ không báo lỗi, nên biên phải được chuẩn hoá ở một chỗ thay vì tin vào hành vi im lặng.",
+  "attacks": [
+    {
+      "q": "Làm sao để hai bên thống nhất quy ước phân trang?",
+      "a": "Chọn một quy ước và ghi rõ trong tài liệu API, rồi chuyển đổi ở đúng một chỗ — thường là lớp gọi API ở client. Điều nên tránh là để mỗi màn hình tự chuyển đổi, vì sẽ có chỗ làm đúng và chỗ làm sai. Một cách tốt hơn nữa là tránh hẳn việc đánh số trang và dùng con trỏ, vì khi đó không còn quy ước nào để lệch. Nếu buộc phải giữ số trang, hãy viết một test cho trường hợp trang đầu, trang cuối và trang vượt biên."
+    },
+    {
+      "q": "Trả về tổng số trang hay con trỏ tới trang sau thì tốt hơn?",
+      "a": "Tuỳ vào giao diện cần gì. Nếu người dùng cần nhảy tới trang bất kỳ thì phải trả tổng số, và điều đó đồng nghĩa với việc phải đếm toàn bộ dữ liệu khớp — một phép đếm có thể đắt trên bảng lớn. Nếu giao diện chỉ cần cuộn xuống thì con trỏ tới trang sau nhẹ hơn vì không cần biết tổng. Cách chuẩn là trả về cả hai khi cần linh hoạt, và đảm bảo rằng việc tính tổng số trang không làm sập hệ thống bằng cách có chỉ mục phù hợp hoặc caching."
+    }
+  ],
+  "q": "Hàm phân trang JavaScript sau sai ở đâu, vì sao gọi với trang 1 lại trả về kết quả sai, và cách sửa đúng là gì?",
+  "oral": "Hàm này sai ở công thức tính vị trí bắt đầu vì trang mà người dùng thấy thường bắt đầu từ 1 còn chỉ số mảng bắt đầu từ 0. Công thức đúng phải trừ một trước khi nhân với kích thước trang. Ngoài lỗi lệch một, hàm còn thiếu kiểm tra biên cho trang vượt quá, kích thước trang không hợp lệ và trang không phải số nguyên. Bản sửa đúng chuẩn hóa đầu vào, kẹp trang trong khoảng hợp lệ và trả về mảng rỗng hoặc trang cuối thay vì để lỗi lan ra giao diện. Đây là lỗi rất hay gặp trong API danh sách và bạn nên có kiểm thử cho trang đầu, trang cuối và trang vượt quá.",
+  "deep": "<p><strong>Thuật ngữ cần biết:</strong> Slice, Pagination, Offset, Limit, Cursor, O(n), Array Index.</p><p>Gọi <code>paginate(items, 1, 3)</code> mà màn hình hiện [4, 5, 6] thay vì [1, 2, 3]. Ba bản ghi đầu biến mất khỏi mọi trang. Nguyên nhân là <code>start = page * pageSize</code> cho ra 3 trong khi trang 1 phải bắt đầu từ chỉ số 0.</p><p>Công thức đúng là <code>(page - 1) * pageSize</code> rồi cắt <code>slice(start, start + pageSize)</code>. Trang người dùng thấy bắt đầu từ 1 còn chỉ số mảng bắt đầu từ 0 nên bạn luôn trừ một trước khi nhân. <code>slice</code> vượt biên trả về mảng rỗng chứ không ném lỗi, vì vậy trang vượt quá lặng lẽ cho kết quả rỗng và giao diện diễn giải sai thành vòng lặp vô hạn.</p><p>Cắt mảng trong bộ nhớ hợp với danh sách nhỏ đã tải sẵn, còn bảng lớn thì bạn phân trang ở truy vấn với giới hạn và mốc. Một bên cắt hết trong RAM tốn O(n) mỗi lần gọi, bên còn lại chỉ truyền dữ liệu cần hiển thị nên O(1) theo kích thước trang.</p><ul><li><strong>Dùng khi:</strong> danh sách có số lượng hạn chế đã nằm trong bộ nhớ, hoặc bạn cần kiểm soát hoàn toàn thứ tự hiển thị.</li><li><strong>Không dùng khi:</strong> bảng có hàng triệu dòng, hoặc dữ liệu thay đổi liên tục gây lệch số trang.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: nếu dữ liệu động nhiều thì chuyển sang phân trang theo con trỏ với mã tăng dần hoặc thời gian tạo, tránh bị trùng hay sót bản ghi.</p>",
+  "code": "// ❌ Cách làm sai phổ biến: dùng page * pageSize trực tiếp, quên rằng trang 1 ứng với chỉ số 0, khiến mọi trang lệch về sau một đơn vị.\n// ✅ Cách làm chuẩn: dùng (page - 1) * pageSize, kèm kiểm tra page và pageSize là số nguyên dương, và kẹp page trong khoảng hợp lệ.\nfunction paginate(items, page, pageSize) {\n  const start = (page - 1) * pageSize;\n  const end = start + pageSize;\n  return items.slice(start, end);\n}\nconst items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];\nconsole.log(paginate(items, 1, 3));",
+  "expected": "In ra [4, 5, 6] thay vì [1, 2, 3] như mong đợi. Nguyên nhân gốc là công thức start dùng page nhân trực tiếp mà quên trang 1 tương ứng chỉ số 0, nên mọi trang đều lệch về sau một trang. Sửa đúng là const start = (page - 1) * pageSize, kèm kiểm tra page và pageSize là số nguyên dương và kẹp page trong tổng số trang.",
+  "followups": [
+    {
+      "q": "Ngoài công thức sai, hàm này còn thiếu những kiểm tra biên nào?",
+      "a": "Hàm thiếu kiểm tra page nhỏ hơn 1, pageSize nhỏ hơn 1, đầu vào không phải số nguyên và page vượt quá tổng số trang. Bản sửa nên ép kiểu và kiểm tra số nguyên dương, tính tổng số trang từ độ dài mảng, rồi kẹp page vào khoảng hợp lệ hoặc trả về mảng rỗng có ý nghĩa. Mỗi nhánh này cần một kiểm thử riêng để không tái phát."
+    },
+    {
+      "q": "Khi dữ liệu thay đổi liên tục thì phân trang theo số trang gặp vấn đề gì?",
+      "a": "Khi có bản ghi mới chèn vào đầu danh sách giữa hai lần gọi thì cùng một số trang sẽ trỏ sang nội dung khác, gây trùng hoặc sót bản ghi. Giải pháp là phân trang theo con trỏ với mốc ổn định như mã tăng dần hoặc thời điểm tạo kèm mã. Mỗi phản hồi trả về con trỏ trang sau để lần gọi tiếp theo tiếp tục chính xác."
+    }
+  ],
+  "pitfalls": [
+    "Nhầm giữa số trang bắt đầu từ 1 và chỉ số mảng bắt đầu từ 0 nên mọi trang lệch một đơn vị",
+    "Quên kiểm tra trang vượt quá, kích thước trang bằng 0 hoặc đầu vào không phải số",
+    "Phân trang trong bộ nhớ cho bảng khổng lồ thay vì phân trang ở truy vấn dữ liệu"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là cách chọn mốc con trỏ ổn định khi sắp xếp theo nhiều cột",
+    "Tôi giải thích được bằng ví dụ vì sao paginate với trang 1 trả về [4, 5, 6] và công thức (page - 1) * pageSize sửa được lỗi",
+    "Trong tình huống API danh sách bỏ sót bản ghi đầu, tôi sửa công thức start và bổ sung kiểm thử trang đầu, trang cuối, trang vượt quá"
+  ],
+  "refs": [
+    "ts-handbook",
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "I05",
+  "group": "I",
+  "topic": "Xử lý chuỗi: chuẩn hóa, tách và ghép",
+  "prio": "P1",
+  "level": "L1",
+  "type": "predict",
+  "incident": "<p>Một tính năng tìm kiếm so khớp tên khách hàng bằng phép so sánh chuỗi trực tiếp. Khách hàng tên có dấu khác nhau tuỳ theo thiết bị nhập, chữ hoa chữ thường không khớp, và khoảng trắng thừa ở đầu cuối làm phép so sánh thất bại. Kết quả là cùng một người có ba bản ghi khác nhau, và tìm kiếm bỏ sót.</p>",
+  "askFirst": [
+    "Chuẩn hoá chuỗi nên làm ở đâu và khi nào?",
+    "Vì sao so sánh trực tiếp chuỗi lại mong manh?",
+    "Nên lưu dạng gốc hay dạng đã chuẩn hoá?"
+  ],
+  "predict": {
+    "q": "Hai chuỗi <code>\"Nguyễn An\"</code> và <code>\"Nguyen An\"</code> so sánh bằng có bằng nhau không?",
+    "a": "<p>Không, chúng là hai chuỗi khác nhau ở mức mã điểm. Vấn đề sâu hơn là cùng một chữ cái có thể được biểu diễn bằng nhiều cách trong Unicode: một ký tự có dấu sẵn, hoặc một ký tự cơ bản cộng dấu tổ hợp. Hai cách này trông giống hệt nhau nhưng so sánh bằng lại khác nhau. Cách xử lý là chuẩn hoá Unicode về một dạng thống nhất trước khi so sánh, và với tìm kiếm không phân biệt dấu thì cần thêm một dạng đã bỏ dấu để tra cứu.</p>"
   },
-  {
-    id: 'I06',
-    group: 'I',
-    topic: 'OOP, SOLID, DRY, KISS và rủi ro over-engineering',
-    prio: 'P1',
-    level: 'L3',
-    type: 'concept',
-    incident: "<p>Một đội xây dựng lớp trừu tượng cho tầng lưu trữ với mục tiêu \"sau này có thể đổi database\". Sau sáu tháng, có 14 interface và 31 lớp cài đặt cho ba thực thể. Việc thêm một trường vào một bảng cần sửa bảy tệp. Chưa lần nào đội đổi database. Thời gian cho một tính năng nhỏ tăng từ nửa ngày lên ba ngày.</p>",
-    askFirst: ["Lớp trừu tượng này đang giải quyết vấn đề có thật hay vấn đề tưởng tượng?","Nguyên tắc nào bị áp dụng quá mức?","Làm sao đơn giản hoá mà không mất khả năng thay đổi sau này?"],
-    predict: {"q":"Một interface có đúng một lớp cài đặt và không có kế hoạch cụ thể nào cho lớp thứ hai. Nó mang lại lợi ích gì?","a":"<p>Rất ít, và nó có chi phí thật. Lợi ích duy nhất là cho phép thay thế trong test, nhưng điều đó thường đạt được bằng cách khác rẻ hơn. Chi phí là một tầng gián tiếp phải đọc qua mỗi lần tìm hiểu code, một chỗ nữa để định nghĩa kiểu, và một chỗ nữa phải sửa khi yêu cầu thay đổi. Nguyên tắc thực dụng là trừu tượng hoá khi có ít nhất hai cài đặt thật, hoặc khi đã thấy rõ sự thay đổi sắp tới — không trừu tượng hoá cho một tương lai có thể không bao giờ tới.</p>"},
-    anchor: "Trừu tượng hoá là một khoản vay: chỉ nên vay khi có nhu cầu thật, vì lãi phải trả ở mọi lần đọc và mọi lần sửa sau đó.",
-    attacks: [{"q":"Vậy làm sao cân bằng giữa đơn giản và chuẩn bị cho tương lai?","a":"Bằng cách chuẩn bị ở những chỗ rẻ và trì hoãn ở những chỗ đắt. Những ranh giới rẻ là những ranh giới tự nhiên đã tồn tại: giữa HTTP và nghiệp vụ, giữa nghiệp vụ và truy cập dữ liệu, giữa ứng dụng và dịch vụ bên ngoài. Những ranh giới đắt là những lớp trừu tượng tự tạo quanh một thứ chưa có biến thể. Một quy tắc hữu ích là khi bạn cần thay đổi lần thứ ba ở cùng một chỗ, hãy trừu tượng hoá — vì lúc đó bạn đã có đủ thông tin để thiết kế đúng, thay vì đoán."},{"q":"DRY áp dụng sai thì biểu hiện thế nào?","a":"Khi hai đoạn code trông giống nhau nhưng thay đổi vì những lý do khác nhau. Gộp chúng lại tạo ra một hàm có tham số điều khiển hành vi, và mỗi khi một trong hai bên cần đổi, bạn phải thêm một nhánh nữa. Dấu hiệu nhận biết là một hàm có nhiều cờ boolean hoặc nhiều nhánh if mà mỗi nhánh chỉ phục vụ một người gọi. Trùng lặp về hình thức nhưng khác nhau về lý do thay đổi thì không phải là trùng lặp cần loại bỏ — gộp chúng là tạo ra ghép nối sai."}],
-    q: 'Hãy lấy một ví dụ thực tế minh họa một nguyên tắc SOLID cùng DRY hoặc KISS, và cho biết khi nào việc áp dụng quá mức trở thành over-engineering?',
-    oral: 'Bạn dùng OOP để gom dữ liệu và hành vi liên quan thành đối tượng, SOLID để giữ thiết kế dễ thay đổi, DRY để tránh lặp logic và KISS để giữ giải pháp đơn giản nhất có thể. Ví dụ thực tế là tách tính tiền đơn hàng khỏi gửi email để mỗi lớp chỉ có một lý do thay đổi, rồi dùng chung một hàm tính phí thay vì chép công thức khắp nơi. Over-engineering xảy ra khi bạn tách quá sớm thành nhiều lớp trừu tượng cho yêu cầu chỉ có một trường hợp dùng, khiến sửa một dòng phải chạm năm file. Dấu hiệu là tên lớp chung chung, tầng trung gian không chứa logic và dự đoán tương lai không bao giờ tới.',
-    deep: '<p>Thêm một trường vào bảng mà phải sửa bảy tệp. Đội xây 14 interface và 31 lớp cho ba thực thể để đón ngày đổi database không bao giờ tới. Tính năng nửa ngày thành ba ngày.</p><p>Bạn tách <code>OrderPricer</code> chỉ tính tiền khỏi <code>EmailSender</code> chỉ gửi thư theo đơn trách nhiệm. <code>Checkout</code> điều phối và nhận hai phụ thuộc qua constructor. Công thức tính phí nằm một chỗ nên sửa một nơi đúng mọi nơi. Đó là SOLID, DRY và KISS làm đúng vai của chúng.</p><p>DRY đúng gộp hai đoạn đổi cùng lý do và cùng nhịp, còn gộp nhầm dính hai chính sách chỉ tình cờ giống nhau như chiết khấu nhân viên và chiết khấu sự kiện. Một bên sửa một lần xong, bên còn lại sửa một nơi hỏng nơi kia.</p><ul><li><strong>Dùng khi:</strong> logic lặp ở ba nơi trở lên, ranh giới tự nhiên giữa HTTP, nghiệp vụ và dữ liệu, thay đổi lần thứ ba ở cùng một chỗ.</li><li><strong>Không dùng khi:</strong> đừng tạo interface cho một lớp triển khai duy nhất, đừng thêm tầng trung gian chỉ chuyển tiếp gọi hàm.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: prototype một tuần thì gọi trực tiếp cho nhanh, còn service sống lâu nhiều người sửa thì bạn tách dần và trừu tượng hóa khi xuất hiện biến thể thứ hai thật sự.</p>',
-    code: 'class OrderPricer:\n    def total(self, items):\n        return sum(i["price"] * i["qty"] for i in items)\nclass EmailSender:\n    def send(self, email, text):\n        print("send to " + email)\nclass Checkout:\n    def __init__(self, pricer, mailer):\n        self.pricer = pricer\n        self.mailer = mailer\n    def run(self, items, email):\n        total = self.pricer.total(items)\n        self.mailer.send(email, str(total))\n        return total',
-    expected: 'Kết quả chạy thật (đã chạy nguyên snippet trong venv của repo): OrderPricer().total với hai dòng hàng 100x2 và 50x1 trả 250; Checkout(OrderPricer(), EmailSender()).run in ra "send to a@b.c" và trả về 250; thay mailer bằng FakeMailer thì run() vẫn trả 250 và FakeMailer ghi lại [("x@y.z", "250")]. Phân tích: đây là minh họa sống của nguyên tắc đơn trách nhiệm trong SOLID — OrderPricer chỉ biết tính tiền, EmailSender chỉ biết gửi thư, Checkout chỉ điều phối và nhận hai phụ thuộc qua constructor, nên mỗi lớp chỉ có một lý do thay đổi và đổi nội dung email không thể làm hỏng công thức tính tiền. Over-engineering bắt đầu khi bạn thêm interface hay abstract cho OrderPricer dù chỉ có đúng một cách tính, hoặc thêm lớp Manager chỉ để chuyển tiếp gọi hàm: cái giá là sửa một hành vi nhỏ phải mở nhiều file. DRY cũng phải đúng chỗ: gộp khi hai đoạn thay đổi cùng lý do (cùng một công thức phí), còn hai logic chỉ tình cờ giống nhau như chiết khấu nhân viên và chiết khấu sự kiện thì giữ tách. Chốt: tách theo trục thay đổi thật sự, gộp theo kiến thức thật sự dùng chung, và KISS không có nghĩa là bỏ test hay đặt tên mập mờ.',
-    followups: [
-      { q: 'Dấu hiệu nào cho thấy bạn đã tách lớp quá mức?', a: 'Dấu hiệu là sửa một hành vi nhỏ phải mở nhiều file, tên lớp chung chung như Manager hay Helper mà không nói rõ trách nhiệm, và tầng trung gian chỉ chuyển tiếp gọi hàm không thêm kiểm tra hay biến đổi nào. Một dấu hiệu nữa là giao diện chỉ có đúng một lớp triển khai suốt nhiều tháng. Khi thấy vậy bạn nên gộp lại thành một module rõ ràng cho đến khi có trường hợp dùng thứ hai thật sự.' },
-      { q: 'Phân biệt DRY đúng với việc gộp nhầm hai logic chỉ tình cờ giống nhau?', a: 'DRY đúng là gộp khi hai đoạn code thay đổi cùng lý do và cùng nhịp, ví dụ công thức tính phí dùng ở nhiều nơi. Gộp nhầm là khi hai đoạn chỉ tình cờ giống nhau hiện tại nhưng thay đổi vì lý do khác nhau, ví dụ chiết khấu nhân viên và chiết khấu sự kiện. Gộp nhầm khiến sửa một chính sách làm hỏng chính sách còn lại, nên bạn giữ tách cho đến khi quy tắc thật sự hội tụ.' }
-    ],
-    pitfalls: ['Tạo giao diện và tầng trừu tượng cho yêu cầu chỉ có một trường hợp dùng, khiến code khó theo dõi', 'Gộp hai logic chỉ tình cờ giống nhau thành một hàm dùng chung rồi sửa một nơi làm hỏng nơi còn lại', 'Nhầm KISS với code cẩu thả, bỏ kiểm thử và đặt tên mập mờ rồi gọi đó là đơn giản'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là khi nào một giao diện trừu tượng mới thật sự xứng đáng với chi phí của nó', 'Tôi giải thích được bằng ví dụ tách OrderPricer khỏi EmailSender theo đơn trách nhiệm và gộp công thức tính phí theo DRY', 'Trong tình huống service vừa tính tiền vừa gửi thư khó kiểm thử, tôi tách hai trách nhiệm và giữ thiết kế đủ đơn giản cho quy mô hiện tại'],
-    refs: ['py-datamodel', 'ts-handbook']
+  "anchor": "Cùng một chữ có thể có nhiều biểu diễn Unicode, nên so sánh chuỗi chỉ đáng tin sau khi đã chuẩn hoá về một dạng thống nhất.",
+  "attacks": [
+    {
+      "q": "Nên lưu dạng gốc hay dạng đã chuẩn hoá?",
+      "a": "Lưu cả hai, với mục đích khác nhau. Dạng gốc để hiển thị, vì đó là thứ người dùng đã nhập và bạn không nên sửa nó. Dạng chuẩn hoá để so khớp, tìm kiếm và đặt ràng buộc duy nhất, vì đó là dạng đã loại bỏ khác biệt không mang nghĩa. Cách này tốn thêm dung lượng nhưng tránh được cả hai lỗi thường gặp: hiển thị sai tên người dùng, và bỏ sót kết quả tìm kiếm. Cột chuẩn hoá cũng nên có chỉ mục, nếu không phép tìm kiếm sẽ phải quét toàn bảng."
+    },
+    {
+      "q": "Ràng buộc duy nhất trên email nên áp dụng thế nào?",
+      "a": "Trên dạng đã chuẩn hoá, và cần quyết định rõ có phân biệt chữ hoa chữ thường hay không. Trong thực tế phần lớn hệ thống coi email không phân biệt chữ hoa chữ thường ở phần tên miền và thường cả ở phần tên. Cách làm chuẩn là chuẩn hoá thành chữ thường trước khi so khớp và trước khi áp ràng buộc UNIQUE, để không chặn trùng hai bản ghi cùng một email chỉ vì khác chữ hoa. Điểm cần tránh là lưu dạng chuẩn hoá không có chỉ mục, khiến ràng buộc vẫn chạy được nhưng tìm kiếm quét toàn bộ bảng."
+    }
+  ],
+  "q": "Đoạn mã Python sau in ra gì, và mỗi bước strip, lower, replace, split biến đổi chuỗi ra sao?",
+  "oral": "Chuỗi trong Python là bất biến nên mỗi phương thức trả về chuỗi mới chứ không sửa tại chỗ. Strip cắt khoảng trắng hai đầu, lower hạ toàn bộ về chữ thường, replace xóa dấu phẩy và split tách theo khoảng trắng thành danh sách từ. Kết quả cuối là danh sách hai từ viết thường. Mẫu này dùng hằng ngày để chuẩn hóa dữ liệu người dùng nhập như tên, email và từ khóa tìm kiếm. Lỗi phổ biến là quên gán lại kết quả, hoặc tách chuỗi khi chưa xóa dấu câu nên từ dính ký tự lạ.",
+  "deep": "<p><strong>Thuật ngữ cần biết:</strong> String, Immutability, Strip, Lower, Replace, Split, Unicode Normalization.</p><p>Ô tìm kiếm bỏ sót khách hàng dù tên gõ đúng từng chữ. Hóa ra bản ghi lưu thừa khoảng trắng hai đầu, chỗ viết hoa chỗ không, và <code>\"  Hello, World!  \"</code> sau <code>strip</code>, <code>lower</code>, <code>replace</code>, <code>split</code> mới thành <code>[hello, world!]</code>. So sánh trực tiếp chuỗi thô không bao giờ đáng tin.</p><p>Chuỗi Python là bất biến nên mỗi phương thức trả về chuỗi mới. <code>strip</code> cắt khoảng trắng hai đầu, <code>lower</code> hạ chữ hoa, <code>replace(\",\", \"\")</code> xóa đúng dấu phẩy được chỉ định nên dấu chấm than còn lại. <code>split</code> không tham số tách theo cụm khoảng trắng bất kỳ và bỏ phần tử rỗng.</p><p><code>split</code> không tham số gom cụm khoảng trắng nên sạch với dữ liệu gõ tay, còn <code>split(\" \")</code> giữ chuỗi rỗng khi có khoảng trắng liên tiếp. Dùng không tham số khi dữ liệu người nhập, dùng có tham số khi muốn tách đúng một ký tự và kiểm soát phần tử rỗng.</p><ul><li><strong>Dùng khi:</strong> chuẩn hóa email, tên, từ khóa tìm kiếm trước khi lưu hoặc so khớp.</li><li><strong>Không dùng khi:</strong> bạn cần giữ nguyên văn bản gốc cho hiển thị hoặc audit, chỉ chuẩn hóa khi so khớp.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: nếu yêu cầu so khớp đa ngôn ngữ nghiêm ngặt, chuyển từ <code>lower</code> sang <code>casefold</code> vì nó xử lý đúng một số ký tự đặc biệt mà lower bỏ sót.</p>",
+  "code": "s = \"  Hello, World!  \"\n# ❌ Cách làm sai phổ biến: gọi s.strip() rồi quên gán lại kết quả, vì chuỗi bất biến nên s vẫn giữ giá trị cũ.\n# ✅ Cách làm chuẩn: nối các phương thức hoặc gán lại từng bước để nhận kết quả cuối cùng.\nprint(s.strip().lower().replace(\",\", \"\").split())",
+  "expected": "In ra [\"hello\", \"world!\"] dạng danh sách hai chuỗi. Chuỗi gốc mất khoảng trắng hai đầu sau strip, thành chữ thường sau lower, mất dấu phẩy sau replace rồi tách thành hai từ. Dấu chấm than còn lại vì replace chỉ xóa dấu phẩy được chỉ định.",
+  "followups": [
+    {
+      "q": "Vì sao phải gán lại kết quả khi xử lý chuỗi trong Python?",
+      "a": "Vì chuỗi là bất biến nên mỗi phương thức tạo ra chuỗi mới thay vì sửa chuỗi gốc. Nếu bạn gọi s.strip() mà không gán lại thì kết quả bị bỏ đi và s vẫn giữ nguyên. Chuỗi các phương thức trong câu này hoạt động được vì mỗi bước trả về chuỗi mới làm đầu vào cho bước tiếp theo."
+    },
+    {
+      "q": "split không tham số khác gì split theo một dấu cách đơn?",
+      "a": "Split không tham số tách theo cụm khoảng trắng bất kỳ gồm cách, tab và xuống dòng, đồng thời bỏ qua khoảng trắng thừa và phần tử rỗng. Split theo một dấu cách đơn thì tách đúng tại từng ký tự đó nên khoảng trắng liên tiếp sẽ sinh chuỗi rỗng. Với dữ liệu nhập tay không đều thì bản không tham số cho kết quả sạch hơn."
+    },
+    {
+      "q": "Khi nào lower chưa đủ và bạn cần casefold?",
+      "a": "Khi so sánh không phân biệt hoa thường với ký tự ngoài bảng chữ cái tiếng Anh, ví dụ một số chữ Đức và Hy Lạp có quy tắc gập chữ đặc biệt. Casefold xử lý mạnh hơn lower cho mục đích so sánh. Với tên và email tiếng Việt thông thường thì lower đã đủ, nhưng với yêu cầu đa ngôn ngữ khắt khe bạn nên dùng casefold."
+    }
+  ],
+  "pitfalls": [
+    "Gọi phương thức xử lý chuỗi mà quên gán lại vì tưởng chuỗi sửa tại chỗ",
+    "Tách chuỗi trước khi xóa dấu câu nên từ kết quả còn dính ký tự lạ",
+    "Dùng lower cho mọi so sánh đa ngôn ngữ trong khi casefold phù hợp hơn"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là khác biệt đầy đủ giữa lower và casefold với ký tự ngoài tiếng Anh",
+    "Tôi giải thích được bằng ví dụ từng bước cho ra [hello, world!] và lý do dấu chấm than còn lại",
+    "Trong tình huống biểu mẫu nhập tên thừa khoảng trắng và lẫn chữ hoa, tôi viết pipeline chuẩn hóa trước khi lưu"
+  ],
+  "refs": [
+    "py-expressions",
+    "py-datamodel"
+  ]
+},
+{
+  "id": "I06",
+  "group": "I",
+  "topic": "OOP, SOLID, DRY, KISS và rủi ro over-engineering",
+  "prio": "P1",
+  "level": "L3",
+  "type": "concept",
+  "incident": "<p>Một đội xây dựng lớp trừu tượng cho tầng lưu trữ với mục tiêu \"sau này có thể đổi database\". Sau sáu tháng, có 14 interface và 31 lớp cài đặt cho ba thực thể. Việc thêm một trường vào một bảng cần sửa bảy tệp. Chưa lần nào đội đổi database. Thời gian cho một tính năng nhỏ tăng từ nửa ngày lên ba ngày.</p>",
+  "askFirst": [
+    "Lớp trừu tượng này đang giải quyết vấn đề có thật hay vấn đề tưởng tượng?",
+    "Nguyên tắc nào bị áp dụng quá mức?",
+    "Làm sao đơn giản hoá mà không mất khả năng thay đổi sau này?"
+  ],
+  "predict": {
+    "q": "Một interface chỉ có đúng một lớp cài đặt, không có kế hoạch cụ thể cho lớp thứ hai. Nó mang lại lợi ích gì?",
+    "a": "<p>Rất ít, và nó có chi phí thật. Lợi ích duy nhất là cho phép thay thế bằng bản giả khi test, nhưng việc đó thường làm được bằng cách rẻ hơn.</p><p>Chi phí là một tầng gián tiếp phải đọc qua mỗi lần tìm hiểu code, thêm một chỗ để định nghĩa kiểu, và thêm một chỗ phải sửa khi yêu cầu đổi. Quy tắc thực dụng: chỉ trừu tượng hoá khi có ít nhất hai cài đặt thật, hoặc khi thay đổi sắp tới đã rõ ràng.</p>"
   },
-  {
-    id: 'I07',
-    group: 'I',
-    topic: 'Separation of concerns và dependency injection',
-    prio: 'P2',
-    level: 'L3',
-    type: 'situation',
-    incident: "<p>Một endpoint xử lý đơn hàng trực tiếp gọi database, gọi dịch vụ thanh toán, gửi email và ghi log. Khi cần viết test cho quy tắc tính phí, đội phải dựng cả bốn phụ thuộc. Khi cần đổi nhà cung cấp thanh toán, họ phải sửa chính hàm xử lý. Và khi một trong bốn phụ thuộc chậm, toàn bộ endpoint chậm theo.</p>",
-    askFirst: ["Hàm này đang có mấy lý do để thay đổi?","Ranh giới nào nên được tách ra trước?","Tách ra có làm code phức tạp hơn không?"],
-    predict: {"q":"Một hàm vừa tính toán nghiệp vụ vừa gọi dịch vụ bên ngoài. Việc kiểm thử nó khó ở đâu?","a":"<p>Khó ở chỗ bạn không thể kiểm tra logic mà không kéo theo hệ thống bên ngoài. Muốn test nhanh và ổn định thì phải thay thế dịch vụ ngoài bằng một đối tượng giả, nhưng để làm được điều đó thì hàm phải nhận phụ thuộc từ bên ngoài thay vì tự tạo. Đây chính là giá trị thực dụng của việc tách ranh giới: nó không phải là kiến trúc cho đẹp, mà là điều kiện để logic thuần tuý trở thành thứ kiểm tra được mà không cần hạ tầng.</p>"},
-    anchor: "Tách phụ thuộc ra khỏi logic không phải để kiến trúc đẹp mà để logic thuần tuý trở thành thứ kiểm tra được.",
-    attacks: [{"q":"Tách lớp có làm code phức tạp hơn không?","a":"Có, và cần thừa nhận điều đó. Bạn thêm tệp, thêm khai báo, và thêm một bước để lần theo luồng khi đọc code. Chi phí đó chỉ đáng trả khi nó mua được thứ cụ thể: logic kiểm tra được mà không cần hạ tầng, hoặc khả năng thay một phụ thuộc mà không sửa nghiệp vụ. Nếu một endpoint chỉ đọc dữ liệu và trả về, việc tách thành ba lớp là chi phí thuần tuý. Quy tắc thực dụng là tách khi có lý do thật — nhiều cài đặt, cần test logic mà không cần hạ tầng, hoặc phụ thuộc thay đổi độc lập với nghiệp vụ."},{"q":"Dependency injection có nhất thiết phải dùng framework không?","a":"Không. Ở dạng đơn giản nhất, nó chỉ là việc truyền phụ thuộc vào qua tham số khởi tạo thay vì để đối tượng tự tạo ra chúng. Điều đó cho phép thay thế trong test bằng một đối tượng đơn giản, không cần thư viện nào. Framework chỉ giúp khi số lượng phụ thuộc và vòng đời trở nên phức tạp — khi bạn cần biết cái nào dùng chung, cái nào tạo mới cho mỗi request. Với những hệ thống nhỏ, tự truyền tham số rõ ràng hơn và dễ lần theo hơn là để framework tự giải quyết."}],
-    q: 'Giả sử một service vừa gọi trực tiếp cơ sở dữ liệu vừa gửi email trong cùng một hàm, bạn tách lớp và áp dụng dependency injection ra sao để dễ kiểm thử?',
-    oral: 'Separation of concerns nghĩa là mỗi thành phần chỉ lo một việc, còn dependency injection nghĩa là thành phần không tự tạo thứ nó cần mà nhận từ bên ngoài qua tham số khởi tạo. Bạn tách service thành kho lưu trữ lo dữ liệu và cổng gửi thư lo email, rồi truyền hai thành phần này vào service qua constructor. Nhờ đó kiểm thử có thể truyền bản giả nhẹ thay cho cơ sở dữ liệu và dịch vụ thư thật, giúp kiểm thử nhanh và ổn định. Khi điều kiện thay đổi như chuyển nhà cung cấp email hoặc dùng nhiều cơ sở dữ liệu, bạn chỉ thay thành phần được tiêm mà không sửa logic điều phối. Lỗi phổ biến là vẫn tạo cứng kết nối bên trong class hoặc truyền cả container chứa mọi thứ khiến ranh giới mờ trở lại.',
-    deep: '<p>Muốn test quy tắc tính phí mà phải dựng database, thanh toán, email và log. Bốn phụ thuộc dựng xong thì test chạy năm phút. Đổi nhà cung cấp thanh toán là phải mổ chính hàm xử lý đơn.</p><p>Bạn tách <code>userRepo</code> lo dữ liệu và <code>mailer</code> lo gửi thư, còn <code>UserService.register</code> chỉ giữ luồng tạo user rồi gửi chào mừng. Hai phụ thuộc đi vào qua constructor nên test tiêm bản giả nhẹ, production tiêm bản thật mà không sửa logic. Kiểm thử còn mili giây thay vì dựng hạ tầng.</p><p>Tiêm tường minh từng phụ thuộc cho bạn thấy service cần gì ngay ở chữ ký, còn tiêm cả container vạn năng giấu phụ thuộc bên trong. Một bên đọc là biết, bên còn lại phải mở code mới thấy.</p><ul><li><strong>Dùng khi:</strong> logic sống lâu, test chạy hằng ngày, phụ thuộc thay đổi độc lập với nghiệp vụ như đổi nhà cung cấp email.</li><li><strong>Không dùng khi:</strong> đừng tiêm hằng số và hàm thuần túy, đừng tách ba lớp cho endpoint chỉ đọc rồi trả về, script một lần thì gọi trực tiếp.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: framework DI chỉ đáng khi vòng đời đối tượng phức tạp, còn constructor thủ công đủ cho service nhỏ và bạn nâng dần theo tuổi thọ code.</p>',
-    code: 'class UserService {\n  constructor(userRepo, mailer) {\n    this.userRepo = userRepo;\n    this.mailer = mailer;\n  }\n  async register(email) {\n    const user = await this.userRepo.create(email);\n    await this.mailer.send(email, "welcome");\n    return user;\n  }\n}\nconst fakeRepo = { create: async (e) => ({ id: 1, email: e }) };\nconst fakeMailer = { send: async () => true };\nconst svc = new UserService(fakeRepo, fakeMailer);',
-    expected: 'Kết quả chạy thật (đã chạy bằng node 24 với đúng lớp UserService trong snippet): new UserService(fakeRepo, fakeMailer).register("a@b.c") in ra { id: 1, email: \'a@b.c\' }; bản ghi lại lời gọi cho thấy thứ tự ["repo.create x@y.z", "mailer.send x@y.z welcome"], nghĩa là service không hề biết mình đang dùng bản thật hay bản giả, nó chỉ gọi hai ranh giới được tiêm vào. Phân tích: constructor injection đảo ngược quyền quyết định triển khai ra bên ngoài lớp, nên test truyền object giả rẻ tiền còn production truyền repo và mailer thật mà không sửa một dòng logic điều phối; đây là separation of concerns ở mức ranh giới có tác dụng phụ (I/O), không phải ở mức hàm thuần túy. Lạm dụng DI xảy ra khi bạn tiêm cả hằng số và hàm thuần túy khiến constructor phình to, hoặc tiêm cả container vạn năng để lớp tự lấy thứ cần và giấu mất phụ thuộc. Chốt: chỉ tiêm ranh giới có tác dụng phụ, khai báo tường minh từng phụ thuộc, và với script một lần hay công cụ nội bộ thì gọi trực tiếp vẫn hợp lý.',
-    followups: [
-      { q: 'Vì sao tiêm qua constructor tốt hơn để lớp tự tạo kết nối bên trong?', a: 'Vì lớp tự tạo kết nối thì logic nghiệp vụ bị dính cứng với chi tiết hạ tầng nên kiểm thử bắt buộc dùng hạ tầng thật. Tiêm qua constructor đảo ngược quyền quyết định ra ngoài, cho phép mỗi môi trường chọn bản triển khai phù hợp. Kiểm thử dùng bản giả nhẹ còn môi trường thật dùng bản kết nối thật mà không sửa một dòng logic nào.' },
-      { q: 'Khi nào dependency injection trở thành lạm dụng?', a: 'Khi bạn tiêm cả hằng số, hàm thuần túy và mọi chi tiết nhỏ khiến constructor dài mà không tăng khả năng kiểm thử. Một dạng lạm dụng khác là tiêm cả container vạn năng để lớp tự lấy thứ cần, khiến phụ thuộc bị giấu và khó đọc. Quy tắc là chỉ tiêm ranh giới có tác dụng phụ và khai báo tường minh từng phụ thuộc.' },
-      { q: 'Điều kiện nào khiến bạn chọn cách đơn giản thay vì tiêm đầy đủ?', a: 'Với script một lần, nguyên mẫu dùng một tuần hoặc công cụ nội bộ ít người dùng thì gọi trực tiếp giúp ra kết quả nhanh và ít chi phí. Khi code sống lâu, nhiều người sửa và kiểm thử chạy hằng ngày thì chi phí tạo cứng vượt xa chi phí tiêm. Bạn nâng dần mức tách lớp theo tuổi thọ và số người sửa code chứ không áp một mẫu cho mọi tình huống.' }
-    ],
-    pitfalls: ['Tự tạo kết nối dữ liệu và dịch vụ thư bên trong class nên kiểm thử bắt buộc dùng hạ tầng thật', 'Tiêm cả container vạn năng khiến phụ thuộc bị giấu và ranh giới giữa các lớp mờ trở lại', 'Tiêm mọi hằng số và hàm thuần túy khiến constructor phình to mà không tăng khả năng kiểm thử'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là cách quản lý vòng đời của đối tượng được tiêm trong ứng dụng lớn', 'Tôi giải thích được bằng ví dụ UserService nhận userRepo và mailer qua constructor kèm bản giả khi kiểm thử', 'Trong tình huống service khó kiểm thử vì gọi cứng dữ liệu và email, tôi tách hai cổng và tiêm bản giả cho kiểm thử'],
-    refs: ['ts-handbook', 'py-datamodel']
+  "anchor": "Trừu tượng hoá giống một khoản vay: chỉ vay khi có nhu cầu thật, vì lãi phải trả ở mọi lần đọc và mọi lần sửa sau đó.",
+  "attacks": [
+    {
+      "q": "Vậy làm sao cân bằng giữa đơn giản và chuẩn bị cho tương lai?",
+      "a": "Bằng cách chuẩn bị ở những chỗ rẻ và trì hoãn ở những chỗ đắt. Những ranh giới rẻ là những ranh giới tự nhiên đã tồn tại: giữa HTTP và nghiệp vụ, giữa nghiệp vụ và truy cập dữ liệu, giữa ứng dụng và dịch vụ bên ngoài. Những ranh giới đắt là những lớp trừu tượng tự tạo quanh một thứ chưa có biến thể. Một quy tắc hữu ích là khi bạn cần thay đổi lần thứ ba ở cùng một chỗ, hãy trừu tượng hoá — vì lúc đó bạn đã có đủ thông tin để thiết kế đúng, thay vì đoán."
+    },
+    {
+      "q": "DRY áp dụng sai thì biểu hiện thế nào?",
+      "a": "Khi hai đoạn code trông giống nhau nhưng thay đổi vì những lý do khác nhau. Gộp chúng lại tạo ra một hàm có tham số điều khiển hành vi, và mỗi khi một trong hai bên cần đổi, bạn phải thêm một nhánh nữa. Dấu hiệu nhận biết là một hàm có nhiều cờ boolean hoặc nhiều nhánh if mà mỗi nhánh chỉ phục vụ một người gọi. Trùng lặp về hình thức nhưng khác nhau về lý do thay đổi thì không phải là trùng lặp cần loại bỏ — gộp chúng là tạo ra ghép nối sai."
+    }
+  ],
+  "q": "Hãy lấy một ví dụ thực tế minh họa một nguyên tắc SOLID cùng DRY hoặc KISS, và cho biết khi nào việc áp dụng quá mức trở thành over-engineering?",
+  "oral": "OOP gom dữ liệu và hành vi liên quan vào một đối tượng. SOLID giữ thiết kế dễ thay đổi, DRY tránh lặp logic, KISS giữ lời giải đơn giản nhất có thể. Ví dụ thực tế là tách việc tính tiền đơn hàng khỏi việc gửi email, để mỗi lớp chỉ có một lý do để thay đổi. Over-engineering bắt đầu khi bạn tạo interface và tầng trung gian cho yêu cầu chỉ có một trường hợp dùng, đến mức sửa một dòng phải chạm năm file. Dấu hiệu là tên lớp chung chung như Manager, và tầng trung gian không chứa logic nào.",
+  "deep": "<p><strong>Thuật ngữ cần biết:</strong> SOLID, DRY, KISS, Over-engineering, Interface, Dependency Injection.</p><p>Thêm một trường vào bảng mà phải sửa bảy tệp. Đội xây 14 interface và 31 lớp cho ba thực thể, để đón một ngày đổi database không bao giờ tới. Tính năng nhỏ từ nửa ngày thành ba ngày.</p><p><strong>Ví dụ đúng:</strong> <code>OrderPricer</code> chỉ tính tiền, <code>EmailSender</code> chỉ gửi thư. <code>Checkout</code> điều phối và nhận hai phụ thuộc qua constructor. Công thức phí nằm một chỗ nên sửa một nơi là đúng mọi nơi. Đó là SOLID và DRY làm đúng vai của chúng.</p><p><strong>DRY đúng và DRY sai:</strong> gộp hai đoạn code chỉ khi chúng đổi cùng lý do và cùng nhịp. Hai chính sách như chiết khấu nhân viên và chiết khấu sự kiện có thể giống nhau hôm nay, nhưng đổi vì lý do khác nhau. Gộp chúng lại tạo ra hàm đầy cờ boolean, và sửa bên này làm hỏng bên kia.</p><ul><li><strong>Dùng khi:</strong> logic lặp ở ba nơi trở lên, ranh giới tự nhiên giữa HTTP, nghiệp vụ và dữ liệu, hoặc thay đổi lần thứ ba ở cùng một chỗ.</li><li><strong>Không dùng khi:</strong> tạo interface cho một lớp triển khai duy nhất, hoặc thêm tầng trung gian chỉ để chuyển tiếp lời gọi.</li></ul><p>Đáp án đổi theo bối cảnh: prototype một tuần thì gọi trực tiếp cho nhanh. Service sống lâu, nhiều người cùng sửa thì tách dần và trừu tượng hoá khi biến thể thứ hai thật sự xuất hiện.</p>",
+  "code": "class OrderPricer:\n    # ✅ Cách làm chuẩn: lớp này chỉ biết giá và số lượng, không biết gì về email.\n    def total(self, items):\n        return sum(i[\"price\"] * i[\"qty\"] for i in items)\n\nclass EmailSender:\n    # Chỉ biết gửi thư, không biết công thức tính tiền.\n    def send(self, email, text):\n        print(\"send to \" + email)\n\nclass Checkout:\n    # Nhận hai phụ thuộc qua constructor để khi test có thể thay bằng bản giả.\n    def __init__(self, pricer, mailer):\n        self.pricer = pricer\n        self.mailer = mailer\n    def run(self, items, email):\n        total = self.pricer.total(items)\n        self.mailer.send(email, str(total))\n        return total",
+  "expected": "Kết quả chạy thật (đã chạy nguyên snippet trong venv của repo): OrderPricer().total với hai dòng hàng 100x2 và 50x1 trả 250; Checkout(OrderPricer(), EmailSender()).run in ra \"send to a@b.c\" và trả về 250; thay mailer bằng FakeMailer thì run() vẫn trả 250 và FakeMailer ghi lại [(\"x@y.z\", \"250\")]. Phân tích: đây là minh họa sống của nguyên tắc đơn trách nhiệm trong SOLID — OrderPricer chỉ biết tính tiền, EmailSender chỉ biết gửi thư, Checkout chỉ điều phối và nhận hai phụ thuộc qua constructor, nên mỗi lớp chỉ có một lý do thay đổi và đổi nội dung email không thể làm hỏng công thức tính tiền. Over-engineering bắt đầu khi bạn thêm interface hay abstract cho OrderPricer dù chỉ có đúng một cách tính, hoặc thêm lớp Manager chỉ để chuyển tiếp gọi hàm: cái giá là sửa một hành vi nhỏ phải mở nhiều file. DRY cũng phải đúng chỗ: gộp khi hai đoạn thay đổi cùng lý do, còn hai logic chỉ tình cờ giống nhau như chiết khấu nhân viên và chiết khấu sự kiện thì giữ tách. Chốt: tách theo trục thay đổi thật sự, gộp theo kiến thức thật sự dùng chung, và KISS không có nghĩa là bỏ test hay đặt tên mập mờ.",
+  "followups": [
+    {
+      "q": "Dấu hiệu nào cho thấy bạn đã tách lớp quá mức?",
+      "a": "Dấu hiệu là sửa một hành vi nhỏ phải mở nhiều file, tên lớp chung chung như Manager hay Helper mà không nói rõ trách nhiệm, và tầng trung gian chỉ chuyển tiếp gọi hàm không thêm kiểm tra hay biến đổi nào. Một dấu hiệu nữa là giao diện chỉ có đúng một lớp triển khai suốt nhiều tháng. Khi thấy vậy bạn nên gộp lại thành một module rõ ràng cho đến khi có trường hợp dùng thứ hai thật sự."
+    },
+    {
+      "q": "Phân biệt DRY đúng với việc gộp nhầm hai logic chỉ tình cờ giống nhau?",
+      "a": "DRY đúng là gộp khi hai đoạn code thay đổi cùng lý do và cùng nhịp, ví dụ công thức tính phí dùng ở nhiều nơi. Gộp nhầm là khi hai đoạn chỉ tình cờ giống nhau hiện tại nhưng thay đổi vì lý do khác nhau, ví dụ chiết khấu nhân viên và chiết khấu sự kiện. Gộp nhầm khiến sửa một chính sách làm hỏng chính sách còn lại, nên bạn giữ tách cho đến khi quy tắc thật sự hội tụ."
+    }
+  ],
+  "pitfalls": [
+    "Tạo giao diện và tầng trừu tượng cho yêu cầu chỉ có một trường hợp dùng, khiến code khó theo dõi",
+    "Gộp hai logic chỉ tình cờ giống nhau thành một hàm dùng chung rồi sửa một nơi làm hỏng nơi còn lại",
+    "Nhầm KISS với code cẩu thả, bỏ kiểm thử và đặt tên mập mờ rồi gọi đó là đơn giản"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là khi nào một giao diện trừu tượng mới thật sự xứng đáng với chi phí của nó",
+    "Tôi giải thích được bằng ví dụ tách OrderPricer khỏi EmailSender theo đơn trách nhiệm và gộp công thức tính phí theo DRY",
+    "Trong tình huống service vừa tính tiền vừa gửi thư khó kiểm thử, tôi tách hai trách nhiệm và giữ thiết kế đủ đơn giản cho quy mô hiện tại"
+  ],
+  "refs": [
+    "py-datamodel",
+    "ts-handbook"
+  ]
+},
+{
+  "id": "I07",
+  "group": "I",
+  "topic": "Separation of concerns và dependency injection",
+  "prio": "P2",
+  "level": "L3",
+  "type": "situation",
+  "incident": "<p>Một endpoint xử lý đơn hàng trực tiếp gọi database, gọi dịch vụ thanh toán, gửi email và ghi log. Khi cần viết test cho quy tắc tính phí, đội phải dựng cả bốn phụ thuộc. Khi cần đổi nhà cung cấp thanh toán, họ phải sửa chính hàm xử lý. Và khi một trong bốn phụ thuộc chậm, toàn bộ endpoint chậm theo.</p>",
+  "askFirst": [
+    "Hàm này đang có mấy lý do để thay đổi?",
+    "Ranh giới nào nên được tách ra trước?",
+    "Tách ra có làm code phức tạp hơn không?"
+  ],
+  "predict": {
+    "q": "Một hàm vừa tính toán nghiệp vụ vừa gọi dịch vụ bên ngoài. Việc kiểm thử nó khó ở đâu?",
+    "a": "<p>Khó ở chỗ bạn không thể kiểm tra logic mà không kéo theo hệ thống bên ngoài. Muốn test nhanh và ổn định thì phải thay dịch vụ ngoài bằng một đối tượng giả.</p><p>Muốn làm được điều đó, hàm phải nhận phụ thuộc từ bên ngoài thay vì tự tạo. Đây là giá trị thực dụng của việc tách ranh giới: không phải kiến trúc cho đẹp, mà là điều kiện để logic thuần tuý kiểm thử được mà không cần hạ tầng.</p>"
   },
-  {
-    id: 'I08',
-    group: 'I',
-    topic: 'Chọn cấu trúc dữ liệu cho tác vụ API cụ thể',
-    prio: 'P2',
-    level: 'L1',
-    type: 'concept',
-    incident: "<p>Một endpoint kiểm tra xem một mã giảm giá có hợp lệ không, và được gọi 4.000 lần mỗi phút. Code cũ đọc toàn bộ danh sách mã từ database rồi duyệt tuyến tính qua 60.000 phần tử cho mỗi lần kiểm tra. CPU của database ở mức 95% và endpoint mất 400 ms mỗi lần gọi, dù chỉ cần trả về đúng hoặc sai.</p>",
-    askFirst: ["Thao tác thực sự cần làm là gì?","Cấu trúc dữ liệu nào phù hợp với thao tác đó?","Nên giữ cấu trúc đó ở đâu?"],
-    predict: {"q":"Bạn cần kiểm tra sự tồn tại của một phần tử trong tập 60.000 phần tử, 4.000 lần mỗi phút. Bạn chọn cấu trúc nào?","a":"<p>Một bảng băm hoặc một tập hợp, vì thao tác cần làm là kiểm tra thành viên và cấu trúc đó cho phép tra cứu trung bình O(1). Một danh sách buộc phải duyệt tuần tự nên là O(n) cho mỗi lần kiểm tra, và với 60.000 phần tử nhân 4.000 lần mỗi phút thì đó là hàng trăm triệu phép so sánh mỗi phút cho một câu hỏi đúng-sai. Điểm cần cân nhắc thêm là cấu trúc đó nằm ở đâu: trong database với chỉ mục duy nhất, hay trong bộ nhớ của ứng dụng với thời hạn làm mới.</p>"},
-    anchor: "Chọn cấu trúc dữ liệu là chọn theo thao tác sẽ làm nhiều nhất, không theo thứ tự dữ liệu được tạo ra.",
-    attacks: [{"q":"Nên kiểm tra trong bộ nhớ hay trong database?","a":"Phụ thuộc vào tần suất thay đổi và yêu cầu nhất quán. Nếu danh sách mã ít đổi và có thể chấp nhận một khoảng trễ nhỏ, giữ nó trong bộ nhớ ứng dụng với thời hạn làm mới định kỳ cho độ trễ rất thấp và giảm tải database. Nếu mã có thể bị thu hồi và việc dùng mã đã thu hồi là không chấp nhận được, phải kiểm tra ở database. Cách dung hoà thường dùng là kiểm tra nhanh trong bộ nhớ để loại phần lớn trường hợp, rồi xác nhận ở database cho những trường hợp đi qua."},{"q":"Nếu cần kiểm tra cả tiền tố của mã thì sao?","a":"Khi đó thao tác không còn là kiểm tra thành viên thuần tuý mà là tìm theo tiền tố, và bảng băm không làm được việc đó. Cấu trúc phù hợp là cây tìm kiếm theo ký tự, hoặc đơn giản hơn là dùng chỉ mục trên cột mã với phép so khớp tiền tố trong database. Điểm cần chú ý là phép so khớp mẫu ở giữa chuỗi không dùng được chỉ mục thông thường, nên nếu mẫu tìm kiếm linh hoạt thì cần đến chỉ mục chuyên dụng cho văn bản. Đây là ví dụ cho thấy việc chọn cấu trúc phải xuất phát từ thao tác, và thao tác thay đổi thì cấu trúc phải đổi theo."}],
-    q: 'API cần kiểm tra username đã tồn tại, đếm lượt xem theo bài viết và lấy 20 thông báo mới nhất, bạn chọn cấu trúc dữ liệu nào cho từng nhu cầu và vì sao?',
-    oral: 'Bạn chọn cấu trúc theo thao tác chính của từng nhu cầu. Kiểm tra username tồn tại là kiểm tra thành viên nên dùng set với O(1) trung bình thay vì duyệt mảng. Đếm lượt xem theo bài viết là ánh xạ từ mã bài viết sang số lượng nên dùng hash map với cập nhật O(1). Lấy 20 thông báo mới nhất là lấy đoạn cuối của dãy có thứ tự nên dùng mảng giữ theo thời gian rồi cắt đoạn cuối, hoặc deque khi cần thêm đầu và lấy đầu liên tục. Sai lầm phổ biến là dùng một mảng cho mọi việc rồi duyệt tuyến tính khắp nơi, khiến API chậm dần khi dữ liệu lớn. Với dữ liệu cần mở rộng nhiều máy thì bạn chuyển các cấu trúc này sang dịch vụ lưu trữ phù hợp thay vì giữ trong bộ nhớ một tiến trình.',
-    deep: '<p>Endpoint kiểm tra mã giảm giá quét tuyến tính 60.000 mã cho mỗi lần gọi, 4.000 lần một phút. CPU database kẹt 95% và mỗi lần gọi mất 400 ms chỉ để trả lời đúng hoặc sai. Bạn đổi sang tra cứu băm là còn mili giây.</p><p>Bạn chọn theo thao tác làm nhiều nhất. Kiểm tra username là kiểm tra thành viên nên <code>set</code> chứa tên đã chuẩn hóa cho <code>O(1)</code> trung bình. Đếm lượt xem là ánh xạ mã bài viết sang số lượng nên hash map cập nhật một khóa với <code>O(1)</code>. Lấy 20 thông báo mới nhất là lấy đoạn cuối dãy có thứ tự nên mảng giữ theo thời gian rồi cắt đoạn cuối, hoặc <code>deque</code> khi thêm và lấy liên tục ở hai đầu.</p><p><code>Set</code> trả lời có hay không trong <code>O(1)</code>, còn mảng duyệt tuyến tính tốn <code>O(n)</code> mỗi lần đăng ký. Một bên đứng yên khi người dùng tăng, bên còn lại chậm dần đều.</p><ul><li><strong>Dùng khi:</strong> tồn tại thì dùng <code>set</code>, đếm theo mã thì dùng hash map, mới nhất thì cắt đuôi mảng có giới hạn.</li><li><strong>Không dùng khi:</strong> đừng dùng một mảng cho cả ba việc, đừng giữ thông báo phình vô hạn, đừng quên chuẩn hóa username trước khi kiểm tra.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: một máy thì cấu trúc bộ nhớ đủ, còn nhiều máy hay cần bền sau khởi động lại thì bạn chuyển sang lưu trữ dùng chung và giữ bộ nhớ chỉ làm đệm.</p>',
-    code: null,
-    expected: null,
-    followups: [
-      { q: 'Vì sao kiểm tra tồn tại bằng set tốt hơn duyệt mảng?', a: 'Vì set dùng hàm băm để nhảy thẳng tới vị trí cần kiểm tra nên chi phí trung bình là O(1) không phụ thuộc số lượng tên đã lưu. Duyệt mảng phải so sánh từng phần tử nên chi phí O(n) và tăng dần theo số người dùng. Với hệ thống có hàng trăm nghìn tài khoản thì chênh lệch này quyết định thời gian đăng ký.' },
-      { q: 'Khi nào cấu trúc trong bộ nhớ không còn đủ và bạn chuyển sang lưu trữ dùng chung?', a: 'Khi API chạy nhiều máy, khi dữ liệu phải còn sau khi khởi động lại, hoặc khi nhiều tiến trình cùng cập nhật một bộ đếm. Lúc đó bạn chuyển sang dịch vụ lưu trữ dùng chung với tính bền, hết hạn và thao tác nguyên tử phù hợp. Cấu trúc trong bộ nhớ chỉ còn là bộ nhớ đệm chứ không phải nguồn sự thật duy nhất.' }
-    ],
-    pitfalls: ['Dùng mảng và duyệt tuyến tính cho kiểm tra tồn tại khiến chi phí tăng tuyến tính theo dữ liệu', 'Quên chuẩn hóa username nên tên trùng thực chất bị tính thành hai người khác nhau', 'Giữ danh sách thông báo phình vô hạn trong bộ nhớ mà không giới hạn số lượng'],
-    selfcheck: ['Điều tôi vẫn chưa giải thích trôi chảy là cách chọn dịch vụ lưu trữ dùng chung khi API chạy nhiều máy', 'Tôi giải thích được bằng ví dụ set cho username, hash map cho lượt xem và cắt đoạn cuối cho 20 thông báo mới nhất', 'Trong tình huống API đăng ký chậm do duyệt mảng tên, tôi đổi sang set kèm chuẩn hóa tên trước khi kiểm tra'],
-    refs: ['py-datamodel', 'mdn-execution-model']
-  }
+  "anchor": "Tách phụ thuộc ra khỏi logic không phải để kiến trúc đẹp mà để logic thuần tuý kiểm thử được.",
+  "attacks": [
+    {
+      "q": "Tách lớp có làm code phức tạp hơn không?",
+      "a": "Có, và cần thừa nhận điều đó. Bạn thêm tệp, thêm khai báo, và thêm một bước để lần theo luồng khi đọc code. Chi phí đó chỉ đáng trả khi nó mua được thứ cụ thể: logic kiểm tra được mà không cần hạ tầng, hoặc khả năng thay một phụ thuộc mà không sửa nghiệp vụ. Nếu một endpoint chỉ đọc dữ liệu và trả về, việc tách thành ba lớp là chi phí thuần tuý. Quy tắc thực dụng là tách khi có lý do thật — nhiều cài đặt, cần test logic mà không cần hạ tầng, hoặc phụ thuộc thay đổi độc lập với nghiệp vụ."
+    },
+    {
+      "q": "Dependency injection có nhất thiết phải dùng framework không?",
+      "a": "Không. Ở dạng đơn giản nhất, nó chỉ là việc truyền phụ thuộc vào qua tham số khởi tạo thay vì để đối tượng tự tạo ra chúng. Điều đó cho phép thay thế trong test bằng một đối tượng đơn giản, không cần thư viện nào. Framework chỉ giúp khi số lượng phụ thuộc và vòng đời trở nên phức tạp — khi bạn cần biết cái nào dùng chung, cái nào tạo mới cho mỗi request. Với những hệ thống nhỏ, tự truyền tham số rõ ràng hơn và dễ lần theo hơn là để framework tự giải quyết."
+    }
+  ],
+  "q": "Giả sử một service vừa gọi trực tiếp cơ sở dữ liệu vừa gửi email trong cùng một hàm, bạn tách lớp và áp dụng dependency injection ra sao để dễ kiểm thử?",
+  "oral": "Separation of concerns nghĩa là mỗi thành phần chỉ lo một việc. Dependency injection nghĩa là thành phần không tự tạo thứ nó cần mà nhận từ bên ngoài qua constructor. Bạn tách service thành kho lưu trữ lo dữ liệu và cổng gửi thư lo email, rồi truyền hai thành phần này vào service. Khi kiểm thử, bạn truyền bản giả nhẹ thay cho database và dịch vụ thư thật, nên test nhanh và ổn định. Khi đổi nhà cung cấp email, bạn chỉ thay thành phần được tiêm, không sửa logic điều phối. Lỗi phổ biến là tạo cứng kết nối bên trong class, hoặc truyền cả container chứa mọi thứ khiến ranh giới mờ trở lại.",
+  "deep": "<p><strong>Thuật ngữ cần biết:</strong> Separation of Concerns, Dependency Injection, Constructor Injection, Repository, Mock.</p><p>Muốn test quy tắc tính phí mà phải dựng database, thanh toán, email và log thì test chạy năm phút. Đổi nhà cung cấp thanh toán lại phải mổ chính hàm xử lý đơn.</p><p><strong>Cách tách:</strong> <code>userRepo</code> lo dữ liệu, <code>mailer</code> lo gửi thư. <code>UserService.register</code> chỉ giữ luồng tạo user rồi gửi thư chào mừng. Hai phụ thuộc đi vào qua constructor, nên test tiêm bản giả nhẹ còn production tiêm bản thật mà không sửa logic. Kiểm thử chỉ còn mili giây thay vì dựng hạ tầng.</p><p>Tiêm tường minh từng phụ thuộc cho bạn thấy service cần gì ngay trong chữ ký. Tiêm cả container vạn năng thì phụ thuộc bị giấu, bạn phải mở code mới thấy.</p><ul><li><strong>Dùng khi:</strong> logic sống lâu, test chạy hằng ngày, phụ thuộc thay đổi độc lập với nghiệp vụ như đổi nhà cung cấp email.</li><li><strong>Không dùng khi:</strong> đừng tiêm hằng số và hàm thuần túy, đừng tách ba lớp cho endpoint chỉ đọc rồi trả về, script một lần thì gọi trực tiếp.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: framework DI chỉ đáng dùng khi vòng đời đối tượng phức tạp. Với service nhỏ, constructor thủ công đủ dùng và bạn nâng dần theo tuổi thọ của code.</p>",
+  "code": "class UserService {\n  // ❌ Cách làm sai phổ biến: import module phụ thuộc thẳng trong phương thức, khiến test phải thật và khó thay bản giả.\n  // ✅ Cách làm chuẩn: nhận ranh giới qua constructor để test truyền bản giả.\n  constructor(userRepo, mailer) {\n    this.userRepo = userRepo;\n    this.mailer = mailer;\n  }\n  async register(email) {\n    const user = await this.userRepo.create(email);\n    await this.mailer.send(email, \"welcome\");\n    return user;\n  }\n}\nconst fakeRepo = { create: async (e) => ({ id: 1, email: e }) };\nconst fakeMailer = { send: async () => true };\nconst svc = new UserService(fakeRepo, fakeMailer);",
+  "expected": "Kết quả chạy thật (đã chạy bằng node 24 với đúng lớp UserService trong snippet): new UserService(fakeRepo, fakeMailer).register(\"a@b.c\") in ra { id: 1, email: 'a@b.c' }; bản ghi lại lời gọi cho thấy thứ tự [\"repo.create x@y.z\", \"mailer.send x@y.z welcome\"], nghĩa là service không hề biết mình đang dùng bản thật hay bản giả, nó chỉ gọi hai ranh giới được tiêm vào. Phân tích: constructor injection đảo ngược quyền quyết định triển khai ra bên ngoài lớp, nên test truyền object giả rẻ tiền còn production truyền repo và mailer thật mà không sửa một dòng logic điều phối; đây là separation of concerns ở mức ranh giới có tác dụng phụ (I/O), không phải ở mức hàm thuần túy. Lạm dụng DI xảy ra khi bạn tiêm cả hằng số và hàm thuần túy khiến constructor phình to, hoặc tiêm cả container vạn năng để lớp tự lấy thứ cần và giấu mất phụ thuộc. Chốt: chỉ tiêm ranh giới có tác dụng phụ, khai báo tường minh từng phụ thuộc, và với script một lần hay công cụ nội bộ thì gọi trực tiếp vẫn hợp lý.",
+  "followups": [
+    {
+      "q": "Vì sao tiêm qua constructor tốt hơn để lớp tự tạo kết nối bên trong?",
+      "a": "Vì lớp tự tạo kết nối thì logic nghiệp vụ bị dính cứng với chi tiết hạ tầng nên kiểm thử bắt buộc dùng hạ tầng thật. Tiêm qua constructor đảo ngược quyền quyết định ra ngoài, cho phép mỗi môi trường chọn bản triển khai phù hợp. Kiểm thử dùng bản giả nhẹ còn môi trường thật dùng bản kết nối thật mà không sửa một dòng logic nào."
+    },
+    {
+      "q": "Khi nào dependency injection trở thành lạm dụng?",
+      "a": "Khi bạn tiêm cả hằng số, hàm thuần túy và mọi chi tiết nhỏ khiến constructor dài mà không tăng khả năng kiểm thử. Một dạng lạm dụng khác là tiêm cả container vạn năng để lớp tự lấy thứ cần, khiến phụ thuộc bị giấu và khó đọc. Quy tắc là chỉ tiêm ranh giới có tác dụng phụ và khai báo tường minh từng phụ thuộc."
+    },
+    {
+      "q": "Điều kiện nào khiến bạn chọn cách đơn giản thay vì tiêm đầy đủ?",
+      "a": "Với script một lần, nguyên mẫu dùng một tuần hoặc công cụ nội bộ ít người dùng thì gọi trực tiếp giúp ra kết quả nhanh và ít chi phí. Khi code sống lâu, nhiều người sửa và kiểm thử chạy hằng ngày thì chi phí tạo cứng vượt xa chi phí tiêm. Bạn nâng dần mức tách lớp theo tuổi thọ và số người sửa code chứ không áp một mẫu cho mọi tình huống."
+    }
+  ],
+  "pitfalls": [
+    "Tự tạo kết nối dữ liệu và dịch vụ thư bên trong class nên kiểm thử bắt buộc dùng hạ tầng thật",
+    "Tiêm cả container vạn năng khiến phụ thuộc bị giấu và ranh giới giữa các lớp mờ trở lại",
+    "Tiêm mọi hằng số và hàm thuần túy khiến constructor phình to mà không tăng khả năng kiểm thử"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là cách quản lý vòng đời của đối tượng được tiêm trong ứng dụng lớn",
+    "Tôi giải thích được bằng ví dụ UserService nhận userRepo và mailer qua constructor kèm bản giả khi kiểm thử",
+    "Trong tình huống service khó kiểm thử vì gọi cứng dữ liệu và email, tôi tách hai cổng và tiêm bản giả cho kiểm thử"
+  ],
+  "refs": [
+    "ts-handbook",
+    "py-datamodel"
+  ]
+},
+{
+  "id": "I08",
+  "group": "I",
+  "topic": "Chọn cấu trúc dữ liệu cho tác vụ API cụ thể",
+  "prio": "P2",
+  "level": "L1",
+  "type": "concept",
+  "incident": "<p>Một endpoint kiểm tra xem một mã giảm giá có hợp lệ không, và được gọi 4.000 lần mỗi phút. Code cũ đọc toàn bộ danh sách mã từ database rồi duyệt tuyến tính qua 60.000 phần tử cho mỗi lần kiểm tra. CPU của database ở mức 95% và endpoint mất 400 ms mỗi lần gọi, dù chỉ cần trả về đúng hoặc sai.</p>",
+  "askFirst": [
+    "Thao tác thực sự cần làm là gì?",
+    "Cấu trúc dữ liệu nào phù hợp với thao tác đó?",
+    "Nên giữ cấu trúc đó ở đâu?"
+  ],
+  "predict": {
+    "q": "Bạn cần kiểm tra sự tồn tại của một phần tử trong tập 60.000 phần tử, 4.000 lần mỗi phút. Bạn chọn cấu trúc nào?",
+    "a": "<p>Một bảng băm hoặc một tập hợp, vì thao tác cần làm là kiểm tra thành viên và cấu trúc đó cho phép tra cứu trung bình O(1). Một danh sách buộc phải duyệt tuần tự nên là O(n) cho mỗi lần kiểm tra, và với 60.000 phần tử nhân 4.000 lần mỗi phút thì đó là hàng trăm triệu phép so sánh mỗi phút cho một câu hỏi đúng-sai. Điểm cần cân nhắc thêm là cấu trúc đó nằm ở đâu: trong database với chỉ mục duy nhất, hay trong bộ nhớ của ứng dụng với thời hạn làm mới.</p>"
+  },
+  "anchor": "Chọn cấu trúc dữ liệu là chọn theo thao tác sẽ làm nhiều nhất, không theo thứ tự dữ liệu được tạo ra.",
+  "attacks": [
+    {
+      "q": "Nên kiểm tra trong bộ nhớ hay trong database?",
+      "a": "Phụ thuộc vào tần suất thay đổi và yêu cầu nhất quán. Nếu danh sách mã ít đổi và có thể chấp nhận một khoảng trễ nhỏ, giữ nó trong bộ nhớ ứng dụng với thời hạn làm mới định kỳ cho độ trễ rất thấp và giảm tải database. Nếu mã có thể bị thu hồi và việc dùng mã đã thu hồi là không chấp nhận được, phải kiểm tra ở database. Cách dung hoà thường dùng là kiểm tra nhanh trong bộ nhớ để loại phần lớn trường hợp, rồi xác nhận ở database cho những trường hợp đi qua."
+    },
+    {
+      "q": "Nếu cần kiểm tra cả tiền tố của mã thì sao?",
+      "a": "Khi đó thao tác không còn là kiểm tra thành viên thuần tuý mà là tìm theo tiền tố, và bảng băm không làm được việc đó. Cấu trúc phù hợp là cây tìm kiếm theo ký tự, hoặc đơn giản hơn là dùng chỉ mục trên cột mã với phép so khớp tiền tố trong database. Điểm cần chú ý là phép so khớp mẫu ở giữa chuỗi không dùng được chỉ mục thông thường, nên nếu mẫu tìm kiếm linh hoạt thì cần đến chỉ mục chuyên dụng cho văn bản. Đây là ví dụ cho thấy việc chọn cấu trúc phải xuất phát từ thao tác, và thao tác thay đổi thì cấu trúc phải đổi theo."
+    }
+  ],
+  "q": "API cần kiểm tra username đã tồn tại, đếm lượt xem theo bài viết và lấy 20 thông báo mới nhất, bạn chọn cấu trúc dữ liệu nào cho từng nhu cầu và vì sao?",
+  "oral": "Bạn chọn cấu trúc theo thao tác chính của từng nhu cầu. Kiểm tra username tồn tại là kiểm tra thành viên nên dùng set với O(1) trung bình thay vì duyệt mảng. Đếm lượt xem theo bài viết là ánh xạ từ mã bài viết sang số lượng nên dùng hash map với cập nhật O(1). Lấy 20 thông báo mới nhất là lấy đoạn cuối của dãy có thứ tự nên dùng mảng giữ theo thời gian rồi cắt đoạn cuối, hoặc deque khi cần thêm đầu và lấy đầu liên tục. Sai lầm phổ biến là dùng một mảng cho mọi việc rồi duyệt tuyến tính khắp nơi, khiến API chậm dần khi dữ liệu lớn. Với dữ liệu cần mở rộng nhiều máy thì bạn chuyển các cấu trúc này sang dịch vụ lưu trữ phù hợp thay vì giữ trong bộ nhớ một tiến trình.",
+  "deep": "<p>Endpoint kiểm tra mã giảm giá quét tuyến tính 60.000 mã cho mỗi lần gọi, 4.000 lần một phút. CPU database kẹt 95% và mỗi lần gọi mất 400 ms chỉ để trả lời đúng hoặc sai. Bạn đổi sang tra cứu băm là còn mili giây.</p><p>Bạn chọn theo thao tác làm nhiều nhất. Kiểm tra username là kiểm tra thành viên nên <code>set</code> chứa tên đã chuẩn hóa cho <code>O(1)</code> trung bình. Đếm lượt xem là ánh xạ mã bài viết sang số lượng nên hash map cập nhật một khóa với <code>O(1)</code>. Lấy 20 thông báo mới nhất là lấy đoạn cuối dãy có thứ tự nên mảng giữ theo thời gian rồi cắt đoạn cuối, hoặc <code>deque</code> khi thêm và lấy liên tục ở hai đầu.</p><p><code>Set</code> trả lời có hay không trong <code>O(1)</code>, còn mảng duyệt tuyến tính tốn <code>O(n)</code> mỗi lần đăng ký. Một bên đứng yên khi người dùng tăng, bên còn lại chậm dần đều.</p><ul><li><strong>Dùng khi:</strong> tồn tại thì dùng <code>set</code>, đếm theo mã thì dùng hash map, mới nhất thì cắt đuôi mảng có giới hạn.</li><li><strong>Không dùng khi:</strong> đừng dùng một mảng cho cả ba việc, đừng giữ thông báo phình vô hạn, đừng quên chuẩn hóa username trước khi kiểm tra.</li></ul><p>Khi điều kiện đổi thì đáp án đổi: một máy thì cấu trúc bộ nhớ đủ, còn nhiều máy hay cần bền sau khởi động lại thì bạn chuyển sang lưu trữ dùng chung và giữ bộ nhớ chỉ làm đệm.</p>",
+  "code": null,
+  "expected": null,
+  "followups": [
+    {
+      "q": "Vì sao kiểm tra tồn tại bằng set tốt hơn duyệt mảng?",
+      "a": "Vì set dùng hàm băm để nhảy thẳng tới vị trí cần kiểm tra nên chi phí trung bình là O(1) không phụ thuộc số lượng tên đã lưu. Duyệt mảng phải so sánh từng phần tử nên chi phí O(n) và tăng dần theo số người dùng. Với hệ thống có hàng trăm nghìn tài khoản thì chênh lệch này quyết định thời gian đăng ký."
+    },
+    {
+      "q": "Khi nào cấu trúc trong bộ nhớ không còn đủ và bạn chuyển sang lưu trữ dùng chung?",
+      "a": "Khi API chạy nhiều máy, khi dữ liệu phải còn sau khi khởi động lại, hoặc khi nhiều tiến trình cùng cập nhật một bộ đếm. Lúc đó bạn chuyển sang dịch vụ lưu trữ dùng chung với tính bền, hết hạn và thao tác nguyên tử phù hợp. Cấu trúc trong bộ nhớ chỉ còn là bộ nhớ đệm chứ không phải nguồn sự thật duy nhất."
+    }
+  ],
+  "pitfalls": [
+    "Dùng mảng và duyệt tuyến tính cho kiểm tra tồn tại khiến chi phí tăng tuyến tính theo dữ liệu",
+    "Quên chuẩn hóa username nên tên trùng thực chất bị tính thành hai người khác nhau",
+    "Giữ danh sách thông báo phình vô hạn trong bộ nhớ mà không giới hạn số lượng"
+  ],
+  "selfcheck": [
+    "Điều tôi vẫn chưa giải thích trôi chảy là cách chọn dịch vụ lưu trữ dùng chung khi API chạy nhiều máy",
+    "Tôi giải thích được bằng ví dụ set cho username, hash map cho lượt xem và cắt đoạn cuối cho 20 thông báo mới nhất",
+    "Trong tình huống API đăng ký chậm do duyệt mảng tên, tôi đổi sang set kèm chuẩn hóa tên trước khi kiểm tra"
+  ],
+  "refs": [
+    "py-datamodel",
+    "mdn-execution-model"
+  ]
+}
 );

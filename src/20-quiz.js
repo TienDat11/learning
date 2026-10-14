@@ -33,7 +33,7 @@ options: [
 'Đưa xử lý ảnh sang ProcessPoolExecutor hoặc Celery worker để bỏ GIL, vì đây là tác vụ CPU-bound chứ không phải I/O-bound',
 'Tăng số worker uvicorn lên bằng đúng số nhân CPU để mỗi tiến trình nhận một phần ảnh từ hàng đợi và xử lý song song, nhờ đó tận dụng hết số nhân đang bỏ trống',
 'Bọc hàm xử lý trong async def rồi await trực tiếp để event loop tự chia thời gian cho các ảnh đang chờ trong hàng đợi',
-'Tăng giới hạn threadpool (nhóm luồng làm việc dùng chung) của Starlette lên 200 để các tác vụ xử lý ảnh không phải xếp hàng chờ nhau trước khi chạy'
+'Tăng giới hạn threadpool của Starlette lên 200 để các tác vụ xử lý ảnh không phải xếp hàng chờ nhau trước khi chạy'
 ],
 answer: 0,
 explain: 'Xử lý ảnh là CPU-bound nên nhiều thread trong cùng tiến trình không tăng tốc do GIL. ProcessPoolExecutor hoặc worker queue tách việc ra tiến trình khác, tận dụng được nhiều nhân và giữ event loop của API không bị nghẽn.',
@@ -175,7 +175,7 @@ q: 'Một endpoint dùng def đồng bộ nhưng bên trong gọi driver DB bấ
 options: [
 'Cả hai cách đều được FastAPI tự động chuyển đổi sang dạng phù hợp nên không có vấn đề gì xảy ra khi trộn hai kiểu khai báo trong cùng một service',
 'Chỉ async def gọi SDK sync mới gây nghẽn, còn def gọi await chỉ sinh cảnh báo chứ vẫn chạy đúng và trả kết quả',
-'def được chạy trong threadpool (nhóm luồng làm việc dùng chung) nên gọi await bên trong sẽ lỗi, còn async def gọi SDK sync sẽ chặn event loop và làm nghẽn mọi request khác',
+'def được chạy trong threadpool nên gọi await bên trong sẽ lỗi, còn async def gọi SDK sync sẽ chặn event loop và làm nghẽn mọi request khác',
 'Hai cách đều an toàn vì FastAPI cấp một thread riêng cho từng request nên blocking ở đâu cũng không ảnh hưởng nhau'
 ],
 answer: 2,
@@ -186,7 +186,7 @@ situational: false
 id: 'QZ15', group: 'E',
 q: 'Endpoint trả về danh sách 200 đơn hàng chậm 4 giây vì log SQL có hàng trăm câu SELECT giống hệt nhau. Bạn sửa thế nào?',
 options: [
-'Tăng kích thước connection pool (tập kết nối mở sẵn để dùng lại thay vì mở mới mỗi lần) và timeout của database để các câu SELECT chạy song song thay vì xếp hàng chờ nhau',
+'Tăng kích thước connection pool và timeout của database để các câu SELECT chạy song song thay vì xếp hàng chờ nhau',
 'Đây là lỗi N+1, sửa bằng eager loading như selectinload hoặc joinedload để lấy quan hệ trong một truy vấn',
 'Thêm index cho mọi cột của cả hai bảng để mỗi câu SELECT nhanh hơn, tổng thời gian giảm theo số câu truy vấn',
 'Cache toàn bộ endpoint bằng Redis ở lần gọi đầu để các lần sau không phải chạy lại chuỗi truy vấn giống nhau'
@@ -226,9 +226,9 @@ id: 'QZ18', group: 'F',
 q: 'Một báo cáo chạy từ 4 giây lên 40 giây sau khi bảng lớn từ 200 nghìn lên 8 triệu dòng. Bạn bắt đầu kiểm tra bằng cách nào?',
 options: [
 'Viết lại toàn bộ truy vấn bằng raw SQL tối ưu thủ công trước khi xem kế hoạch thực thi, vì raw SQL luôn nhanh hơn query builder ở mọi trường hợp',
-'Tăng work_mem (bộ nhớ cho mỗi thao tác sắp xếp/băm trong Postgres) lên vài GB rồi chạy lại truy vấn, vì bộ nhớ luôn là nguyên nhân chính khi thời gian chạy tăng vọt',
+'Tăng work_mem lên vài GB rồi chạy lại truy vấn, vì bộ nhớ luôn là nguyên nhân chính khi thời gian chạy tăng vọt',
 'Thêm DISTINCT vào truy vấn để giảm số dòng trả về, từ đó giảm thời gian sắp xếp và thời gian truyền dữ liệu',
-'Chạy EXPLAIN (lệnh xem kế hoạch chạy truy vấn của database) ANALYZE để so sánh estimate với actual, tìm dòng ước tính sai và kiểm tra chỉ mục hoặc thống kê đang lệch'
+'Chạy EXPLAIN ANALYZE để so sánh estimate với actual, tìm dòng ước tính sai và kiểm tra chỉ mục hoặc thống kê đang lệch'
 ],
 answer: 3,
 explain: 'EXPLAIN ANALYZE cho biết kế hoạch thực sự kèm thời gian từng node, còn EXPLAIN chỉ là kế hoạch ước tính. Nếu estimate lệch mạnh với actual thì statistics lỗi thời cần ANALYZE, hoặc thiếu index phù hợp như index một phần hay index phủ.',
@@ -238,22 +238,22 @@ situational: true
 id: 'QZ19', group: 'G',
 q: 'Lambda của bạn cần đọc một bucket S3 nhưng deploy xong báo AccessDenied. Bạn kiểm tra và sửa thế nào?',
 options: [
-'Gắn chính sách IAM (lớp phân quyền của AWS) cho execution role (danh tính mà hàm mượn để biết nó được chạm tài nguyên nào) của Lambda cho phép s3:ListBucket trên ARN bucket (arn:aws:s3:::tên-bucket) và s3:GetObject trên ARN object (arn:aws:s3:::tên-bucket/*), không sửa bucket policy',
+'Gắn chính sách IAM cho execution role của Lambda cho phép s3:ListBucket trên ARN bucket arn:aws:s3:::tên-bucket và s3:GetObject trên ARN object arn:aws:s3:::tên-bucket/*, không sửa bucket policy',
 'Thêm quyền cho IAM user cá nhân của người deploy, vì Lambda không có execution role riêng mà mượn credential của người gọi nên chỉ cần cấp quyền cho user đó',
-'Sửa bucket policy và bật public-read (mở cho mọi principal đều đọc được) cho bucket, cách này nhanh và ít cấu hình nhất',
+'Sửa bucket policy và bật public-read cho bucket, cách này nhanh và ít cấu hình nhất',
 'Tắt block public access rồi cấp quyền đọc cho role của mọi tài khoản trong tổ chức để không phải cấu hình từng hàm'
 ],
 answer: 0,
-explain: 'Khi Lambda tự gọi dịch vụ AWS, quyền đến từ execution role gắn vào chính Lambda, không phải principal gọi vào Lambda. Nên chỉ cần policy allow đúng action trên đúng ARN trong role: ARN bucket (arn:aws:s3:::tên-bucket) cho s3:ListBucket, ARN object (arn:aws:s3:::tên-bucket/*) cho s3:GetObject, giữ bucket private. Mở public hay dùng user cá nhân là lỗ hổng không cần thiết.',
+explain: 'Khi Lambda tự gọi dịch vụ AWS, quyền đến từ execution role gắn vào chính Lambda, không phải principal gọi vào Lambda. Nên chỉ cần policy allow đúng action trên đúng ARN trong role: ARN bucket arn:aws:s3:::tên-bucket cho s3:ListBucket, ARN object arn:aws:s3:::tên-bucket/* cho s3:GetObject, giữ bucket private. Mở public hay dùng user cá nhân là lỗ hổng không cần thiết.',
 situational: false
 },
 {
 id: 'QZ20', group: 'G',
-q: 'API Lambda đang bị độ trễ p99 (ngưỡng độ trễ mà 99 trên 100 request nhanh hơn nó, chỉ 1 request chậm hơn) cao nhưng không xảy ra lúc nào có traffic lớn. Nguyên nhân khả dĩ nhất và cách xử lý?',
+q: 'API Lambda đang bị độ trễ p99 cao nhưng không xảy ra lúc nào có traffic lớn. Nguyên nhân khả dĩ nhất và cách xử lý?',
 options: [
-'DynamoDB bị throttling nên SDK phải thử lại nhiều lần với exponential backoff (chờ lâu dần giữa các lần thử lại), xử lý bằng cách tăng provisioned capacity của bảng lên gấp đôi để giảm số lần thử lại',
+'DynamoDB bị throttling nên SDK phải thử lại nhiều lần với exponential backoff, xử lý bằng cách tăng provisioned capacity của bảng lên gấp đôi để giảm số lần thử lại',
 'API Gateway giữ kết nối quá lâu nên integration bị timeout, xử lý bằng cách nâng timeout của integration lên 60 giây cho thoáng',
-'Cold start (lần gọi đầu phải dựng môi trường chạy mới nên chậm hơn) khi môi trường bị thu hồi, xử lý bằng provisioned concurrency (trả tiền giữ sẵn môi trường chạy để khỏi chờ dựng), tăng memory để init nhanh hơn hoặc tối ưu dependency khởi tạo ngoài handler',
+'Cold start khi môi trường bị thu hồi, xử lý bằng provisioned concurrency, tăng memory để init nhanh hơn hoặc tối ưu dependency khởi tạo ngoài handler',
 'Payload không được nén nên thời gian truyền tăng khi mạng chậm, xử lý bằng cách bật gzip cho mọi response mà handler trả về'
 ],
 answer: 2,
@@ -265,8 +265,8 @@ id: 'QZ21', group: 'G',
 q: 'Ứng dụng web cần cho người dùng upload ảnh đại diện lên bucket private mà không mở public access. Bạn chọn cách nào?',
 options: [
 'Cho client dùng AWS access key có quyền hạn hẹp để gọi thẳng S3, cách này đơn giản và không tốn thêm chi phí trung gian',
-'Cho bucket public-read (mở cho mọi principal đều đọc được) rồi dựa vào URL khó đoán để bảo vệ, vì tên object ngẫu nhiên đủ khó để không ai dò được',
-'Sử dụng presigned URL (địa chỉ ký sẵn cho phép đúng một hành động trên đúng một tệp trong thời gian ngắn) có thời hạn ngắn để client PUT thẳng lên S3, backend chỉ xác thực và sinh URL, giảm tải qua API Gateway',
+'Cho bucket public-read rồi dựa vào URL khó đoán để bảo vệ, vì tên object ngẫu nhiên đủ khó để không ai dò được',
+'Sử dụng presigned URL có thời hạn ngắn để client PUT thẳng lên S3, backend chỉ xác thực và sinh URL, giảm tải qua API Gateway',
 'Backend đọc file từ S3 rồi ghi xuống máy chủ riêng và serve lại qua chính backend, cách này kiểm soát được mọi request'
 ],
 answer: 2,
@@ -277,8 +277,8 @@ situational: true
 id: 'QZ22', group: 'G',
 q: 'Một Lambda xử lý SQS nhận cùng một message hai lần và tạo ra hai bản ghi trùng. Bạn xử lý thế nào để hệ thống đúng?',
 options: [
-'Thiết kế xử lý idempotent (gọi lại cùng một thao tác với cùng một định danh thì chỉ tính một lần), ví dụ upsert theo message_id, đặt tên khóa duy nhất theo event id, vì SQS là at-least-once nên có thể giao lặp',
-'Tăng visibility timeout (khoảng thời gian message bị ẩn sau khi một worker nhận, để worker khác không nhận trùng) lên bằng thời gian xử lý tối đa để message không bị giao lại trong lúc worker còn đang chạy',
+'Thiết kế xử lý idempotent, ví dụ upsert theo message_id, đặt tên khóa duy nhất theo event id, vì SQS là at-least-once nên có thể giao lặp',
+'Tăng visibility timeout lên bằng thời gian xử lý tối đa để message không bị giao lại trong lúc worker còn đang chạy',
 'Bật tính năng deduplication của SQS rồi tin hàng đợi tự loại message trùng, không cần thay đổi gì trong handler',
 'Đọc message theo receive group và chỉ xử lý message có body khác nhau, cách này loại được phần lớn trường hợp trùng'
 ],
@@ -301,7 +301,7 @@ situational: false
 },
 {
 id: 'QZ24', group: 'H',
-q: 'Container Django bị giết giữa lúc đang trả response, người dùng thấy lỗi 502 (lỗi phía server) dù deploy đã roll sạch. Nguyên nhân thường gặp nhất?',
+q: 'Container Django bị giết giữa lúc đang trả response, người dùng thấy lỗi 502 dù deploy đã roll sạch. Nguyên nhân thường gặp nhất?',
 options: [
 'Container thiếu RAM nên kernel chọn process Django làm nạn nhân OOM và giết nó giữa lúc đang trả response, cần nâng memory limit của service lên gấp đôi rồi theo dõi lại',
 'Ứng dụng không bắt tín hiệu SIGTERM, nên process thoát ngay, cần chạy dưới entrypoint nhận signal, dùng exec form CMD và cấu hình stopGracePeriod cùng healthcheck cho đủ thời gian',

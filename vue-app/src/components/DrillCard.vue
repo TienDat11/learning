@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, inject } from 'vue';
 import { sanitize, typeLabel } from '../utils.js';
 
+const data = inject('data', null);
 // Presentational card. The parent owns the reveal flag and the keyboard; this component owns
 // per-item toggles (follow-up answers, attack answers) and the say30/say90 tab.
 const props = defineProps({
@@ -42,6 +43,28 @@ const labels = computed(() => [0, 1, 2].map((i) => {
 
 const predict = computed(() => (props.q.predict && typeof props.q.predict === 'object' ? props.q.predict : null));
 const sanitized = (html) => sanitize(typeof html === 'string' ? html : '');
+
+const glossary = computed(() => {
+  const html = String(props.q?.deep || '');
+  const m = html.match(/^\s*<p><strong>Thuật ngữ cần biết:?<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i);
+  if (!m) return [];
+  const doc = new DOMParser().parseFromString('<ul>' + m[1] + '</ul>', 'text/html');
+  return Array.from(doc.querySelectorAll('li'), (li) => {
+    const term = (li.querySelector('strong')?.textContent || '').trim();
+    const full = (li.textContent || '').trim();
+    return { term, def: full.slice(term.length).replace(/^\s*[:—-]\s*/, '').trim() };
+  }).filter((g) => g.term);
+});
+
+const deepRest = computed(() =>
+  String(props.q?.deep || '').replace(/^\s*<p><strong>Thuật ngữ cần biết:?<\/strong><\/p>\s*<ul>[\s\S]*?<\/ul>/i, '').trim()
+);
+
+const refDocs = computed(() => {
+  const keys = Array.isArray(props.q?.refs) ? props.q.refs : [];
+  const all = Array.isArray(data?.SOURCES) ? data.SOURCES : [];
+  return keys.map((k) => all.find((s) => s.key === k)).filter(Boolean);
+});
 </script>
 
 <template>
@@ -56,11 +79,6 @@ const sanitized = (html) => sanitize(typeof html === 'string' ? html : '');
     <p class="question">{{ q.q }}</p>
 
     <pre v-if="q.code" class="code"><code>{{ q.code }}</code></pre>
-
-    <section v-if="q.incident" class="block">
-      <h3 class="label">Tình huống</h3>
-      <div class="html" v-html="sanitized(q.incident)"></div>
-    </section>
 
     <section v-if="lists.askFirst.length" class="block">
       <h3 class="label">Tự hỏi trước khi trả lời</h3>
@@ -78,38 +96,61 @@ const sanitized = (html) => sanitize(typeof html === 'string' ? html : '');
     </section>
 
     <div v-if="!revealed" class="reveal-row">
-      <button type="button" class="btn" @click="emit('reveal', props.q.id)">Tôi đã nói xong, mở đáp án</button>
+      <button type="button" class="btn primary-btn" @click="emit('reveal', props.q.id)">Tôi đã nói xong, mở đáp án</button>
     </div>
 
     <template v-else>
+      <section v-if="glossary.length" class="block glossary-box">
+        <h3 class="label">Thuật ngữ cần biết</h3>
+        <div class="glossary-list">
+          <div v-for="g in glossary" :key="g.term" class="glossary-item">
+            <p class="glossary-term">{{ g.term }}</p>
+            <p class="glossary-def">{{ g.def }}</p>
+          </div>
+        </div>
+      </section>
+
       <section v-if="q.oral || hasSay30 || hasSay90" class="block">
         <h3 class="label">Trả lời miệng</h3>
         <div v-if="hasSay30 || hasSay90" class="tabs" role="tablist">
           <button v-if="hasSay30" type="button" role="tab" class="tab" :class="{ on: tab === 'say30' }" :aria-selected="tab === 'say30'" @click="tab = 'say30'">30 giây</button>
           <button v-if="hasSay90" type="button" role="tab" class="tab" :class="{ on: tab === 'say90' }" :aria-selected="tab === 'say90'" @click="tab = 'say90'">90 giây</button>
         </div>
-        <p v-if="tab === 'say30' && hasSay30" class="plain-text">{{ q.say30 }}</p>
-        <p v-else-if="tab === 'say90' && hasSay90" class="plain-text">{{ q.say90 }}</p>
-        <p v-else class="plain-text">{{ q.oral }}</p>
-      </section>
-
-      <section v-if="q.deep" class="block">
-        <h3 class="label">Đi sâu</h3>
-        <div class="html" v-html="sanitized(q.deep)"></div>
+        <p v-if="tab === 'say30' && hasSay30" class="plain-text oral-box">{{ q.say30 }}</p>
+        <p v-else-if="tab === 'say90' && hasSay90" class="plain-text oral-box">{{ q.say90 }}</p>
+        <p v-else class="plain-text oral-box">{{ q.oral }}</p>
       </section>
 
       <section v-if="q.expected" class="block">
         <h3 class="label">Kết quả mong đợi</h3>
-        <p class="plain-text pre">{{ q.expected }}</p>
+        <p class="plain-text pre answer">{{ q.expected }}</p>
+      </section>
+
+      <section v-if="deepRest" class="block">
+        <h3 class="label">Giải thích chi tiết</h3>
+        <div class="html" v-html="sanitized(deepRest)"></div>
+      </section>
+
+      <section v-if="q.incident" class="block">
+        <h3 class="label">Tình huống thực tế</h3>
+        <div class="html" v-html="sanitized(q.incident)"></div>
+      </section>
+
+      <section v-if="q.naive || q.rootCause" class="block">
+        <h3 class="label">Cách sửa sai &amp; Nguyên nhân gốc</h3>
+        <div v-if="q.naive" class="html" v-html="sanitized(q.naive)"></div>
+        <div v-if="q.rootCause" class="html" v-html="sanitized(q.rootCause)"></div>
       </section>
 
       <section v-if="lists.followups.length" class="block">
         <h3 class="label">Chuỗi hỏi sâu 3 tầng</h3>
         <ol class="fu">
           <li v-for="(f, i) in lists.followups" :key="i" class="fu-item">
-            <p class="fu-q">{{ f.q }}</p>
-            <button v-if="!openFu[i]" type="button" class="btn small" @click="openFu = { ...openFu, [i]: true }">Hiện đáp án</button>
-            <p v-else class="plain-text pre">{{ f.a }}</p>
+            <div class="fu-head">
+              <p class="fu-q">{{ i + 1 }}. {{ f.q }}</p>
+              <button type="button" class="btn small" @click="openFu = { ...openFu, [i]: !openFu[i] }">{{ openFu[i] ? 'Ẩn đáp án' : 'Hiện đáp án' }}</button>
+            </div>
+            <p v-if="openFu[i]" class="plain-text pre fu-a">{{ f.a }}</p>
           </li>
         </ol>
       </section>
@@ -122,7 +163,7 @@ const sanitized = (html) => sanitize(typeof html === 'string' ? html : '');
       </section>
 
       <section v-if="q.tradeoff" class="block">
-        <h3 class="label">Đánh đổi</h3>
+        <h3 class="label">Đánh đổi (Trade-off)</h3>
         <div class="html" v-html="sanitized(q.tradeoff)"></div>
       </section>
       <section v-if="q.alternatives" class="block">
@@ -130,17 +171,28 @@ const sanitized = (html) => sanitize(typeof html === 'string' ? html : '');
         <div class="html" v-html="sanitized(q.alternatives)"></div>
       </section>
       <section v-if="q.observe" class="block">
-        <h3 class="label">Quan sát trên production</h3>
+        <h3 class="label">Quan sát trên Production</h3>
         <div class="html" v-html="sanitized(q.observe)"></div>
       </section>
 
       <section v-if="lists.attacks.length" class="block">
         <h3 class="label">Câu hỏi phản biện</h3>
         <ul class="atk">
-          <li v-for="(a, i) in lists.attacks" :key="i" class="atk-item">
-            <p class="fu-q">{{ a.q }}</p>
-            <button v-if="!openAtk[i]" type="button" class="btn small" @click="openAtk = { ...openAtk, [i]: true }">Hiện đáp án</button>
-            <p v-else class="plain-text pre">{{ a.a }}</p>
+          <li v-for="(a, i) in lists.attacks" :key="i" class="fu-item">
+            <div class="fu-head">
+              <div class="fu-q html" v-html="sanitized(a.q)"></div>
+              <button type="button" class="btn small" @click="openAtk = { ...openAtk, [i]: !openAtk[i] }">{{ openAtk[i] ? 'Ẩn đáp án' : 'Hiện đáp án' }}</button>
+            </div>
+            <div v-if="openAtk[i]" class="html fu-a" v-html="sanitized(a.a)"></div>
+          </li>
+        </ul>
+      </section>
+
+      <section v-if="refDocs.length" class="block">
+        <h3 class="label">Tài liệu đọc</h3>
+        <ul class="ref-list">
+          <li v-for="d in refDocs" :key="d.key">
+            <a :href="d.url" target="_blank" rel="noopener noreferrer">{{ d.name }}</a>
           </li>
         </ul>
       </section>
@@ -186,11 +238,19 @@ const sanitized = (html) => sanitize(typeof html === 'string' ? html : '');
 .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
 .tab { min-height: 44px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--fg-2); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .tab.on { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
-.fu, .atk { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-.fu { padding-left: 20px; list-style: decimal; }
-.fu-item { display: grid; gap: 8px; padding: 12px 14px; background: var(--sunken); border-radius: var(--r); }
-.atk-item { display: grid; gap: 6px; }
-.fu-q { margin: 0; font-weight: 600; }
+.fu, .atk { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.fu-item { display: grid; gap: 10px; padding: 12px 16px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); }
+.fu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fu-q { margin: 0; font-weight: 600; font-size: 15px; line-height: 1.5; flex: 1; }
+.fu-a { margin: 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.65; }
+.oral-box { padding: 14px 16px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); }
+.glossary-box { padding: 14px 16px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); }
+.glossary-list { display: grid; gap: 8px; }
+.glossary-item { display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+.glossary-item:first-child { padding-top: 0; border-top: none; }
+.glossary-term { margin: 0; font-size: 14px; font-weight: 700; color: var(--fg); }
+.glossary-def { margin: 0; font-size: 14px; color: var(--fg-2); line-height: 1.55; }
+.ref-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
 .reveal-row { display: flex; }
 .rate-row { display: grid; gap: 8px; }
 .rate-btn { display: flex; width: 100%; gap: 12px; align-items: center; justify-content: flex-start; text-align: left; font-size: 16px; line-height: 1.5; color: var(--fg-2); }
