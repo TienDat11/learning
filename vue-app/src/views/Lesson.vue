@@ -13,10 +13,10 @@ const hasFlow = computed(() => !!lesson.value?.flow && flowId.value !== '');
 // ---------- phase checklist (6 chặng H5) ----------
 const PHASES = [
   { id: 1, label: '1. Câu hỏi định hướng & Dự đoán', key: 'askFirst', field: 'askFirst', bodyKey: 'predict' },
-  { id: 2, label: '2. Lý thuyết, Cơ chế & Sơ đồ hệ thống', key: 'flow', field: 'flow', bodyKey: 'flow' },
-  { id: 3, label: '3. Tình huống sự cố & Nguyên nhân gốc', key: 'incident', field: 'incident', bodyKey: 'incident' },
+  { id: 2, label: '2. Bản chất, Tối ưu vào Khung (Core/Lifecycle) & Use-case', key: 'flow', field: 'flow', bodyKey: 'flow' },
+  { id: 3, label: '3. Tình huống sự cố, Cách làm sai & Nguyên nhân gốc', key: 'incident', field: 'incident', bodyKey: 'incident' },
   { id: 4, label: '4. Cách trả lời miệng (30 giây & 90 giây)', key: 'say30', field: 'say30', bodyKey: 'say30' },
-  { id: 5, label: '5. Đánh đổi thực tế & Hỏi xoáy CTO', key: 'attacks', field: 'attacks', bodyKey: 'attacks' },
+  { id: 5, label: '5. Đánh đổi (Trade-off), Phương án khác & Hỏi xoáy CTO', key: 'attacks', field: 'attacks', bodyKey: 'attacks' },
   { id: 6, label: '6. Hoàn thành', key: null, field: null, bodyKey: null },
 ];
 
@@ -104,22 +104,22 @@ function phaseContent(ph) {
         html.push('<div class="hcp-section"><h4 class="hcp-section-h">Nối từ bài trước (' + esc(l.buildsOn.join(', ')) + ')</h4><p class="hcp-body hcp-bridge">' + esc(l.bridge) + '</p></div>');
       }
       if (l.concept) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Khái niệm cốt lõi</h4><div class="hcp-body">' + sanitize(l.concept) + '</div></div>');
+        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Bản chất: Sinh ra để giải quyết bài toán gì?</h4><div class="hcp-body">' + sanitize(l.concept) + '</div></div>');
       }
       if (l.mechanism) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Cơ chế hoạt động</h4><div class="hcp-body">' + sanitize(l.mechanism) + '</div></div>');
+        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Cơ chế & Điểm cần tối ưu vào Khung (Core / Lifecycle / Pattern)</h4><div class="hcp-body">' + sanitize(l.mechanism) + '</div></div>');
       }
       if (hasFlow.value) {
         const flow = (data.FLOW_SVGS || []).find((f) => f.id === flowId.value);
         if (flow && typeof flow.svg === 'string') {
-          html.push('<div class="hcp-section"><h4 class="hcp-section-h">Sơ đồ luồng</h4><div class="hcp-svg-wrap"><div class="hcp-svg-inner">' + sanitizeSvg(flow.svg) + '</div>' + (flow.caption ? '<p class="hcp-svg-cap">' + esc(flow.caption) + '</p>' : '') + '</div></div>');
+          html.push('<div class="hcp-section"><h4 class="hcp-section-h">Sơ đồ luồng kiến trúc</h4><div class="hcp-svg-wrap"><div class="hcp-svg-inner">' + sanitizeSvg(flow.svg) + '</div>' + (flow.caption ? '<p class="hcp-svg-cap">' + esc(flow.caption) + '</p>' : '') + '</div></div>');
         }
       }
       if (bodyRest.value) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Ghi chú bài học</h4><div class="hcp-notes hcp-body">' + sanitize(bodyRest.value) + '</div></div>');
+        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Use-case thực chiến & Công thức suy luận khi bị hỏi xoáy</h4><div class="hcp-notes hcp-body">' + sanitize(bodyRest.value) + '</div></div>');
       }
       if (l.code) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Ví dụ code</h4><pre class="hcp-code"><code>' + esc(l.code) + '</code></pre>' + (l.codeNote ? '<div class="hcp-body hcp-code-note">' + sanitize(l.codeNote) + '</div>' : '') + '</div>');
+        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Mẫu code chuẩn theo Pattern của Framework</h4><pre class="hcp-code"><code>' + esc(l.code) + '</code></pre>' + (l.codeNote ? '<div class="hcp-body hcp-code-note">' + sanitize(l.codeNote) + '</div>' : '') + '</div>');
       }
       return html.join('') || '<p class="hcp-empty">Chưa có dữ liệu.</p>';
     }
