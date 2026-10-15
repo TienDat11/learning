@@ -24,14 +24,15 @@ const ATTR_RE = /\s[a-z][a-z0-9-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi;
 export function sanitize(html) {
   if (typeof html !== 'string') return '';
   return html.replace(TAG_RE, (tag) => {
-    const tagOnly = tag.split(' ')[0];
-    if (!tagOnly.startsWith('<')) return '';
-    const name = tagOnly.slice(1, tagOnly.length).split(/[\/>]/)[0].toLowerCase();
+    const m = tag.match(/^<(\/?)([a-z][a-z0-9]*)/i);
+    if (!m) return '';
+    const name = m[2].toLowerCase();
     if (!ALLOWED.has(name)) return '';
-    // block script/style/event-handler attributes
-    const clean = tagOnly.replace(ATTR_RE, (a) => {
+    if (m[1] === '/') return '</' + name + '>';
+    // drop event-handler attributes and javascript: hrefs; keep the rest of the tag intact
+    const clean = tag.replace(ATTR_RE, (a) => {
       const k = a.trim().split('=')[0].toLowerCase();
-      if (k.startsWith('on') || k === 'srcset' || k === 'href' && a.toLowerCase().includes('javascript:')) return '';
+      if (k.startsWith('on') || k === 'srcset' || (k === 'href' && a.toLowerCase().includes('javascript:'))) return '';
       return a;
     });
     return clean;
