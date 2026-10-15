@@ -38,6 +38,19 @@ export function sanitize(html) {
   }).replace(/<\/script>/gi, '<\\/script>');
 }
 
+// Auto-link "Bài L01..L23" occurrences in HTML after sanitizing: current lesson becomes
+// <strong>, others become clickable lesson links.
+export function renderLinkedHtml(raw, lessons = [], currentLessonId = '') {
+  const clean = sanitize(raw);
+  const all = Array.isArray(lessons) ? lessons : [];
+  return clean.replace(/(?:Bài\s+|bài\s+)?\b(L(?:0[1-9]|1[0-9]|2[0-3]))\b/g, (match, lid) => {
+    if (lid === currentLessonId) return '<strong>' + match + '</strong>';
+    const target = all.find((x) => x && x.id === lid);
+    const tip = target ? esc(target.id + ' — ' + target.title) : lid;
+    return '<a class="hcp-lesson-link" href="#/lesson/' + lid + '" title="' + tip + '">' + match + (target ? ' (' + esc(target.title) + ')' : '') + '</a>';
+  });
+}
+
 // FLOW_SVGS diagrams are repo-authored SVG markup, not user input. The whitelist above
 // drops every SVG element (svg/g/rect/path/text), which rendered all 12 diagrams blank.
 // Keep the same guarantee as the original renderer: cut scripts, inline handlers, javascript: URLs.

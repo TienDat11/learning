@@ -88,7 +88,7 @@ LESSONS.push(
     "G01",
     "G12",
     "G05"
-  ],
+  ,"G11", "G13"],
   "refs": [
     "aws-vpc",
     "aws-lambda-best",
@@ -124,7 +124,7 @@ LESSONS.push(
     [
       "T-3 ngày",
       "Team bảo mật thu hẹp execution role của handler presign xuống tiền tố uploads/, trong khi code sinh khóa media/"
-    ],
+    ,"G11", "G13"],
     [
       "23:02",
       "Request tới lệnh ký URL, bị chặn vì tiền tố trong ARN của role không khớp tiền tố thực tế"
@@ -184,7 +184,7 @@ LESSONS.push(
   "qids": [
     "G02",
     "G04"
-  ],
+  ,"G15", "H05"],
   "refs": [
     "aws-iam",
     "aws-lambda-permissions",
@@ -220,7 +220,7 @@ LESSONS.push(
     [
       "9:39:58",
       "Endpoint đăng ký: khoảng 40 request mỗi giây, p99 = 180 ms, mọi chỉ số bình thường"
-    ],
+    ,"H05","G15"],
     [
       "9:40:12",
       "Thông báo nội bộ được gửi; lưu lượng vọt lên hơn 900 request mỗi giây"
@@ -288,7 +288,7 @@ LESSONS.push(
   "qids": [
     "G03",
     "G11"
-  ],
+  ,"G12"],
   "refs": [
     "aws-lambda-best",
     "aws-lambda-permissions"
@@ -324,7 +324,7 @@ LESSONS.push(
     [
       "H-2 tuần",
       "Team frontend yêu cầu thêm header x-upload-batch vào lệnh đăng ký upload"
-    ],
+    ,"G12"],
     [
       "9:02",
       "Request từ trình duyệt của một nhóm người dùng bị chặn ở bước hỏi trước; người dùng thấy Failed to fetch"
@@ -380,7 +380,7 @@ LESSONS.push(
   "qids": [
     "G05",
     "G15"
-  ],
+  ,"A03", "G22", "H04", "I01", "I08"],
   "refs": [
     "aws-api-gateway",
     "mdn-cors",
@@ -417,7 +417,7 @@ LESSONS.push(
     [
       "H-2 tuần",
       "Tenant A có khoảng 200 tài liệu; liệt kê chạy bằng Scan trên bảng khoảng 5.000 dòng, chưa thấy vấn đề"
-    ],
+    ,"H04","I01","I08","A03","G22"],
     [
       "9:10",
       "Tenant A báo file lúc có lúc không; log cho thấy hai lần liệt kê liên tiếp trả về kết quả khác nhau"
@@ -474,7 +474,7 @@ LESSONS.push(
     "G06",
     "G08",
     "G09"
-  ],
+  ,"F07", "G17", "G18", "G23", "G25", "G26"],
   "refs": [
     "aws-s3",
     "aws-s3-presigned",
@@ -511,7 +511,7 @@ LESSONS.push(
     [
       "H-1 ngày",
       "Deploy một worker mới; worker mở kết nối tới RDS nhưng thiếu bước đóng kết nối"
-    ],
+    ,"G17","G18","G23","G25","G26","F07"],
     [
       "02:00",
       "Cảnh báo: độ trễ endpoint xác nhận upload tăng gấp ba; 5xx không đổi"
@@ -568,7 +568,7 @@ LESSONS.push(
     "G10",
     "G07",
     "G13"
-  ],
+  ,"G27", "G28"],
   "refs": [
     "aws-sqs-visibility",
     "aws-sqs-dlq",

@@ -100,7 +100,7 @@ LESSONS.push(
     "E01",
     "E02",
     "E04"
-  ],
+  ,"D01", "D02", "D03", "D04", "D05", "D09", "D10", "D11", "D12", "I04", "I06", "J01", "J06", "J07", "J09", "J10", "J11", "J12"],
   "refs": [
     "fastapi-tutorial",
     "mdn-http-overview",
@@ -137,7 +137,7 @@ LESSONS.push(
     [
       "08:58:40",
       "Khoảng 1.000 người dùng đăng nhập trong vài phút; mỗi phiên có access token sống 15 phút"
-    ],
+    ,"I04","I06","J01","J06","J07","J09","J10","J11","J12","D01","D02","D03","D04","D05","D09","D10","D11","D12"],
     [
       "09:13:55",
       "Các access token đầu tiên bắt đầu hết hạn; p50 của /auth/refresh là 58 ms"
@@ -210,7 +210,7 @@ LESSONS.push(
     "E05",
     "G02",
     "C11"
-  ],
+  ,"B08", "D06", "D07", "D08", "D13", "D14", "G19", "G29"],
   "refs": [
     "owasp-api-security",
     "mdn-cookies",
@@ -248,7 +248,7 @@ LESSONS.push(
     [
       "10:02:00",
       "10.000 người dùng bắt đầu tải tệp; mỗi tệp trung bình 5 MB, API chỉ nhận ba request nhẹ cho mỗi tệp"
-    ],
+    ,"D06","D07","D08","D13","D14","G19","G29","B08"],
     [
       "10:04:12",
       "Một người dùng mạng 3G chậm nhận presigned URL sống 10 phút nhưng tới phút thứ 11 mới bắt đầu PUT"
@@ -321,7 +321,7 @@ LESSONS.push(
     "E07",
     "E09",
     "A11"
-  ],
+  ,"G16", "G20", "J03"],
   "refs": [
     "aws-s3-presigned",
     "aws-s3",
@@ -359,7 +359,7 @@ LESSONS.push(
     [
       "13:00:00",
       "Đợt 10.000 tệp bắt đầu được đẩy vào hàng đợi; độ tuổi message cũ nhất là 2 giây"
-    ],
+    ,"J03","G20","G16"],
     [
       "13:00:05",
       "Worker A nhận một message, bắt đầu tải tệp 5 MB và gọi dịch vụ quét"
@@ -540,7 +540,7 @@ LESSONS.push(
     "G07",
     "C11",
     "G03"
-  ],
+  ,"F10", "G24", "H07", "J02"],
   "refs": [
     "aws-s3-presigned",
     "mdn-abortcontroller",

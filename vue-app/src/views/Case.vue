@@ -1,6 +1,6 @@
 <script setup>
 import { computed, inject, ref } from 'vue';
-import { sanitize, sanitizeSvg } from '../utils.js';
+import { renderLinkedHtml, sanitizeSvg } from '../utils.js';
 
 const data = inject('data');
 const cs = (data && data.CASE_STUDY && typeof data.CASE_STUDY === 'object') ? data.CASE_STUDY : {};
@@ -44,7 +44,7 @@ function select(i) {
         <h2 class="case-title">{{ cs.title }}</h2>
         <p v-if="cs.pitch" class="case-pitch">{{ cs.pitch }}</p>
         <h3 class="hcp-h3">{{ cur.h }}</h3>
-        <div class="hcp-prose" v-html="sanitize(cur.body)"></div>
+        <div class="hcp-prose" v-html="renderLinkedHtml(cur.body, data?.LESSONS)"></div>
         <figure v-if="flow" class="case-fig">
           <div class="case-fig-svg" v-html="sanitizeSvg(flow.svg)"></div>
           <figcaption v-if="flow.caption" class="case-cap">{{ flow.caption }}</figcaption>
@@ -96,8 +96,8 @@ function select(i) {
   display: grid;
   gap: 12px;
   min-width: 0;
-  align-content: start;
 }
+.case-main :deep(a.hcp-lesson-link) { color: var(--accent-ink); text-decoration: underline; }
 .case-title {
   margin: 0;
   font-size: 28px;

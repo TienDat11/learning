@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, inject } from 'vue';
-import { sanitize, typeLabel } from '../utils.js';
+import { esc, renderLinkedHtml, typeLabel } from '../utils.js';
 
 const data = inject('data', null);
 // Presentational card. The parent owns the reveal flag and the keyboard; this component owns
@@ -42,7 +42,11 @@ const labels = computed(() => [0, 1, 2].map((i) => {
 }));
 
 const predict = computed(() => (props.q.predict && typeof props.q.predict === 'object' ? props.q.predict : null));
-const sanitized = (html) => sanitize(typeof html === 'string' ? html : '');
+const sanitized = (html) => renderLinkedHtml(typeof html === 'string' ? html : '', data?.LESSONS);
+const relatedLessons = computed(() => {
+  const all = Array.isArray(data?.LESSONS) ? data.LESSONS : [];
+  return all.filter((l) => Array.isArray(l.qids) && l.qids.includes(props.q.id));
+});
 
 const glossary = computed(() => {
   const html = String(props.q?.deep || '');
@@ -50,8 +54,9 @@ const glossary = computed(() => {
   if (!m) return [];
   const doc = new DOMParser().parseFromString('<ul>' + m[1] + '</ul>', 'text/html');
   return Array.from(doc.querySelectorAll('li'), (li) => {
-    const term = (li.querySelector('strong')?.textContent || '').trim();
     const full = (li.textContent || '').trim();
+    const strongText = (li.querySelector('strong')?.textContent || '').trim();
+    const term = strongText || (full.includes(':') ? full.split(':')[0].trim() : '');
     return { term, def: full.slice(term.length).replace(/^\s*[:—-]\s*/, '').trim() };
   }).filter((g) => g.term);
 });
@@ -59,7 +64,14 @@ const glossary = computed(() => {
 const deepRest = computed(() =>
   String(props.q?.deep || '').replace(/^\s*<p><strong>Thuật ngữ cần biết:?<\/strong><\/p>\s*<ul>[\s\S]*?<\/ul>/i, '').trim()
 );
-
+const CUE_MARKER = ' → Giải mã: ';
+const hasCueAnswer = (a) => a.includes(CUE_MARKER);
+const cueQuestion = (a) => a.split(CUE_MARKER)[0];
+const cueAnswer = (a) => {
+  const parts = a.split(CUE_MARKER);
+  if (parts.length < 2) return '';
+  return parts.slice(1).join(CUE_MARKER);
+};
 const refDocs = computed(() => {
   const keys = Array.isArray(props.q?.refs) ? props.q.refs : [];
   const all = Array.isArray(data?.SOURCES) ? data.SOURCES : [];
@@ -78,13 +90,23 @@ const refDocs = computed(() => {
     <h2 class="topic">{{ q.topic }}</h2>
     <p class="question">{{ q.q }}</p>
 
+    <div v-if="relatedLessons.length" class="lesson-refs">
+      <span class="lesson-refs-label">Bài học nền tảng cần đọc trước:</span>
+      <a v-for="l in relatedLessons" :key="l.id" class="lesson-ref-chip" :href="'#/lesson/' + l.id">{{ l.id }} · {{ l.title }}</a>
+    </div>
+
     <pre v-if="q.code" class="code"><code>{{ q.code }}</code></pre>
 
     <section v-if="lists.askFirst.length" class="block">
       <h3 class="label">Tự hỏi trước khi trả lời</h3>
-      <ul class="plain">
-        <li v-for="(a, i) in lists.askFirst" :key="i">{{ a }}</li>
-      </ul>
+      <div class="plain">
+        <template v-for="(a, i) in lists.askFirst" :key="i">
+          <div class="cue-item">
+            <p class="cue-q">{{ cueQuestion(a) }}</p>
+            <div v-if="hasCueAnswer(a)" class="cue-answer" v-html="sanitized(esc(cueAnswer(a)))"></div>
+          </div>
+        </template>
+      </div>
     </section>
 
     <section v-if="predict" class="block">
@@ -95,20 +117,21 @@ const refDocs = computed(() => {
       </template>
     </section>
 
+    <section v-if="glossary.length" class="block glossary-box">
+      <h3 class="label">Thuật ngữ cần biết</h3>
+      <div class="glossary-list">
+        <div v-for="g in glossary" :key="g.term" class="glossary-item">
+          <p class="glossary-term">{{ g.term }}</p>
+          <p class="glossary-def">{{ g.def }}</p>
+        </div>
+      </div>
+    </section>
+
     <div v-if="!revealed" class="reveal-row">
       <button type="button" class="btn primary-btn" @click="emit('reveal', props.q.id)">Tôi đã nói xong, mở đáp án</button>
     </div>
 
     <template v-else>
-      <section v-if="glossary.length" class="block glossary-box">
-        <h3 class="label">Thuật ngữ cần biết</h3>
-        <div class="glossary-list">
-          <div v-for="g in glossary" :key="g.term" class="glossary-item">
-            <p class="glossary-term">{{ g.term }}</p>
-            <p class="glossary-def">{{ g.def }}</p>
-          </div>
-        </div>
-      </section>
 
       <section v-if="q.oral || hasSay30 || hasSay90" class="block">
         <h3 class="label">Trả lời miệng</h3>
@@ -243,13 +266,19 @@ const refDocs = computed(() => {
 .fu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .fu-q { margin: 0; font-weight: 600; font-size: 15px; line-height: 1.5; flex: 1; }
 .fu-a { margin: 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.65; }
+.lesson-refs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lesson-refs-label { font-size: 13px; font-weight: 700; color: var(--fg-3); }
+.lesson-ref-chip { padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+.lesson-ref-chip:hover { background: var(--accent); }
 .oral-box { padding: 14px 16px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); }
 .glossary-box { padding: 14px 16px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); }
 .glossary-list { display: grid; gap: 8px; }
 .glossary-item { display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
 .glossary-item:first-child { padding-top: 0; border-top: none; }
 .glossary-term { margin: 0; font-size: 14px; font-weight: 700; color: var(--fg); }
-.glossary-def { margin: 0; font-size: 14px; color: var(--fg-2); line-height: 1.55; }
+.cue-item { display: grid; gap: 6px; padding: 6px 0; }
+.cue-q { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.cue-answer { padding: 8px 12px; background: var(--sunken); border-left: 3px solid var(--accent); border-radius: 4px; margin-top: 6px; font-size: 14px; color: var(--fg-2); line-height: 1.6; }
 .ref-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
 .reveal-row { display: flex; }
 .rate-row { display: grid; gap: 8px; }

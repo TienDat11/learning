@@ -99,7 +99,7 @@ LESSONS.push(
     "E01",
     "E02",
     "E08"
-  ],
+  ,"A01", "A02", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A12", "A13", "A14", "A15", "A16", "A17", "A18", "E03", "E04", "E05", "E11", "E12", "H06"],
   "refs": [
     "fastapi-tutorial",
     "py-asyncio"
@@ -134,7 +134,7 @@ LESSONS.push(
     [
       "20h00:00",
       "Chiến dịch email bắt đầu, lưu lượng vào /products tăng vọt."
-    ],
+    ,"H06","A01","A02","A04","A05","A06","A07","A08","A09","A10","A12","A13","A14","A15","A16","A17","A18","E11","E12","E03", "E04", "E05"],
     [
       "20h00:40",
       "Lambda bật container mới. Mỗi container mở một kết nối ở request đầu tiên và giữ lại trong pool."
@@ -199,7 +199,7 @@ LESSONS.push(
     "E03",
     "E05",
     "E06"
-  ],
+  ,"E09", "F01", "F02", "F03", "F04", "F05", "F06", "F08", "F09", "F11", "F12", "G07", "H08", "J08"],
   "refs": [
     "fastapi-dependencies",
     "py-asyncio",
@@ -236,7 +236,7 @@ LESSONS.push(
     [
       "09h00",
       "Đối tác đối soát bắt đầu gửi hàng loạt; khoảng 5 phần trăm request có amount_cents là chuỗi có dấu chấm."
-    ],
+    ,"H08","J08","F01","F02","F03","F04","F05","F06","F08","F09","F11","F12","E09", "G07"],
     [
       "09h10",
       "catch_all trả 500 cho mọi exception; nhật ký không có stack trace, dashboard chỉ thấy tỷ lệ 500 tăng."
@@ -305,7 +305,7 @@ LESSONS.push(
     "E03",
     "G11",
     "G14"
-  ],
+  ,"E02", "E07", "E10", "I02", "I03", "I05", "I07", "J05"],
   "refs": [
     "py-asyncio",
     "aws-iam",
@@ -343,7 +343,7 @@ LESSONS.push(
     [
       "09h00",
       "Khách đặt đơn DH-20817. API Gateway sinh request ID riêng, API ghi một dòng log dạng văn bản."
-    ],
+    ,"I02","I03","I05","I07","J05","E10","E02", "E07"],
     [
       "09h01",
       "API đặt message vào SQS. Worker Lambda nhận message và ghi log tiếp, không có mã chung nào được truyền đi."
@@ -408,7 +408,7 @@ LESSONS.push(
     "H02",
     "H03",
     "H07"
-  ],
+  ,"G14", "H10", "J04"],
   "refs": [
     "aws-ecs",
     "docker-multi-stage",
@@ -447,7 +447,7 @@ LESSONS.push(
     [
       "09h00",
       "Endpoint export được merge. Test dùng patch boto3.client và CI xanh."
-    ],
+    ,"H10","J04","G14"],
     [
       "09h40",
       "Một test khác chạy song song ghi cùng key exports/r1.csv lên bucket staging, lần ghi và đọc đan xen nhau."
@@ -516,7 +516,7 @@ LESSONS.push(
     "G13",
     "F07",
     "F10"
-  ],
+  ,"A11", "H09"],
   "refs": [
     "aws-cloudwatch",
     "pg-transactions",

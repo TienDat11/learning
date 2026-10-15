@@ -96,7 +96,7 @@ LESSONS.push(
   "qids": [
     "G05",
     "G12"
-  ],
+  ,"G21"],
   "refs": [
     "owasp-api-security",
     "aws-cloudfront",

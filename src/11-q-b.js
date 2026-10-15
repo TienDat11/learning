@@ -1,495 +1,831 @@
 var QUESTIONS = QUESTIONS || [];
 QUESTIONS.push(
-  {
-    id: 'B01',
-    group: 'B',
-    topic: 'Primitive và reference, mutation, shallow copy bằng spread',
-    prio: 'P0',
-    level: 'L2',
-    type: 'concept',
-    attacks: [{"q":"Vì sao <code>const obj = {a:1}; const copy = {...obj}</code> rồi sửa <code>copy.a</code> lại không ảnh hưởng <code>obj</code>, nhưng sửa một object lồng bên trong thì có?","a":"Vì toán tử trải chỉ sao chép một tầng. Nó tạo object mới và gán từng thuộc tính cấp một sang, nên với kiểu nguyên thuỷ thì đó là bản sao thật. Nhưng nếu một thuộc tính là object hoặc mảng, giá trị được sao chép là tham chiếu, nên cả hai object cùng trỏ tới một object lồng. Sửa thuộc tính bên trong object lồng đó hiện ra ở cả hai. Đây là nguồn lỗi rất phổ biến trong cập nhật trạng thái: bạn tưởng đã tạo bản sao nên an toàn, nhưng thực ra vẫn đang sửa dữ liệu dùng chung ở tầng sâu hơn."},{"q":"Trong cập nhật trạng thái, vì sao phải tạo object mới thay vì sửa object cũ?","a":"Vì nhiều thư viện và cơ chế so sánh dựa trên danh tính tham chiếu để quyết định có cần cập nhật hay không. Nếu bạn sửa tại chỗ, tham chiếu không đổi, nên phép so sánh kết luận là không có gì mới và giao diện không được vẽ lại. Ngoài ra việc sửa tại chỗ làm mất khả năng so sánh lịch sử trạng thái, khiến các tính năng như hoàn tác hoặc ghi lại thay đổi trở nên khó. Cái giá phải trả là bộ nhớ cho các object mới, nhưng với cấu trúc được chia sẻ giữa các phiên bản thì chi phí đó thường nhỏ hơn nhiều so với lợi ích về tính đúng đắn."}],
-    incident: '<p>14h05, một bạn thực tập sửa hàm định dạng đơn hàng dùng chung cho trang danh sách đơn của nhóm vận hành. Hàm nhận đơn vào rồi gán trạng thái hiển thị lên chính object đó, và bản ghi trong danh sách đã được nhân bản bằng spread nên cả nhóm tưởng đã an toàn. Mười người dùng đang mở trang thấy badge trạng thái của mọi đơn đổi sang đã duyệt dù chưa ai bấm duyệt, và tải lại trang vẫn còn. CloudWatch không ghi nhận request PATCH nào, console cũng không có exception, chỉ có giá trị đổi mà không ai gọi API.</p>',
-    askFirst: [
-      'Vì sao không có request nào gửi lên mà trạng thái vẫn đổi?',
-      'Spread đã tách được tầng nào và còn dùng chung tầng nào?'
-    ],
-    predict: { q: 'Bạn đoán sau khi spread một object có object con, sửa object con ở bản sao thì bản gốc thế nào?', a: '<p>Bản gốc đổi theo, vì spread chỉ tạo object mới ở tầng ngoài còn mọi giá trị bên trong vẫn là tham chiếu cũ. Tầng con dùng chung một vùng nhớ nên ghi qua bản sao hay bản gốc đều là một thao tác lên cùng một vùng nhớ. Muốn snapshot độc lập cho object lồng nhau thì phải dùng structuredClone hoặc clone tay từng tầng.</p>' },
-    anchor: 'Gán hay truyền object chỉ sao chép tham chiếu mà không có bản sao ở tầng con = mọi tên biến cùng sửa một vùng nhớ nên state đổi mà không có request nào.',
-    q: 'Trong JavaScript, primitive và reference khác nhau thế nào khi gán và khi truyền vào hàm, và khi nào spread tạo ra một bản sao độc lập thật sự?',
-    oral: 'Bản chất: primitive được sao chép theo giá trị, còn object chỉ sao chép tham chiếu. JavaScript có bảy kiểu primitive như number, string, boolean, null, undefined, symbol và bigint, còn lại là object, array và function thuộc nhóm tham chiếu. Khi bạn gán hay truyền vào hàm, primitive được sao chép theo giá trị nên hai biến hoàn toàn độc lập, còn object chỉ sao chép địa chỉ nên hai tên trỏ cùng một vùng nhớ và sửa bên này thấy bên kia đổi theo — giống dict unpacking trong Python: {**defaults, ...overrides} cũng chỉ tách tầng ngoài. const chỉ khóa không cho gán lại binding chứ không đóng băng nội dung object, nên thuộc tính bên trong vẫn sửa tự do. Spread với object tạo shallow copy: tầng ngoài tách nhưng object con vẫn dùng chung tham chiếu, và đó là lý do so sánh hai thuộc tính prefs vẫn ra true. Khi cần snapshot độc lập cho object lồng nhau thì dùng structuredClone, còn dữ liệu JSON thuần thì clone tay từng tầng sẽ rẻ và dễ kiểm soát hơn.',
-    deep: '<p>14h05 nhóm vận hành thấy mọi badge đơn đổi sang đã duyệt dù không ai bấm duyệt, và CloudWatch không ghi PATCH nào. Hàm định dạng đã gán trạng thái lên chính object đơn, và spread ở danh sách chỉ tách vỏ ngoài. Bạn sửa object con qua bản sao thì bản gốc đổi theo vì cả hai cùng trỏ một vùng nhớ.</p><p>Primitive như number hay string nằm trực tiếp trong biến nên gán hay truyền vào hàm tạo giá trị riêng. Object, array và function chỉ giữ địa chỉ vùng nhớ chung nên thêm một tên mới chỉ thêm một đường vào cùng object. Gán thuộc tính hay gọi <code>push</code> đều ghi thẳng lên vùng nhớ đó — cùng nguyên lý với dict unpacking <code>{**a, **b}</code> trong Python: chỉ tách tầng ngoài.</p><ul><li><strong>Spread tách vỏ, giữ ruột:</strong> spread tạo object mới và chép từng thuộc tính tầng một, còn structuredClone dựng lại toàn bộ đồ thị lồng nhau. Thuộc tính nguyên thủy thì cả hai đều độc lập, thuộc tính object con thì chỉ cách thứ hai mới độc lập.</li><li><strong>Dùng khi:</strong> state một tầng, danh sách thẻ chỉ có id và nhãn. <strong>Không dùng khi:</strong> form lồng prefs, snapshot trước khi sửa để hủy thay đổi.</li><li><strong>Lỗi hay gặp:</strong> tưởng <code>const</code> đóng băng object trong khi nó chỉ khóa gán lại binding, và tưởng so sánh <code>===</code> sau spread là so nội dung trong khi nó so địa chỉ.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> object một tầng thì shallow copy đủ và rẻ, thêm một tầng lồng có Date hay mảng con thì bạn phải clone tay từng tầng hoặc dùng structuredClone.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: spread chỉ tách tầng ngoài — con lồng vẫn dùng chung tham chiếu\nconst user = { name: "An", prefs: { theme: "dark" } };\nfunction update(u) {\n  u.prefs.theme = "light"; // sửa thẳng object con qua tham chiếu\n}\nupdate(user);\nconst copy = { ...user }; // copy.prefs vẫn trỏ đúng prefs cũ\ncopy.prefs.theme = "solar";\nconsole.log(user.prefs.theme);\nconsole.log(copy.prefs === user.prefs);',
-    expected: 'In ra hai dòng: solar rồi true. Phân tích: gán hay truyền object chỉ sao chép tham chiếu, nên update(user) sửa u.prefs.theme thành "light" tức sửa thẳng vùng nhớ của user; sau đó { ...user } tạo object mới ở tầng ngoài nhưng copy.prefs vẫn trỏ đúng object prefs cũ, nên gán copy.prefs.theme = "solar" ghi đè tiếp lên cùng một vùng nhớ và user.prefs.theme cũng thành "solar". Dòng thứ hai in true vì copy.prefs === user.prefs đang so sánh tham chiếu tới cùng một object, chứ không so nội dung. spread chỉ là shallow copy; muốn snapshot độc lập cho object lồng nhau thì dùng structuredClone hoặc clone tay từng tầng.',
-    followups: [
-      { q: 'Khi nào shallow copy bằng spread là đủ và khi nào phải deep copy?', a: 'Shallow copy đủ khi dữ liệu chỉ có một tầng, ví dụ danh sách thẻ UI với id và nhãn, vì không có object con nào để chia sẻ tham chiếu. Phải deep copy khi có tầng lồng nhau và bạn cần snapshot độc lập thật sự, ví dụ lưu bản sao form trước khi người dùng sửa để hủy thay đổi. Khi đó structuredClone xử lý được object thuần, Map, Set và Date, còn dữ liệu có function hay class instance thì phải clone tay từng nhánh để kiểm soát chính xác những gì được sao chép.' },
-      { q: 'Vì sao Object.freeze mặc định chưa làm object thật sự bất biến?', a: 'Object.freeze chỉ chặn gán và xoá thuộc tính ở cấp đối tượng được gọi, các object con bên trong vẫn sửa bình thường. Muốn bất biến sâu thì phải duyệt từng tầng và freeze từng node con, hoặc dùng pattern copy-on-write: thay đổi bằng cách tạo object mới thay vì sửa tại chỗ. Trong ứng dụng thực tế, copy-on-write thường rẻ và dễ kiểm soát hơn việc đóng băng đệ quy.' },
-      { q: 'Việc copy tạo tham chiếu mới ảnh hưởng thế nào tới useMemo hay React.memo?', a: 'Mỗi lần gọi spread tạo một object mới nên tham chiếu luôn khác, kể cả khi dữ liệu bên trong không đổi. useMemo và React.memo so sánh tham chiếu nên sẽ coi là thay đổi và render lại, mất tác dụng cache. Nếu bạn vừa memoize vừa copy ở mỗi render thì bạn tự phá cache của chính mình; chỉ copy khi thật sự cần snapshot độc lập.' }
-    ],
-    pitfalls: [
-      'Tưởng const làm object bất biến, trong khi const chỉ khóa binding và thuộc tính bên trong vẫn gán lại được.',
-      'Tưởng spread là deep copy, trong khi mọi object con vẫn chia sẻ tham chiếu với bản gốc.',
-      'Dùng spread trong mỗi lần render rồi tưởng useMemo vẫn cache được vì tham chiếu luôn mới.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa giải thích được tại sao hai object con trùng nhau vẫn cho kết quả đúng sau khi dùng spread.',
-      'Tôi giải thích được bằng ví dụ cụ thể: copy form bằng spread rồi người dùng sửa prefs làm cả bản gốc đổi theo.',
-      'Tôi chọn được khi nào dùng shallow copy và khi nào deep copy khi xử lý state nhiều tầng trong dự án thật.'
-    ],
-    refs: ['mdn-execution-model']
+{
+  "id": "B01",
+  "group": "B",
+  "topic": "Primitive và reference, mutation, shallow copy bằng spread",
+  "prio": "P0",
+  "level": "L2",
+  "type": "concept",
+  "attacks": [
+    {
+      "q": "Vì sao <code>const obj = {a:1}; const copy = {...obj}</code> rồi sửa <code>copy.a</code> lại không ảnh hưởng <code>obj</code>, nhưng sửa một object lồng bên trong thì có?",
+      "a": "Vì toán tử trải chỉ sao chép một tầng. Nó tạo object mới và gán từng thuộc tính cấp một sang, nên với kiểu nguyên thuỷ thì đó là bản sao thật. Nhưng nếu một thuộc tính là object hoặc mảng, giá trị được sao chép là tham chiếu, nên cả hai object cùng trỏ tới một object lồng. Sửa thuộc tính bên trong object lồng đó hiện ra ở cả hai. Đây là nguồn lỗi rất phổ biến trong cập nhật trạng thái: bạn tưởng đã tạo bản sao nên an toàn, nhưng thực ra vẫn đang sửa dữ liệu dùng chung ở tầng sâu hơn."
+    },
+    {
+      "q": "Trong cập nhật trạng thái, vì sao phải tạo object mới thay vì sửa object cũ?",
+      "a": "Vì nhiều thư viện và cơ chế so sánh dựa trên danh tính tham chiếu để quyết định có cần cập nhật hay không. Nếu bạn sửa tại chỗ, tham chiếu không đổi, nên phép so sánh kết luận là không có gì mới và giao diện không được vẽ lại. Ngoài ra việc sửa tại chỗ làm mất khả năng so sánh lịch sử trạng thái, khiến các tính năng như hoàn tác hoặc ghi lại thay đổi trở nên khó. Cái giá phải trả là bộ nhớ cho các object mới, nhưng với cấu trúc được chia sẻ giữa các phiên bản thì chi phí đó thường nhỏ hơn nhiều so với lợi ích về tính đúng đắn."
+    }
+  ],
+  "incident": "<p>14h05, một bạn thực tập sửa hàm định dạng đơn hàng dùng chung cho trang danh sách đơn của nhóm vận hành. Hàm nhận đơn vào rồi gán trạng thái hiển thị lên chính object đó, và bản ghi trong danh sách đã được nhân bản bằng spread nên cả nhóm tưởng đã an toàn. Mười người dùng đang mở trang thấy badge trạng thái của mọi đơn đổi sang đã duyệt dù chưa ai bấm duyệt, và tải lại trang vẫn còn. CloudWatch không ghi nhận request PATCH nào, console cũng không có exception, chỉ có giá trị đổi mà không ai gọi API.</p>",
+  "askFirst": [
+    "Vì sao không có request nào gửi lên mà trạng thái vẫn đổi? → Giải mã: vì không có request nào được gửi — badge đổi là do code phía frontend gán trạng thái lên chính object đơn; spread ở danh sách chỉ tách vỏ ngoài nên mọi instance trong trang cùng trỏ object đó, ghi một lần là đổi hết",
+    "Spread đã tách được tầng nào và còn dùng chung tầng nào? → Giải mã: spread chỉ tách được tầng ngoài (tạo object mới); object con bên trong (prefs, mảng đơn hàng con...) vẫn là tham chiếu cũ dùng chung, ghi ở tầng con hiện ra ở mọi nơi"
+  ],
+  "predict": {
+    "q": "Bạn đoán sau khi spread một object có object con, sửa object con ở bản sao thì bản gốc thế nào?",
+    "a": "<p>Bản gốc đổi theo, vì spread chỉ tạo object mới ở tầng ngoài còn mọi giá trị bên trong vẫn là tham chiếu cũ. Tầng con dùng chung một vùng nhớ nên ghi qua bản sao hay bản gốc đều là một thao tác lên cùng một vùng nhớ. Muốn snapshot độc lập cho object lồng nhau thì phải dùng structuredClone hoặc clone tay từng tầng.</p>"
   },
-  {
-    id: 'B02',
-    group: 'B',
-    topic: 'var, let, const, phạm vi, hoisting và TDZ',
-    prio: 'P0',
-    level: 'L2',
-    type: 'debug',
-    attacks: [{"q":"Vì sao <code>let</code> ném lỗi khi truy cập trước khai báo, còn <code>var</code> thì trả về <code>undefined</code>?","a":"Vì var được đưa lên đầu phạm vi hàm và khởi tạo bằng undefined ngay khi vào phạm vi, nên đọc trước khai báo cho giá trị rỗng chứ không lỗi. let và const cũng được đưa lên đầu khối, nhưng nằm trong một vùng mà truy cập bị cấm cho tới khi câu lệnh khai báo thực sự chạy — đó là vùng chết tạm thời. Hành vi này là cải tiến có chủ đích: nó biến một lỗi âm thầm thành một lỗi rõ ràng. Với var, việc đọc ra undefined thường bị bỏ qua và gây lỗi ở tận chỗ khác, khó truy hơn nhiều."},{"q":"Vì sao <code>const</code> không làm object bất biến?","a":"Vì const ràng buộc việc gán lại tên, không ràng buộc nội dung của object. Sau khi khai báo, bạn không thể làm tên đó trỏ tới object khác, nhưng vẫn thêm, sửa, xoá thuộc tính bình thường. Đây là điểm hay bị hiểu nhầm và dẫn tới việc tưởng rằng dữ liệu được bảo vệ trong khi nó vẫn bị sửa từ nơi khác. Muốn bất biến thật thì phải đóng băng object, nhưng cần lưu ý là đóng băng chỉ có tác dụng ở tầng nông theo mặc định, và trong chế độ nghiêm ngặt thì việc ghi vào object đã đóng băng sẽ ném lỗi thay vì im lặng."}],
-    incident: '<p>9h30, một màn hình danh sách gắn handler cho từng dòng bằng vòng lặp for dùng var. Nhân viên bấm vào dòng thứ ba nhưng hệ thống luôn mở chi tiết dòng cuối cùng, dù handler hoàn toàn không có lỗi cú pháp. Mười người trong nhóm kho thấy cùng một hành vi và chỉ đoán được là mọi dòng đang dùng chung một biến. Một dev khác thử đổi cùng đoạn đó sang let rồi đặt dòng log phía trên khai báo, và console lập tức ném ReferenceError nhắc tới biến chưa được khởi tạo — cùng một khai báo mà hành vi đọc trước hoàn toàn khác nhau. Đổi sang let trong vòng lặp thì mỗi dòng mở đúng chi tiết của nó, không phải sửa gì khác trong handler.</p>',
-    askFirst: [
-      'Các handler đang giữ cùng một biến hay mỗi lần lặp một biến?',
-      'Vì sao đọc biến trước dòng khai báo lúc thì ra undefined lúc thì ném lỗi?'
-    ],
-    predict: { q: 'Bạn đoán vòng lặp for dùng var đẩy ba hàm vào mảng rồi gọi sau khi vòng lặp xong sẽ trả về gì?', a: '<p>Cả ba hàm trả về cùng giá trị cuối cùng của biến đếm. var có phạm vi hàm nên chỉ có một binding dùng chung cho mọi lần lặp, và các closure đều bắt lấy vùng nhớ đó. Đổi sang let thì mỗi lần lặp tạo binding mới nên mỗi hàm giữ đúng giá trị của lần lặp đó.</p>' },
-    anchor: 'var có phạm vi hàm và được khởi tạo undefined mà không có binding riêng cho mỗi vòng lặp = mọi closure cùng đọc một vùng nhớ nên tất cả trả về giá trị cuối.',
-    q: 'Đoạn khai báo biến bên dưới in ra những gì, và vì sao đọc biến trước khi khai báo lại cho kết quả khác nhau giữa var và let?',
-    oral: 'Ba khai báo này khác nhau cả về phạm vi lẫn thời điểm sẵn sàng. Khai báo var được hoisting lên đầu phạm vi hàm và được khởi tạo bằng undefined, nên đọc trước không lỗi, chỉ ra giá trị undefined. Khai báo let và const cũng được engine ghi nhận trước nhưng nằm trong vùng temporal dead zone cho tới dòng khai báo, nên chạm vào trong vùng đó sẽ ném ReferenceError chứ không phải undefined. Một khác biệt nữa rất dễ gây bug là phạm vi: var có phạm vi hàm nên các closure trong vòng lặp đều dùng chung một biến, còn let tạo binding mới cho mỗi vòng lặp. Đó là lý do khi dùng var, ba hàm bắt lấy đều trả về cùng giá trị cuối cùng. Trong code mới nên dùng const trước, chỉ dùng let khi biến thật sự cần gán lại.',
-    deep: '<p>9h30 mọi dòng danh sách đều mở chi tiết dòng cuối cùng dù handler không lỗi cú pháp. Vòng lặp dùng <code>var</code> nên ba closure cùng giữ một biến đếm, và đọc <code>let</code> trước khai báo thì console ném ReferenceError thay vì trả undefined. Bạn gặp hai hành vi khác nhau từ cùng một ý định khai báo.</p><p>Engine ghi nhận mọi khai báo trước khi chạy. <code>var</code> được khởi tạo sẵn bằng undefined và có phạm vi hàm nên biến trong khối if hay for vẫn sống ngoài khối. <code>let</code> và <code>const</code> chỉ giữ binding mà chưa khởi tạo, khoảng chờ đó gọi là temporal dead zone và mọi truy cập đều ném lỗi.</p><ul><li><strong>var dùng chung, còn let tách riêng:</strong> var cho mọi lần lặp cùng một vùng nhớ nên mọi callback thấy giá trị cuối, còn let tạo binding mới mỗi lần lặp nên mỗi callback giữ đúng giá trị của lần đó.</li><li><strong>Dùng khi:</strong> code mới thì <code>const</code> trước, <code>let</code> khi biến thật sự gán lại. <strong>Không dùng khi:</strong> không dùng <code>var</code> trong module mới, chỉ giữ nó khi đọc script cũ.</li><li><strong>Lỗi hay gặp:</strong> tưởng biến trong khối tự biến mất sau khối, và tưởng đổi var sang let không đổi hành vi closure.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> ngoài module thì var tràn ra global scope, trong module thì top-level đã là scope riêng, còn trong vòng lặp tạo callback thì chọn let mới giữ đúng từng giá trị.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: snippet minh họa hoisting của var và TDZ của let — code mới viết bằng const/let\nconsole.log(x);\nvar x = 10;\ntry {\n  console.log(y);\n} catch (err) {\n  console.log(err.name);\n}\nlet y = 20;\nvar fns = [];\nfor (var i = 0; i < 3; i++) { // var: ba closure dùng chung một biến i\n  fns.push(function () { return i; });\n}\nconsole.log(fns.map(function (f) { return f(); }).join(","));',
-    expected: 'In ra ba dòng: undefined, ReferenceError, rồi 3,3,3. Nguyên nhân: khai báo var được hoisting lên đầu phạm vi hàm kèm giá trị undefined nên đọc trước vẫn chạy; let chỉ hoisting binding nên nằm trong temporal dead zone và đọc trước khai báo ném ReferenceError; var có phạm vi hàm nên ba closure trong vòng lặp dùng chung một binding i và cùng thấy giá trị 3 sau khi vòng lặp kết thúc.',
-    followups: [
-      { q: 'Temporal dead zone khác gì với việc biến chưa khai báo hoàn toàn?', a: 'Biến chưa khai báo hoàn toàn không có binding nào trong môi trường, engine trả về ReferenceError theo đường khác. Biến let trong vùng temporal dead zone thì đã có binding nhưng chưa được khởi tạo, và truy cập vào đó cũng ném ReferenceError với thông điệp nói rõ biến nằm trong vùng chết tạm thời. Về mặt quan sát được, thông báo lỗi là nơi duy nhất phân biệt hai tình huống này.' },
-      { q: 'Vì sao let trong vòng lặp lại tạo binding riêng cho từng lần lặp?', a: 'Đặc tả ngôn ngữ quy định mỗi lần lặp với let hoặc const sẽ sao chép giá trị hiện tại của biến ra một binding mới cho thân vòng lặp. Nhờ vậy các closure tạo trong mỗi lần lặp giữ đúng giá trị của lần lặp đó, thay vì cùng trỏ tới một vùng nhớ. Đây là cơ chế lặp bất biến theo từng lần và cũng là lý do không thể gán lại biến let bên trong thân vòng lặp.' },
-      { q: 'Khi nào var vẫn còn hữu ích trong code hiện đại?', a: 'Trong code mới gần như không có chỗ nào cần var vì let và const phạm vi gọn và an toàn hơn. var chỉ còn xuất hiện trong script cũ chạy ngoài module, ở global object nên còn giữ phong cách khai báo biến toàn cục. Nếu gặp var trong code cũ, hãy đổi sang const hoặc let một cách cẩn thận vì đổi phạm vi có thể làm hỏng logic đang dựa vào việc biến tràn ra ngoài khối.' }
-    ],
-    pitfalls: [
-      'Tưởng let đọc trước khi khai báo sẽ ra undefined như var, trong khi nó ném ReferenceError vì nằm trong temporal dead zone.',
-      'Dùng var trong vòng lặp rồi tạo callback, kết quả mọi callback trả về cùng giá trị cuối cùng.',
-      'Khai báo biến bằng var trong khối rồi tưởng biến đó chỉ tồn tại trong khối, thực tế nó tồn tại ở phạm vi hàm.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa giải thích được vì sao cùng một vòng lặp nhưng var và let cho kết quả closure khác nhau.',
-      'Tôi giải thích được temporal dead zone bằng ví dụ đọc biến let trước dòng khai báo làm đổi thứ tự log trong console.',
-      'Tôi có thể rà một file cũ dùng var trong vòng lặp và sửa sang let mà không làm hỏng hành vi callback.'
-    ],
-    refs: ['mdn-execution-model']
+  "anchor": "Gán hay truyền object chỉ sao chép tham chiếu mà không có bản sao ở tầng con = mọi tên biến cùng sửa một vùng nhớ nên state đổi mà không có request nào.",
+  "q": "Trong JavaScript, primitive và reference khác nhau thế nào khi gán và khi truyền vào hàm, và khi nào spread tạo ra một bản sao độc lập thật sự?",
+  "oral": "Bản chất: primitive được sao chép theo giá trị, còn object chỉ sao chép tham chiếu. JavaScript có bảy kiểu primitive như number, string, boolean, null, undefined, symbol và bigint, còn lại là object, array và function thuộc nhóm tham chiếu. Khi bạn gán hay truyền vào hàm, primitive được sao chép theo giá trị nên hai biến hoàn toàn độc lập, còn object chỉ sao chép địa chỉ nên hai tên trỏ cùng một vùng nhớ và sửa bên này thấy bên kia đổi theo — giống dict unpacking trong Python: {**defaults, ...overrides} cũng chỉ tách tầng ngoài. const chỉ khóa không cho gán lại binding chứ không đóng băng nội dung object, nên thuộc tính bên trong vẫn sửa tự do. Spread với object tạo shallow copy: tầng ngoài tách nhưng object con vẫn dùng chung tham chiếu, và đó là lý do so sánh hai thuộc tính prefs vẫn ra true. Khi cần snapshot độc lập cho object lồng nhau thì dùng structuredClone, còn dữ liệu JSON thuần thì clone tay từng tầng sẽ rẻ và dễ kiểm soát hơn.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>primitive vs reference</strong>: Primitive (number, string, boolean, null, undefined, symbol, bigint) được copy theo giá trị; object, array, function chỉ copy địa chỉ nên mọi tên trỏ chung một vùng nhớ.</li><li><strong>spread operator</strong>: Toán tử trải tạo object mới ở tầng ngoài, chép từng thuộc tính cấp một; object con bên trong vẫn giữ tham chiếu cũ — shallow copy theo định nghĩa.</li><li><strong>structuredClone</strong>: API chuẩn sao chép sâu toàn bộ đồ thị object (kể cả Date, Map, Set); không copy được function, DOM, hay object có vòng tham chiếu tùy trình duyệt.</li><li><strong>const (lock binding)</strong>: const chỉ không cho gán lại tên biến — nội dung object bên trong vẫn sửa tự do; khác với Object.freeze (đóng băng) ở chỗ không hề làm bất biến.</li></ul><p>14h05 nhóm vận hành thấy mọi badge đơn đổi sang đã duyệt dù không ai bấm duyệt, và CloudWatch không ghi PATCH nào. Hàm định dạng đã gán trạng thái lên chính object đơn, và spread ở danh sách chỉ tách vỏ ngoài. Bạn sửa object con qua bản sao thì bản gốc đổi theo vì cả hai cùng trỏ một vùng nhớ.</p><p>Primitive như number hay string nằm trực tiếp trong biến nên gán hay truyền vào hàm tạo giá trị riêng. Object, array và function chỉ giữ địa chỉ vùng nhớ chung nên thêm một tên mới chỉ thêm một đường vào cùng object. Gán thuộc tính hay gọi <code>push</code> đều ghi thẳng lên vùng nhớ đó — cùng nguyên lý với dict unpacking <code>{**a, **b}</code> trong Python: chỉ tách tầng ngoài.</p><ul><li><strong>Spread tách vỏ, giữ ruột:</strong> spread tạo object mới và chép từng thuộc tính tầng một, còn structuredClone dựng lại toàn bộ đồ thị lồng nhau. Thuộc tính nguyên thủy thì cả hai đều độc lập, thuộc tính object con thì chỉ cách thứ hai mới độc lập.</li><li><strong>Dùng khi:</strong> state một tầng, danh sách thẻ chỉ có id và nhãn. <strong>Không dùng khi:</strong> form lồng prefs, snapshot trước khi sửa để hủy thay đổi.</li><li><strong>Lỗi hay gặp:</strong> tưởng <code>const</code> đóng băng object trong khi nó chỉ khóa gán lại binding, và tưởng so sánh <code>===</code> sau spread là so nội dung trong khi nó so địa chỉ.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> object một tầng thì shallow copy đủ và rẻ, thêm một tầng lồng có Date hay mảng con thì bạn phải clone tay từng tầng hoặc dùng structuredClone.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Primitive và reference ở Bài L12, spread và shallow copy ở Bài L13, structuredClone và deep copy ở Bài L14, và pattern state immutable trong component ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: spread chỉ tách tầng ngoài — con lồng vẫn dùng chung tham chiếu\nconst user = { name: \"An\", prefs: { theme: \"dark\" } };\nfunction update(u) {\n  u.prefs.theme = \"light\"; // sửa thẳng object con qua tham chiếu\n}\nupdate(user);\nconst copy = { ...user }; // copy.prefs vẫn trỏ đúng prefs cũ\ncopy.prefs.theme = \"solar\";\nconsole.log(user.prefs.theme);\nconsole.log(copy.prefs === user.prefs);",
+  "expected": "In ra hai dòng: solar rồi true. Phân tích: gán hay truyền object chỉ sao chép tham chiếu, nên update(user) sửa u.prefs.theme thành \"light\" tức sửa thẳng vùng nhớ của user; sau đó { ...user } tạo object mới ở tầng ngoài nhưng copy.prefs vẫn trỏ đúng object prefs cũ, nên gán copy.prefs.theme = \"solar\" ghi đè tiếp lên cùng một vùng nhớ và user.prefs.theme cũng thành \"solar\". Dòng thứ hai in true vì copy.prefs === user.prefs đang so sánh tham chiếu tới cùng một object, chứ không so nội dung. spread chỉ là shallow copy; muốn snapshot độc lập cho object lồng nhau thì dùng structuredClone hoặc clone tay từng tầng.",
+  "followups": [
+    {
+      "q": "Khi nào shallow copy bằng spread là đủ và khi nào phải deep copy?",
+      "a": "Shallow copy đủ khi dữ liệu chỉ có một tầng, ví dụ danh sách thẻ UI với id và nhãn, vì không có object con nào để chia sẻ tham chiếu. Phải deep copy khi có tầng lồng nhau và bạn cần snapshot độc lập thật sự, ví dụ lưu bản sao form trước khi người dùng sửa để hủy thay đổi. Khi đó structuredClone xử lý được object thuần, Map, Set và Date, còn dữ liệu có function hay class instance thì phải clone tay từng nhánh để kiểm soát chính xác những gì được sao chép."
+    },
+    {
+      "q": "Vì sao Object.freeze mặc định chưa làm object thật sự bất biến?",
+      "a": "Object.freeze chỉ chặn gán và xoá thuộc tính ở cấp đối tượng được gọi, các object con bên trong vẫn sửa bình thường. Muốn bất biến sâu thì phải duyệt từng tầng và freeze từng node con, hoặc dùng pattern copy-on-write: thay đổi bằng cách tạo object mới thay vì sửa tại chỗ. Trong ứng dụng thực tế, copy-on-write thường rẻ và dễ kiểm soát hơn việc đóng băng đệ quy."
+    },
+    {
+      "q": "Việc copy tạo tham chiếu mới ảnh hưởng thế nào tới useMemo hay React.memo?",
+      "a": "Mỗi lần gọi spread tạo một object mới nên tham chiếu luôn khác, kể cả khi dữ liệu bên trong không đổi. useMemo và React.memo so sánh tham chiếu nên sẽ coi là thay đổi và render lại, mất tác dụng cache. Nếu bạn vừa memoize vừa copy ở mỗi render thì bạn tự phá cache của chính mình; chỉ copy khi thật sự cần snapshot độc lập."
+    }
+  ],
+  "pitfalls": [
+    "Tưởng const làm object bất biến, trong khi const chỉ khóa binding và thuộc tính bên trong vẫn gán lại được.",
+    "Tưởng spread là deep copy, trong khi mọi object con vẫn chia sẻ tham chiếu với bản gốc.",
+    "Dùng spread trong mỗi lần render rồi tưởng useMemo vẫn cache được vì tham chiếu luôn mới."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa giải thích được tại sao hai object con trùng nhau vẫn cho kết quả đúng sau khi dùng spread.",
+    "Tôi giải thích được bằng ví dụ cụ thể: copy form bằng spread rồi người dùng sửa prefs làm cả bản gốc đổi theo.",
+    "Tôi chọn được khi nào dùng shallow copy và khi nào deep copy khi xử lý state nhiều tầng trong dự án thật."
+  ],
+  "refs": [
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "B02",
+  "group": "B",
+  "topic": "var, let, const, phạm vi, hoisting và TDZ",
+  "prio": "P0",
+  "level": "L2",
+  "type": "debug",
+  "attacks": [
+    {
+      "q": "Vì sao <code>let</code> ném lỗi khi truy cập trước khai báo, còn <code>var</code> thì trả về <code>undefined</code>?",
+      "a": "Vì var được đưa lên đầu phạm vi hàm và khởi tạo bằng undefined ngay khi vào phạm vi, nên đọc trước khai báo cho giá trị rỗng chứ không lỗi. let và const cũng được đưa lên đầu khối, nhưng nằm trong một vùng mà truy cập bị cấm cho tới khi câu lệnh khai báo thực sự chạy — đó là vùng chết tạm thời. Hành vi này là cải tiến có chủ đích: nó biến một lỗi âm thầm thành một lỗi rõ ràng. Với var, việc đọc ra undefined thường bị bỏ qua và gây lỗi ở tận chỗ khác, khó truy hơn nhiều."
+    },
+    {
+      "q": "Vì sao <code>const</code> không làm object bất biến?",
+      "a": "Vì const ràng buộc việc gán lại tên, không ràng buộc nội dung của object. Sau khi khai báo, bạn không thể làm tên đó trỏ tới object khác, nhưng vẫn thêm, sửa, xoá thuộc tính bình thường. Đây là điểm hay bị hiểu nhầm và dẫn tới việc tưởng rằng dữ liệu được bảo vệ trong khi nó vẫn bị sửa từ nơi khác. Muốn bất biến thật thì phải đóng băng object, nhưng cần lưu ý là đóng băng chỉ có tác dụng ở tầng nông theo mặc định, và trong chế độ nghiêm ngặt thì việc ghi vào object đã đóng băng sẽ ném lỗi thay vì im lặng."
+    }
+  ],
+  "incident": "<p>9h30, một màn hình danh sách gắn handler cho từng dòng bằng vòng lặp for dùng var. Nhân viên bấm vào dòng thứ ba nhưng hệ thống luôn mở chi tiết dòng cuối cùng, dù handler hoàn toàn không có lỗi cú pháp. Mười người trong nhóm kho thấy cùng một hành vi và chỉ đoán được là mọi dòng đang dùng chung một biến. Một dev khác thử đổi cùng đoạn đó sang let rồi đặt dòng log phía trên khai báo, và console lập tức ném ReferenceError nhắc tới biến chưa được khởi tạo — cùng một khai báo mà hành vi đọc trước hoàn toàn khác nhau. Đổi sang let trong vòng lặp thì mỗi dòng mở đúng chi tiết của nó, không phải sửa gì khác trong handler.</p>",
+  "askFirst": [
+    "Các handler đang giữ cùng một biến hay mỗi lần lặp một biến? → Giải mã: cùng một biến — var không tạo ô mới mỗi vòng, mọi callback cùng trỏ ô dùng chung nên in ra giá trị cuối; đổi sang let mỗi vòng có ô riêng nên mỗi callback giữ đúng giá trị của vòng đó",
+    "Vì sao đọc biến trước dòng khai báo lúc thì ra undefined lúc thì ném lỗi? → Giải mã: var được hoist nên đọc trước khai báo ra undefined (đã tồn tại nhưng chưa gán); let/const nằm trong TDZ nên đọc trước khai báo là ReferenceError vì vùng chưa được khởi tạo"
+  ],
+  "predict": {
+    "q": "Bạn đoán vòng lặp for dùng var đẩy ba hàm vào mảng rồi gọi sau khi vòng lặp xong sẽ trả về gì?",
+    "a": "<p>Cả ba hàm trả về cùng giá trị cuối cùng của biến đếm. var có phạm vi hàm nên chỉ có một binding dùng chung cho mọi lần lặp, và các closure đều bắt lấy vùng nhớ đó. Đổi sang let thì mỗi lần lặp tạo binding mới nên mỗi hàm giữ đúng giá trị của lần lặp đó.</p>"
   },
-  {
-    id: 'B03',
-    group: 'B',
-    topic: 'So sánh bằng và ba dấu bằng, ép kiểu, truthy falsy, null và undefined',
-    prio: 'P0',
-    level: 'L1',
-    type: 'predict',
-    attacks: [{"q":"Vì sao <code>NaN === NaN</code> cho <code>false</code>, và bạn kiểm tra nó thế nào?","a":"Vì theo đặc tả số học dấu phẩy động, NaN biểu diễn một kết quả không xác định, nên nó không bằng chính nó. Đây là hành vi của chuẩn số, không phải lỗi của JavaScript. Cách kiểm tra đúng là dùng hàm kiểm tra riêng, hoặc dùng phép so sánh theo cùng thuật toán nhưng coi hai giá trị không xác định là bằng nhau. Điểm liên quan là trong tập hợp và bản đồ, khoá NaN vẫn hoạt động và tra cứu được, vì thuật toán so sánh ở đó coi các giá trị không xác định là bằng nhau — nên hành vi khác với phép so sánh ba dấu bằng."},{"q":"Khi nào <code>==</code> thực sự hữu ích, và vì sao hầu hết đội cấm nó?","a":"Trường hợp hữu ích phổ biến nhất là so sánh với null: x == null đúng cho cả null và undefined, nên nó diễn đạt gọn ý \"không có giá trị\" mà phải viết hai phép so sánh nếu dùng ba dấu bằng. Ngoài trường hợp đó, các quy tắc ép kiểu còn lại rất khó nhớ và tạo ra kết quả bất ngờ — so sánh chuỗi với số, mảng với số, object với nguyên thuỷ. Vì chi phí ghi nhớ và chi phí đọc lại code lớn hơn lợi ích, hầu hết đội cấm nó và chỉ cho phép dạng so sánh với null nếu quy ước nêu rõ."}],
-    incident: '<p>11h15, màn hình đối soát đơn hàng đánh dấu đơn cần bỏ bằng điều kiện qty == 0, trong đó qty đọc thẳng từ biểu mẫu nên luôn là chuỗi. Nhân viên kho để trống ô số lượng ở mười dòng, bấm đối soát, và cả mười dòng bị đưa vào danh sách bỏ dù đơn thật vẫn còn hàng. Trong khi đó lọc các dòng thực sự có số lượng bằng 0 lại ra danh sách rỗng. Không có lỗi nào trong console vì phép so sánh hoàn toàn hợp lệ, chỉ có kết quả lọc lệch một cách âm thầm.</p>',
-    askFirst: [
-      'Chuỗi rỗng được ép về giá trị gì khi so với số?',
-      'Vì sao phép so sánh không ném lỗi dù hai vế khác kiểu?'
-    ],
-    predict: { q: 'Bạn đoán chuỗi rỗng và chuỗi chỉ có khoảng trắng khi so bằng hai dấu bằng với số không cho kết quả gì?', a: '<p>Cả hai đều cho true, vì so sánh lỏng ép chuỗi về số trước và chuỗi rỗng cùng chuỗi chỉ có khoảng trắng đều chuyển thành số không. Đây là lý do điều kiện lọc nhận nhầm dữ liệu trống là số không. Cách an toàn là ép kiểu một lần ở biên bằng Number rồi từ đó chỉ so sánh số với số.</p>' },
-    anchor: 'So sánh lỏng ép chuỗi về số mà không phân biệt chuỗi rỗng với số không = điều kiện lọc cho qua dữ liệu trống mà không có lỗi nào.',
-    q: 'Bốn biểu thức so sánh và ép kiểu dưới đây cho kết quả thế nào, và quy tắc nào đứng sau mỗi kết quả?',
-    oral: 'Dấu ba dấu bằng so sánh cả giá trị lẫn kiểu dữ liệu, nên hai biến khác kiểu chắc chắn khác nhau. Dấu hai dấu bằng ép kiểu theo một thứ tự quy tắc cố định rồi mới so sánh, và trong quy tắc đó null chỉ bằng được với undefined chứ không bằng với bất kỳ giá trị nào khác. Vì vậy null bằng undefined là đúng, còn null ba dấu bằng undefined là sai. Khi so một chuỗi số với một số, chuỗi được ép về số nên so khớp, nhưng đây là cạm bẫy vì chuỗi rỗng và chuỗi có khoảng trắng cũng ép về số không. NaN là ngoại lệ duy nhất trong hệ số không bằng chính nó. Giá trị falsy chỉ gồm false, số không, chuỗi rỗng, null, undefined và NaN; mọi thứ khác kể cả mảng rỗng và object rỗng đều truthy. Một điểm nữa là typeof null trả về chuỗi object, đây là lỗi lịch sử của ngôn ngữ được giữ lại để tương thích.',
-    deep: '<p>11h15 màn đối soát đưa mười dòng trống vào danh sách bỏ dù đơn thật vẫn còn hàng, và lọc đúng số không lại ra rỗng. Điều kiện dùng <code>qty == 0</code> trong khi qty từ biểu mẫu luôn là chuỗi. Bạn so chuỗi rỗng với số không mà engine ép cả hai về cùng giá trị nên không có lỗi nào trong console.</p><p>Dấu ba dấu bằng so cả kiểu lẫn giá trị nên khác kiểu là khác nhau. Dấu hai dấu bằng ép kiểu theo quy tắc cố định rồi mới so, và null chỉ bằng undefined chứ không bằng số nào. Chuỗi so với số thì chuỗi bị chuyển thành số trước nên chuỗi rỗng và chuỗi khoảng trắng đều thành số không. <code>NaN</code> không bằng chính nó, mảng rỗng vẫn truthy, và <code>typeof null</code> trả về object vì lỗi lịch sử.</p><ul><li><strong>Ba dấu bằng giữ nguyên kiểu, còn hai dấu bằng ép kiểu trước:</strong> cái đầu hỏi hai vế có cùng kiểu và cùng giá trị không, cái sau hỏi hai vế có thể ép về cùng giá trị không.</li><li><strong>Dùng khi:</strong> so sánh nội bộ thì ba dấu bằng sau khi đã ép kiểu ở biên bằng <code>Number</code>. <strong>Không dùng khi:</strong> không dùng hai dấu bằng cho dữ liệu form vì chuỗi trống luôn lọt lưới.</li><li><strong>Lỗi hay gặp:</strong> kiểm tra null bằng typeof, và tin null bằng số không trong khi nó chỉ bằng undefined.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> dữ liệu đã là số thật thì so sánh trực tiếp an toàn, dữ liệu còn là chuỗi từ API thì bạn phải chuẩn hóa và loại chuỗi trống trước rồi mới so.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: luôn dùng ===, ép kiểu ở biên bằng Number trước khi so\nconsole.log(null == undefined);\nconsole.log(0 == "0");\nconsole.log(NaN === NaN);\nconsole.log(Boolean([]), typeof null);',
-    expected: 'Bốn dòng lần lượt là true, true, false, rồi true object. Nguyên nhân: null chỉ bằng được undefined nên so sánh lỏng cho true, dấu ba dấu bằng so cả kiểu nên null khác undefined; chuỗi số được ép về số nên số không bằng chuỗi số; NaN không bằng chính nó nên kể cả dấu ba dấu bằng cũng cho false; mảng rỗng là object nên truthy; và typeof null trả về chuỗi object do lỗi lịch sử của ngôn ngữ được giữ lại để tương thích.',
-    followups: [
-      { q: 'Vì sao so sánh chuỗi với số là cạm bẫy, và nên so sánh thế nào cho an toàn?', a: 'Vì chuỗi luôn được ép về số trước khi so sánh, nên chuỗi rỗng, chuỗi chỉ có khoảng trắng và cả chuỗi không phải số đều trở thành số không. Biểu mẫu gửi mọi giá trị dạng chuỗi nên điều kiện lọc bằng số sẽ lọc sai âm thầm. Cách an toàn là ép một lần ở biên vào dữ liệu bằng Number hoặc Number.parseFloat kèm kiểm tra isNaN, rồi từ đó trở đi chỉ so sánh số với số.' },
-      { q: 'null và undefined khác nhau như thế nào trong thực tế, và khi nào nên dùng null?', a: 'undefined mang nghĩa chưa được gán giá trị, ví dụ khai báo biến không khởi tạo, thuộc tính không tồn tại, hoặc hàm không nhận tham số. null là lựa chọn có chủ ý của lập trình viên để nói rõ chưa có giá trị. Vì vậy dùng null cho các trường nghiệp vụ chưa xác định như ngày hủy đơn hàng, còn để undefined cho thiếu sót kỹ thuật. Khi dùng với toán tử ba dấu bằng cả hai đều so sánh khác với mọi giá trị khác, nhưng với hai dấu bằng thì chúng bằng nhau.' },
-      { q: 'Vì sao không dùng typeof để kiểm tra null, và cách kiểm tra null an toàn là gì?', a: 'typeof null trả về chuỗi object vì một lỗi lịch sử từ đầu ngôn ngữ, và lỗi này được giữ lại để không phá vỡ code cũ. Cách kiểm tra đúng là so sánh trực tiếp với null, hoặc dùng toán tử nullish coalescing với giá trị mặc định để thay thế cả hai trường hợp. Lưu ý toán tử nullish chỉ thay thế khi giá trị là null hoặc undefined, còn toán tử or logic còn thay cả các giá trị falsy khác như số không và chuỗi rỗng.' }
-    ],
-    pitfalls: [
-      'Dùng hai dấu bằng để so sánh chuỗi rỗng với số không và cả hai bị ép về cùng một giá trị nên điều kiện lọc chạy sai.',
-      'Tưởng typeof null trả về null và viết kiểm tra null bằng typeof, trong khi chuỗi trả về là object.',
-      'Dùng hai dấu bằng với null vì tin rằng null bằng số không, trong khi null chỉ bằng được undefined.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa nhớ hết thứ tự quy tắc ép kiểu của so sánh lỏng nên vẫn phải thử trong console.',
-      'Tôi giải thích được vì sao NaN không bằng chính nó và vì sao phải dùng Number.isNaN thay vì so sánh bằng.',
-      'Tôi chọn được ép kiểu ở biên API để mọi so sánh phía trong ứng dụng diễn ra trên số thật.'
-    ],
-    refs: ['mdn-execution-model']
+  "anchor": "var có phạm vi hàm và được khởi tạo undefined mà không có binding riêng cho mỗi vòng lặp = mọi closure cùng đọc một vùng nhớ nên tất cả trả về giá trị cuối.",
+  "q": "Đoạn khai báo biến bên dưới in ra những gì, và vì sao đọc biến trước khi khai báo lại cho kết quả khác nhau giữa var và let?",
+  "oral": "Ba khai báo này khác nhau cả về phạm vi lẫn thời điểm sẵn sàng. Khai báo var được hoisting lên đầu phạm vi hàm và được khởi tạo bằng undefined, nên đọc trước không lỗi, chỉ ra giá trị undefined. Khai báo let và const cũng được engine ghi nhận trước nhưng nằm trong vùng temporal dead zone cho tới dòng khai báo, nên chạm vào trong vùng đó sẽ ném ReferenceError chứ không phải undefined. Một khác biệt nữa rất dễ gây bug là phạm vi: var có phạm vi hàm nên các closure trong vòng lặp đều dùng chung một biến, còn let tạo binding mới cho mỗi vòng lặp. Đó là lý do khi dùng var, ba hàm bắt lấy đều trả về cùng giá trị cuối cùng. Trong code mới nên dùng const trước, chỉ dùng let khi biến thật sự cần gán lại.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>var (hoisting)</strong>: Khai báo var được nâng lên đầu scope, biến undefined tới khi gán; không có block scope, mọi vòng lặp dùng chung một biến var.</li><li><strong>let / block scope</strong>: Khai báo trong khối; tạo một ô mới mỗi vòng lặp — closure trong vòng lặp bắt ô riêng, không bị late binding như var.</li><li><strong>TDZ (Temporal Dead Zone)</strong>: Giai đoạn từ đầu block tới lệnh khai báo let/const: đọc là ReferenceError, khác undefined của var; bảo vệ khỏi dùng biến chưa gán.</li><li><strong>closure với var</strong>: Mọi lambda trong vòng lặp for cùng bắt cùng một ô var dùng chung, nên sau vòng lặp toàn bộ đọc giá trị cuối — đây là bẫy kinh điển.</li></ul><p>9h30 mọi dòng danh sách đều mở chi tiết dòng cuối cùng dù handler không lỗi cú pháp. Vòng lặp dùng <code>var</code> nên ba closure cùng giữ một biến đếm, và đọc <code>let</code> trước khai báo thì console ném ReferenceError thay vì trả undefined. Bạn gặp hai hành vi khác nhau từ cùng một ý định khai báo.</p><p>Engine ghi nhận mọi khai báo trước khi chạy. <code>var</code> được khởi tạo sẵn bằng undefined và có phạm vi hàm nên biến trong khối if hay for vẫn sống ngoài khối. <code>let</code> và <code>const</code> chỉ giữ binding mà chưa khởi tạo, khoảng chờ đó gọi là temporal dead zone và mọi truy cập đều ném lỗi.</p><ul><li><strong>var dùng chung, còn let tách riêng:</strong> var cho mọi lần lặp cùng một vùng nhớ nên mọi callback thấy giá trị cuối, còn let tạo binding mới mỗi lần lặp nên mỗi callback giữ đúng giá trị của lần đó.</li><li><strong>Dùng khi:</strong> code mới thì <code>const</code> trước, <code>let</code> khi biến thật sự gán lại. <strong>Không dùng khi:</strong> không dùng <code>var</code> trong module mới, chỉ giữ nó khi đọc script cũ.</li><li><strong>Lỗi hay gặp:</strong> tưởng biến trong khối tự biến mất sau khối, và tưởng đổi var sang let không đổi hành vi closure.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> ngoài module thì var tràn ra global scope, trong module thì top-level đã là scope riêng, còn trong vòng lặp tạo callback thì chọn let mới giữ đúng từng giá trị.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> var/let/const và block scope ở Bài L12, hoisting và TDZ ở Bài L13, và pattern sửa closure vòng lặp trong handler ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: snippet minh họa hoisting của var và TDZ của let — code mới viết bằng const/let\nconsole.log(x);\nvar x = 10;\ntry {\n  console.log(y);\n} catch (err) {\n  console.log(err.name);\n}\nlet y = 20;\nvar fns = [];\nfor (var i = 0; i < 3; i++) { // var: ba closure dùng chung một biến i\n  fns.push(function () { return i; });\n}\nconsole.log(fns.map(function (f) { return f(); }).join(\",\"));",
+  "expected": "In ra ba dòng: undefined, ReferenceError, rồi 3,3,3. Nguyên nhân: khai báo var được hoisting lên đầu phạm vi hàm kèm giá trị undefined nên đọc trước vẫn chạy; let chỉ hoisting binding nên nằm trong temporal dead zone và đọc trước khai báo ném ReferenceError; var có phạm vi hàm nên ba closure trong vòng lặp dùng chung một binding i và cùng thấy giá trị 3 sau khi vòng lặp kết thúc.",
+  "followups": [
+    {
+      "q": "Temporal dead zone khác gì với việc biến chưa khai báo hoàn toàn?",
+      "a": "Biến chưa khai báo hoàn toàn không có binding nào trong môi trường, engine trả về ReferenceError theo đường khác. Biến let trong vùng temporal dead zone thì đã có binding nhưng chưa được khởi tạo, và truy cập vào đó cũng ném ReferenceError với thông điệp nói rõ biến nằm trong vùng chết tạm thời. Về mặt quan sát được, thông báo lỗi là nơi duy nhất phân biệt hai tình huống này."
+    },
+    {
+      "q": "Vì sao let trong vòng lặp lại tạo binding riêng cho từng lần lặp?",
+      "a": "Đặc tả ngôn ngữ quy định mỗi lần lặp với let hoặc const sẽ sao chép giá trị hiện tại của biến ra một binding mới cho thân vòng lặp. Nhờ vậy các closure tạo trong mỗi lần lặp giữ đúng giá trị của lần lặp đó, thay vì cùng trỏ tới một vùng nhớ. Đây là cơ chế lặp bất biến theo từng lần và cũng là lý do không thể gán lại biến let bên trong thân vòng lặp."
+    },
+    {
+      "q": "Khi nào var vẫn còn hữu ích trong code hiện đại?",
+      "a": "Trong code mới gần như không có chỗ nào cần var vì let và const phạm vi gọn và an toàn hơn. var chỉ còn xuất hiện trong script cũ chạy ngoài module, ở global object nên còn giữ phong cách khai báo biến toàn cục. Nếu gặp var trong code cũ, hãy đổi sang const hoặc let một cách cẩn thận vì đổi phạm vi có thể làm hỏng logic đang dựa vào việc biến tràn ra ngoài khối."
+    }
+  ],
+  "pitfalls": [
+    "Tưởng let đọc trước khi khai báo sẽ ra undefined như var, trong khi nó ném ReferenceError vì nằm trong temporal dead zone.",
+    "Dùng var trong vòng lặp rồi tạo callback, kết quả mọi callback trả về cùng giá trị cuối cùng.",
+    "Khai báo biến bằng var trong khối rồi tưởng biến đó chỉ tồn tại trong khối, thực tế nó tồn tại ở phạm vi hàm."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa giải thích được vì sao cùng một vòng lặp nhưng var và let cho kết quả closure khác nhau.",
+    "Tôi giải thích được temporal dead zone bằng ví dụ đọc biến let trước dòng khai báo làm đổi thứ tự log trong console.",
+    "Tôi có thể rà một file cũ dùng var trong vòng lặp và sửa sang let mà không làm hỏng hành vi callback."
+  ],
+  "refs": [
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "B03",
+  "group": "B",
+  "topic": "So sánh bằng và ba dấu bằng, ép kiểu, truthy falsy, null và undefined",
+  "prio": "P0",
+  "level": "L1",
+  "type": "predict",
+  "attacks": [
+    {
+      "q": "Vì sao <code>NaN === NaN</code> cho <code>false</code>, và bạn kiểm tra nó thế nào?",
+      "a": "Vì theo đặc tả số học dấu phẩy động, NaN biểu diễn một kết quả không xác định, nên nó không bằng chính nó. Đây là hành vi của chuẩn số, không phải lỗi của JavaScript. Cách kiểm tra đúng là dùng hàm kiểm tra riêng, hoặc dùng phép so sánh theo cùng thuật toán nhưng coi hai giá trị không xác định là bằng nhau. Điểm liên quan là trong tập hợp và bản đồ, khoá NaN vẫn hoạt động và tra cứu được, vì thuật toán so sánh ở đó coi các giá trị không xác định là bằng nhau — nên hành vi khác với phép so sánh ba dấu bằng."
+    },
+    {
+      "q": "Khi nào <code>==</code> thực sự hữu ích, và vì sao hầu hết đội cấm nó?",
+      "a": "Trường hợp hữu ích phổ biến nhất là so sánh với null: x == null đúng cho cả null và undefined, nên nó diễn đạt gọn ý \"không có giá trị\" mà phải viết hai phép so sánh nếu dùng ba dấu bằng. Ngoài trường hợp đó, các quy tắc ép kiểu còn lại rất khó nhớ và tạo ra kết quả bất ngờ — so sánh chuỗi với số, mảng với số, object với nguyên thuỷ. Vì chi phí ghi nhớ và chi phí đọc lại code lớn hơn lợi ích, hầu hết đội cấm nó và chỉ cho phép dạng so sánh với null nếu quy ước nêu rõ."
+    }
+  ],
+  "incident": "<p>11h15, màn hình đối soát đơn hàng đánh dấu đơn cần bỏ bằng điều kiện qty == 0, trong đó qty đọc thẳng từ biểu mẫu nên luôn là chuỗi. Nhân viên kho để trống ô số lượng ở mười dòng, bấm đối soát, và cả mười dòng bị đưa vào danh sách bỏ dù đơn thật vẫn còn hàng. Trong khi đó lọc các dòng thực sự có số lượng bằng 0 lại ra danh sách rỗng. Không có lỗi nào trong console vì phép so sánh hoàn toàn hợp lệ, chỉ có kết quả lọc lệch một cách âm thầm.</p>",
+  "askFirst": [
+    "Chuỗi rỗng được ép về giá trị gì khi so với số? → Giải mã: chuỗi rỗng \"\" ép thành 0 — quy tắc == chuyển chuỗi về số trước khi so, nên 0 == \"\" ra true; đây là lý do nên dùng === để tránh mọi con số ngầm",
+    "Vì sao phép so sánh không ném lỗi dù hai vế khác kiểu? → Giải mã: vì quy tắc ép kiểu ECMAScript định nghĩa trước — hai vế khác kiểu được ép về cùng một kiểu rồi mới so; không ném lỗi vì mọi kết hợp đều có quy tắc, chỉ có kết quả khó đoán"
+  ],
+  "predict": {
+    "q": "Bạn đoán chuỗi rỗng và chuỗi chỉ có khoảng trắng khi so bằng hai dấu bằng với số không cho kết quả gì?",
+    "a": "<p>Cả hai đều cho true, vì so sánh lỏng ép chuỗi về số trước và chuỗi rỗng cùng chuỗi chỉ có khoảng trắng đều chuyển thành số không. Đây là lý do điều kiện lọc nhận nhầm dữ liệu trống là số không. Cách an toàn là ép kiểu một lần ở biên bằng Number rồi từ đó chỉ so sánh số với số.</p>"
   },
-  {
-    id: 'B04',
-    group: 'B',
-    topic: 'Closure, ràng buộc this và arrow function so với function thường',
-    prio: 'P0',
-    level: 'L3',
-    type: 'concept',
-    attacks: [{"q":"Vì sao arrow function không có <code>this</code> riêng, và điều đó gây lỗi gì trong thực tế?","a":"Arrow function không tạo ngữ cảnh thực thi riêng, nên this bên trong nó là this của phạm vi bao quanh tại thời điểm định nghĩa. Điều đó hữu ích khi bạn muốn giữ ngữ cảnh trong callback, nhưng gây lỗi khi bạn cần ngữ cảnh động: gán arrow function làm phương thức của object thì this không trỏ tới object đó, và dùng nó làm constructor thì không được phép. Lỗi thực tế hay gặp là viết phương thức xử lý sự kiện bằng arrow function rồi truy cập this để lấy phần tử, nhưng nhận được ngữ cảnh của module hoặc của lớp ngoài."},{"q":"Bạn gọi một hàm callback và <code>this</code> bên trong bị mất. Ba cách sửa?","a":"Một là truyền một hàm đã ràng buộc ngữ cảnh, tạo bằng phương thức ràng buộc của hàm — rõ ràng và phổ biến nhất. Hai là dùng arrow function ở chỗ truyền callback, vì nó kế thừa ngữ cảnh từ nơi định nghĩa. Ba là khai báo phương thức của lớp bằng arrow function ngay tại chỗ, để mỗi instance có một hàm đã gắn ngữ cảnh — tiện nhưng tốn thêm bộ nhớ cho mỗi instance. Điều nên tránh là lưu ngữ cảnh vào một biến tạm rồi dùng nó, vì cách đó làm code khó đọc và dễ sai khi có nhiều tầng lồng nhau."}],
-    incident: '<p>10h10, ô tìm kiếm trong header bị hỏng ngay sau khi một dev đổi callback của setTimeout từ arrow sang function thường để cho đồng bộ với phần còn lại của file. Mười người dùng gõ vào ô tìm kiếm và không có gì xảy ra, còn console có một TypeError duy nhất nhắc tới this.run không phải là hàm. Đổi lại thành arrow thì ô tìm kiếm chạy bình thường, không phải sửa gì trong thân hàm run.</p>',
-    askFirst: [
-      'Callback này cần this của instance hay this của nơi gọi?',
-      'Arrow function lấy this ở đâu vào thời điểm nào?'
-    ],
-    predict: { q: 'Bạn đoán this trong callback function thường truyền cho setTimeout bên trong một method class sẽ là gì?', a: '<p>Không còn là instance, vì thân class luôn chạy ở strict mode và hàm thường nhận this theo cách gọi chứ không theo nơi khai báo. Engine gọi callback với receiver riêng của nó, nên truy cập this.run không tìm thấy method và ném TypeError. Arrow function chụp this từ scope cha nên giữ đúng instance và gọi được method.</p>' },
-    anchor: 'Callback cần this của instance mà dùng function thường nhận this theo nơi gọi = this không còn là object nên truy cập method ném TypeError.',
-    q: 'Closure giữ gì lại sau khi hàm ngoài kết thúc, và vì sao arrow function khác function thường khi nói về ràng buộc this?',
-    oral: 'Closure là khả năng một hàm vẫn truy cập được biến của phạm vi đã kết thúc, vì mỗi lần gọi hàm tạo ra một môi trường riêng và các hàm con giữ tham chiếu tới môi trường đó. Nhờ vậy mỗi lần gọi makeCounter sinh ra một bộ đếm riêng, và các callback được lưu trong mảng hay đưa cho setTimeout vẫn nhớ đúng giá trị đã bị ghi đè ở các lần sau. Về this, function thường nhận this theo quy tắc gọi: gọi như method của object thì this là object đó, gọi tách khỏi object thì this không còn là object đó, và trong strict mode thì thành undefined. Arrow function không có tham số this, nó chụp lại this tại nơi được tạo ra, nên luôn bám theo this của scope cha và không đổi khi được truyền đi. Vì vậy callback nên dùng arrow, còn method cần this động thì phải dùng function thường. Một ngoại lệ đáng nhớ là dùng arrow function cho method trong object literal sẽ this lấy từ scope ngoài và thường là undefined.',
-    deep: '<p>10h10 ô tìm kiếm chết ngay sau khi dev đổi callback của setTimeout từ arrow sang function thường. Console chỉ có một TypeError nhắc this.run không phải hàm, và đổi lại arrow thì mọi thứ chạy bình thường. Bạn không sửa logic nào mà chỉ đổi cách hàm nhận this.</p><p>Closure là hàm con giữ tham chiếu tới môi trường của lần gọi đã kết thúc, nhờ đó counter riêng, cache và callback bất đồng bộ còn nhớ đúng dữ liệu. Function thường nhận this theo cách gọi nên tách method ra biến là mất liên kết, và trong strict mode this thành undefined. Arrow function không có this riêng nên chụp this của scope cha tại nơi định nghĩa và giữ nguyên khi truyền đi.</p><ul><li><strong>Function thường lấy this lúc gọi, còn arrow chụp this lúc tạo:</strong> cái đầu đổi theo receiver trước dấu chấm, cái sau bám theo scope bao quanh dù bạn truyền nó đi đâu.</li><li><strong>Dùng khi:</strong> callback cần this của instance thì arrow, method cần this động hay cần <code>arguments</code> và <code>new</code> thì function thường. <strong>Không dùng khi:</strong> không dùng arrow làm method của object literal vì this sẽ trỏ ra module ngoài.</li><li><strong>Lỗi hay gặp:</strong> tách method class ra biến rồi gọi trần, và nhầm mọi closure đều là rò bộ nhớ.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> callback một lần giữ ngữ cảnh thì arrow gọn nhất, method truyền cho onClick hay thư viện ngoài thì bạn phải bind tường minh, còn code chạy strict mode thì lỗi mất this lộ ra sớm thay vì lặng lẽ trỏ global.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: callback cần this của instance thì dùng arrow, method cần this động thì dùng function thường\nclass SearchBox {\n  constructor() {\n    this.query = "";\n  }\n  start() {\n    setTimeout(function () {\n      this.run(); // this ở đây là Timeout của Node, không phải box\n    }, 0);\n  }\n  startArrow() {\n    setTimeout(() => {\n      this.run(); // arrow chụp this của startArrow tức instance box\n    }, 0);\n  }\n  run() {\n    console.log("run", this.query);\n  }\n}\nconst box = new SearchBox();\nbox.start();\nbox.startArrow();',
-    expected: 'Chạy nguyên snippet bằng Node thì tiến trình dừng ngay ở timer thứ nhất với TypeError: this.run is not a function và exit code 1, nên dòng run ... của startArrow không bao giờ được in. Phân tích: thân class luôn chạy ở strict mode, nên this trong callback function thường không còn là box; Node truyền chính đối tượng Timeout làm this, và Timeout không có method run nên typeof this.run là undefined và lời gọi ném lỗi. Nếu bắt được lỗi để tiến trình sống tiếp thì timer thứ hai mới chạy và in ra run "" — arrow function không có this riêng, nó chụp this của startArrow tức instance box, nên this.run tìm thấy method và this.query là chuỗi rỗng. Callback cần this của instance thì dùng arrow, method cần this động theo nơi gọi thì dùng function thường.',
-    followups: [
-      { q: 'Vì sao tách một method class ra khỏi object rồi gọi lại sẽ hỏng, và cách sửa ra sao?', a: 'Method class được gọi với this là chính object khi dùng dấu chấm. Khi bạn lưu method vào một biến rồi gọi biến đó, lời gọi không còn receiver nên this trở thành undefined, và truy cập thuộc tính sẽ ném lỗi ngay. Ba cách sửa là gọi trực tiếp trên object, dùng bind khi truyền method đi nơi khác, hoặc chuyển method thành arrow function để this gắn theo scope. Trong ứng dụng, nguyên nhân phổ biến nhất là truyền method trực tiếp làm prop cho onClick hay cho mảng sự kiện.' },
-      { q: 'Vòng lặp tạo closure theo cách nào và tại sao từng lần lặp với let lại tách binding?', a: 'Mỗi lần lặp với khai báo let hoặc const tạo một binding mới cho thân vòng lặp, và hàm được tạo trong lần lặp đó chụp lại đúng binding này. Nhờ vậy mỗi callback giữ một giá trị riêng. Với var thì tất cả vòng lặp dùng chung một biến ở phạm vi hàm, nên các callback cùng đọc một vùng nhớ và đều thấy giá trị cuối cùng. Nếu cần tương đương bằng closure thủ công, hãy tạo một hàm factory nhận giá trị làm tham số rồi trả về hàm đọc giá trị đó.' },
-      { q: 'Khi nào arrow function dùng this lại là lỗi chứ không phải lợi thế?', a: 'Arrow function chụp this theo scope, nên dùng nó làm method của object literal sẽ lấy this của module hoặc global, thường là undefined, và mọi truy cập thuộc tính trong đó sẽ hỏng. Tương tự, dùng arrow làm method class sẽ khiến this bị chụp ở thời điểm khởi tạo instance nên các instance khác nhau cùng chia sẻ một this. Arrow cũng không có arguments và không dùng được với new. Quy tắc nhớ: cần this động thì function thường, chỉ callback không cần this riêng thì arrow.' }
-    ],
-    pitfalls: [
-      'Tách method class ra biến rồi gọi, trong khi thân class luôn strict nên this thành undefined và truy cập thuộc tính ném lỗi.',
-      'Dùng arrow function làm method của object literal và hy vọng this trỏ tới object đó.',
-      'Tưởng arrow function có this riêng và phải bind thủ công, trong khi nó chụp this từ scope cha.',
-      'Nhầm closure với rò bộ nhớ, coi mọi closure đều là lỗi.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa giải thích được vì sao arrow function trong object literal lại không có this trỏ tới object.',
-      'Tôi giải thích được closure bằng ví dụ hai lần gọi makeCounter tạo ra hai bộ đếm hoàn toàn độc lập.',
-      'Tôi có thể sửa một sự kiện onClick bị hỏng do this mất liên kết mà không phải đụng tới logic giao diện.'
-    ],
-    refs: ['mdn-closure', 'mdn-this']
+  "anchor": "So sánh lỏng ép chuỗi về số mà không phân biệt chuỗi rỗng với số không = điều kiện lọc cho qua dữ liệu trống mà không có lỗi nào.",
+  "q": "Bốn biểu thức so sánh và ép kiểu dưới đây cho kết quả thế nào, và quy tắc nào đứng sau mỗi kết quả?",
+  "oral": "Dấu ba dấu bằng so sánh cả giá trị lẫn kiểu dữ liệu, nên hai biến khác kiểu chắc chắn khác nhau. Dấu hai dấu bằng ép kiểu theo một thứ tự quy tắc cố định rồi mới so sánh, và trong quy tắc đó null chỉ bằng được với undefined chứ không bằng với bất kỳ giá trị nào khác. Vì vậy null bằng undefined là đúng, còn null ba dấu bằng undefined là sai. Khi so một chuỗi số với một số, chuỗi được ép về số nên so khớp, nhưng đây là cạm bẫy vì chuỗi rỗng và chuỗi có khoảng trắng cũng ép về số không. NaN là ngoại lệ duy nhất trong hệ số không bằng chính nó. Giá trị falsy chỉ gồm false, số không, chuỗi rỗng, null, undefined và NaN; mọi thứ khác kể cả mảng rỗng và object rỗng đều truthy. Một điểm nữa là typeof null trả về chuỗi object, đây là lỗi lịch sử của ngôn ngữ được giữ lại để tương thích.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>=== (so sánh nghiêm)</strong>: So cả giá trị lẫn kiểu, không ép kiểu; 0 === \"\" ra false — đây là mặc định nên dùng, tránh mọi bẫy ép kiểu ngầm.</li><li><strong>== (so sánh lỏng)</strong>: Epk kiểu ngầm theo quy tắc ECMAScript trước khi so; 0 == \"\" ra true vì \"\" ép thành 0; quy tắc ép đủ phức tạp nên không nên dùng trong code mới.</li><li><strong>truthy / falsy</strong>: 6 giá trị falsy cố định: false, 0, -0, 0n, \"\", null, undefined; mọi giá trị khác (kể cả [] và {}) đều truthy — [] không falsy là bẫy kinh điển.</li><li><strong>null vs undefined</strong>: undefined: biến khai báo chưa gán hay thuộc tính không tồn tại; null: gán có chủ đích \"không có giá trị\"; null == undefined ra true nhưng === ra false.</li></ul><p>11h15 màn đối soát đưa mười dòng trống vào danh sách bỏ dù đơn thật vẫn còn hàng, và lọc đúng số không lại ra rỗng. Điều kiện dùng <code>qty == 0</code> trong khi qty từ biểu mẫu luôn là chuỗi. Bạn so chuỗi rỗng với số không mà engine ép cả hai về cùng giá trị nên không có lỗi nào trong console.</p><p>Dấu ba dấu bằng so cả kiểu lẫn giá trị nên khác kiểu là khác nhau. Dấu hai dấu bằng ép kiểu theo quy tắc cố định rồi mới so, và null chỉ bằng undefined chứ không bằng số nào. Chuỗi so với số thì chuỗi bị chuyển thành số trước nên chuỗi rỗng và chuỗi khoảng trắng đều thành số không. <code>NaN</code> không bằng chính nó, mảng rỗng vẫn truthy, và <code>typeof null</code> trả về object vì lỗi lịch sử.</p><ul><li><strong>Ba dấu bằng giữ nguyên kiểu, còn hai dấu bằng ép kiểu trước:</strong> cái đầu hỏi hai vế có cùng kiểu và cùng giá trị không, cái sau hỏi hai vế có thể ép về cùng giá trị không.</li><li><strong>Dùng khi:</strong> so sánh nội bộ thì ba dấu bằng sau khi đã ép kiểu ở biên bằng <code>Number</code>. <strong>Không dùng khi:</strong> không dùng hai dấu bằng cho dữ liệu form vì chuỗi trống luôn lọt lưới.</li><li><strong>Lỗi hay gặp:</strong> kiểm tra null bằng typeof, và tin null bằng số không trong khi nó chỉ bằng undefined.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> dữ liệu đã là số thật thì so sánh trực tiếp an toàn, dữ liệu còn là chuỗi từ API thì bạn phải chuẩn hóa và loại chuỗi trống trước rồi mới so.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> === và ép kiểu ngầm ở Bài L13, truthy/falsy và null/undefined ở Bài L14, và chuẩn hóa dữ liệu tại biên API ở Bài L19.</p>",
+  "code": "// [OK] Cách làm chuẩn: luôn dùng ===, ép kiểu ở biên bằng Number trước khi so\nconsole.log(null == undefined);\nconsole.log(0 == \"0\");\nconsole.log(NaN === NaN);\nconsole.log(Boolean([]), typeof null);",
+  "expected": "Bốn dòng lần lượt là true, true, false, rồi true object. Nguyên nhân: null chỉ bằng được undefined nên so sánh lỏng cho true, dấu ba dấu bằng so cả kiểu nên null khác undefined; chuỗi số được ép về số nên số không bằng chuỗi số; NaN không bằng chính nó nên kể cả dấu ba dấu bằng cũng cho false; mảng rỗng là object nên truthy; và typeof null trả về chuỗi object do lỗi lịch sử của ngôn ngữ được giữ lại để tương thích.",
+  "followups": [
+    {
+      "q": "Vì sao so sánh chuỗi với số là cạm bẫy, và nên so sánh thế nào cho an toàn?",
+      "a": "Vì chuỗi luôn được ép về số trước khi so sánh, nên chuỗi rỗng, chuỗi chỉ có khoảng trắng và cả chuỗi không phải số đều trở thành số không. Biểu mẫu gửi mọi giá trị dạng chuỗi nên điều kiện lọc bằng số sẽ lọc sai âm thầm. Cách an toàn là ép một lần ở biên vào dữ liệu bằng Number hoặc Number.parseFloat kèm kiểm tra isNaN, rồi từ đó trở đi chỉ so sánh số với số."
+    },
+    {
+      "q": "null và undefined khác nhau như thế nào trong thực tế, và khi nào nên dùng null?",
+      "a": "undefined mang nghĩa chưa được gán giá trị, ví dụ khai báo biến không khởi tạo, thuộc tính không tồn tại, hoặc hàm không nhận tham số. null là lựa chọn có chủ ý của lập trình viên để nói rõ chưa có giá trị. Vì vậy dùng null cho các trường nghiệp vụ chưa xác định như ngày hủy đơn hàng, còn để undefined cho thiếu sót kỹ thuật. Khi dùng với toán tử ba dấu bằng cả hai đều so sánh khác với mọi giá trị khác, nhưng với hai dấu bằng thì chúng bằng nhau."
+    },
+    {
+      "q": "Vì sao không dùng typeof để kiểm tra null, và cách kiểm tra null an toàn là gì?",
+      "a": "typeof null trả về chuỗi object vì một lỗi lịch sử từ đầu ngôn ngữ, và lỗi này được giữ lại để không phá vỡ code cũ. Cách kiểm tra đúng là so sánh trực tiếp với null, hoặc dùng toán tử nullish coalescing với giá trị mặc định để thay thế cả hai trường hợp. Lưu ý toán tử nullish chỉ thay thế khi giá trị là null hoặc undefined, còn toán tử or logic còn thay cả các giá trị falsy khác như số không và chuỗi rỗng."
+    }
+  ],
+  "pitfalls": [
+    "Dùng hai dấu bằng để so sánh chuỗi rỗng với số không và cả hai bị ép về cùng một giá trị nên điều kiện lọc chạy sai.",
+    "Tưởng typeof null trả về null và viết kiểm tra null bằng typeof, trong khi chuỗi trả về là object.",
+    "Dùng hai dấu bằng với null vì tin rằng null bằng số không, trong khi null chỉ bằng được undefined."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa nhớ hết thứ tự quy tắc ép kiểu của so sánh lỏng nên vẫn phải thử trong console.",
+    "Tôi giải thích được vì sao NaN không bằng chính nó và vì sao phải dùng Number.isNaN thay vì so sánh bằng.",
+    "Tôi chọn được ép kiểu ở biên API để mọi so sánh phía trong ứng dụng diễn ra trên số thật."
+  ],
+  "refs": [
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "B04",
+  "group": "B",
+  "topic": "Closure, ràng buộc this và arrow function so với function thường",
+  "prio": "P0",
+  "level": "L3",
+  "type": "concept",
+  "attacks": [
+    {
+      "q": "Vì sao arrow function không có <code>this</code> riêng, và điều đó gây lỗi gì trong thực tế?",
+      "a": "Arrow function không tạo ngữ cảnh thực thi riêng, nên this bên trong nó là this của phạm vi bao quanh tại thời điểm định nghĩa. Điều đó hữu ích khi bạn muốn giữ ngữ cảnh trong callback, nhưng gây lỗi khi bạn cần ngữ cảnh động: gán arrow function làm phương thức của object thì this không trỏ tới object đó, và dùng nó làm constructor thì không được phép. Lỗi thực tế hay gặp là viết phương thức xử lý sự kiện bằng arrow function rồi truy cập this để lấy phần tử, nhưng nhận được ngữ cảnh của module hoặc của lớp ngoài."
+    },
+    {
+      "q": "Bạn gọi một hàm callback và <code>this</code> bên trong bị mất. Ba cách sửa?",
+      "a": "Một là truyền một hàm đã ràng buộc ngữ cảnh, tạo bằng phương thức ràng buộc của hàm — rõ ràng và phổ biến nhất. Hai là dùng arrow function ở chỗ truyền callback, vì nó kế thừa ngữ cảnh từ nơi định nghĩa. Ba là khai báo phương thức của lớp bằng arrow function ngay tại chỗ, để mỗi instance có một hàm đã gắn ngữ cảnh — tiện nhưng tốn thêm bộ nhớ cho mỗi instance. Điều nên tránh là lưu ngữ cảnh vào một biến tạm rồi dùng nó, vì cách đó làm code khó đọc và dễ sai khi có nhiều tầng lồng nhau."
+    }
+  ],
+  "incident": "<p>10h10, ô tìm kiếm trong header bị hỏng ngay sau khi một dev đổi callback của setTimeout từ arrow sang function thường để cho đồng bộ với phần còn lại của file. Mười người dùng gõ vào ô tìm kiếm và không có gì xảy ra, còn console có một TypeError duy nhất nhắc tới this.run không phải là hàm. Đổi lại thành arrow thì ô tìm kiếm chạy bình thường, không phải sửa gì trong thân hàm run.</p>",
+  "askFirst": [
+    "Callback này cần this của instance hay this của nơi gọi? → Giải mã: cần this của instance (method gọi qua obj.m()) thì dùng function thường; cần this của nơi gọi (callback truyền cho thư viện ngoài như onClick) thì phải bind tường minh hoặc arrow để không mất this",
+    "Arrow function lấy this ở đâu vào thời điểm nào? → Giải mã: arrow giữ this của phạm vi nơi được khai báo vào lúc tạo, không đổi dù gọi ở đâu — khác function thường là this theo object gọi (call site) ở thời điểm thực thi"
+  ],
+  "predict": {
+    "q": "Bạn đoán this trong callback function thường truyền cho setTimeout bên trong một method class sẽ là gì?",
+    "a": "<p>Không còn là instance, vì thân class luôn chạy ở strict mode và hàm thường nhận this theo cách gọi chứ không theo nơi khai báo. Engine gọi callback với receiver riêng của nó, nên truy cập this.run không tìm thấy method và ném TypeError. Arrow function chụp this từ scope cha nên giữ đúng instance và gọi được method.</p>"
   },
-  {
-    id: 'B05',
-    group: 'B',
-    topic: 'Prototype chain và lớp ở tầng ứng dụng',
-    prio: 'P0',
-    level: 'L2',
-    type: 'concept',
-    attacks: [{"q":"Vì sao gọi phương thức qua biến tách rời lại mất ngữ cảnh?","a":"Vì ngữ cảnh được quyết định tại thời điểm gọi, dựa trên cách hàm được gọi chứ không dựa trên nơi nó được định nghĩa. Khi bạn viết obj.method(), ngữ cảnh là obj. Khi bạn gán const f = obj.method rồi gọi f(), không còn object nào đứng trước dấu chấm, nên ngữ cảnh là undefined ở chế độ nghiêm ngặt hoặc đối tượng toàn cục ở chế độ thường. Đây chính là lý do callback hay bị mất ngữ cảnh, và cũng là lý do việc ràng buộc ngữ cảnh tồn tại."},{"q":"Kế thừa theo prototype và kế thừa theo lớp khác nhau ở đâu?","a":"Kế thừa theo lớp là cú pháp được xây trên cùng cơ chế prototype, nên về bản chất không có hai hệ thống chạy song song. Khác biệt thực tế nằm ở chỗ tra cứu thuộc tính vẫn đi theo chuỗi prototype, nên bạn có thể thêm thuộc tính vào nguyên mẫu của một hàm tạo và mọi instance thấy ngay — điều không làm được với lớp theo nghĩa chặt. Ngoài ra lớp có những ràng buộc mà hàm tạo không có: không gọi được nếu thiếu từ khoá khởi tạo, và phải gọi hàm khởi tạo của lớp cha trước khi dùng ngữ cảnh. Hiểu điều này quan trọng vì nó giải thích những hành vi trông có vẻ lạ khi trộn hai cách viết."}],
-    incident: '<p>13h20, lớp HttpError kế thừa Error được đưa vào dùng cho tầng gọi API. Bộ ghi log lỗi của nhóm gửi object lỗi lên hệ thống tập trung, và trên dashboard toàn bộ lỗi 404 hiện ra dưới dạng object rỗng nên không ai biết lỗi gì. Mười lỗi trong ngày đều bị mất thông tin, trong khi đọc trực tiếp e.message trong code thì vẫn ra đúng chuỗi Not Found. Không có exception nào, chỉ có log thiếu dữ liệu ở đúng chỗ cần dữ liệu nhất.</p>',
-    askFirst: [
-      'Thuộc tính message do engine tạo có hiện khi duyệt key không?',
-      'Vì sao JSON.stringify một object lỗi lại ra chuỗi rỗng?'
-    ],
-    predict: { q: 'Bạn đoán Object.keys của một object Error kế thừa chỉ có thuộc tính message sẽ trả về gì?', a: '<p>Với new Error("x"), Object.keys trả về [] vì message do engine tạo ở dạng non-enumerable. Với lớp HttpError trong đoạn code, name và status là thuộc tính tự gán nên enumerable: Object.keys ra name và status, còn JSON.stringify(e) ra {"name":"HttpError","status":404}, message vẫn không có.</p>' },
-    anchor: 'Thuộc tính message do engine tạo ở dạng non-enumerable mà log lại serialize object lỗi = thông tin lỗi biến mất trên hệ thống tập trung dù đọc trực tiếp vẫn đúng.',
-    q: 'Prototype chain dùng để làm gì trong JavaScript, và khi viết một lớp lỗi HTTP trong dự án thật thì việc kế thừa Error ảnh hưởng gì tới việc kiểm tra lỗi?',
-    oral: 'Object trong JavaScript đều có liên kết nội bộ tới prototype, và prototype lại trỏ tới prototype khác, tạo thành chuỗi tra cứu thuộc tính. Đó là cơ chế chia sẻ hành vi mà không cần kế thừa class: object bình thường có prototype là Object.prototype nên vẫn có hasOwnProperty và toString. Cú pháp class tạo một hàm constructor, gán method lên prototype của hàm đó, và mọi instance tạo bằng new đều trỏ về cùng một object. instanceof đi duyệt chuỗi prototype — giống isinstance() duyệt __mro__ trong Python — nên lớp con của Error thỏa cả instanceof Error lẫn instanceof lớp con, và lớp bọc lỗi HTTP nên kế thừa Error để mọi nơi bắt lỗi theo Error vẫn bắt được. Chi tiết hay gây bất ngờ là thuộc tính message do engine tạo ở dạng non-enumerable nên không xuất hiện khi duyệt key, còn thuộc tính bạn tự gán thì hiện bình thường.',
-    deep: '<p>13h20 dashboard lỗi hiện toàn object rỗng dù đọc e.message trực tiếp vẫn ra Not Found. Lớp HttpError kế thừa Error nên log serialize mất hết message, và mười lỗi trong ngày không tra được. Bạn thấy dữ liệu đúng ở code mà sai ở hệ thống tập trung vì hai nơi đọc object theo hai cách khác nhau.</p><p>Mỗi object có liên kết nội bộ tới prototype, và đọc thuộc tính vắng mặt thì engine leo tiếp tới null. Cú pháp class tạo hàm constructor, gán method lên prototype chung, và new nối instance về prototype đó nên mọi instance dùng chung một bản method. Toán tử instanceof leo đúng chuỗi này nên lớp con của Error thỏa cả hai kiểm tra.</p><ul><li><strong>Thuộc tính riêng nằm trên instance, còn method nằm trên prototype:</strong> cái đầu mỗi object giữ một bản nên tốn bộ nhớ theo số lượng, cái sau cả họ dùng chung một bản.</li><li><strong>Dùng khi:</strong> nhiều instance cùng hành vi hay bọc lỗi HTTP cần instanceof Error để mọi catch cũ vẫn bắt được. <strong>Không dùng khi:</strong> object cấu hình một lần hay dữ liệu thuần thì factory và interface gọn hơn class.</li><li><strong>Lỗi hay gặp:</strong> tưởng message hiện khi duyệt key trong khi engine tạo nó dạng non-enumerable, và dựa vào instanceof qua iframe hay worker nơi prototype khác realm.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> lỗi chỉ sống trong một bundle thì instanceof đủ, lỗi đi qua worker hay nhiều bản thư viện thì bạn phải kiểm tra name và status tường minh và serialize message bằng tay trước khi gửi log.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: lớp lỗi nghiệp vụ nên kế thừa Error để instanceof Error vẫn bắt được\nclass HttpError extends Error {\n  constructor(status, message) {\n    super(message);\n    this.name = "HttpError"; // tự gán nên enumerable\n    this.status = status;\n  }\n}\nconst e = new HttpError(404, "Not Found");\nconsole.log(e instanceof HttpError, e instanceof Error, e.message, e.name);\nconsole.log(Object.keys(e)); // chỉ thấy name, status — message là non-enumerable',
-    expected: 'In ra hai dòng: true true Not Found HttpError, rồi [ \'name\', \'status\' ]. Phân tích: class HttpError extends Error khiến prototype của instance nối vào HttpError.prototype rồi tới Error.prototype, nên instanceof duyệt chuỗi và thỏa cả hai — đó là lý do lớp lỗi nghiệp vụ nên kế thừa Error để mọi chỗ catch (e) theo Error vẫn bắt được. e.message là "Not Found" vì engine tạo thuộc tính message từ tham số truyền cho Error ở dạng non-enumerable, còn this.name = "HttpError" và this.status = 404 do constructor tự gán nên là thuộc tính thường và enumerable. Vì vậy Object.keys(e) chỉ trả về [ \'name\', \'status\' ], và JSON.stringify(e) cho {"name":"HttpError","status":404}, message vẫn không xuất hiện vì nó non-enumerable. Đọc e.message thì được, nhưng duyệt key hay serialize thì mất.',
-    followups: [
-      { q: 'Vì sao instanceof đôi khi trả về false dù vẫn là cùng một kiểu dữ liệu?', a: 'instanceof duyệt chuỗi prototype của đối tượng, nên nó thất bại khi giá trị đến từ realm khác như cửa sổ iframe, khi dữ liệu được chuyển qua worker, hoặc khi chạy nhiều bản sao thư viện trong cùng bundle và mỗi bản có prototype riêng. Nó cũng trả về false nếu ai đó gán lại prototype của object. Trong code chạy qua nhiều bundle hoặc dữ liệu đi qua worker, hãy kiểm tra lỗi bằng thuộc tính tường minh như name hoặc status thay vì chỉ dựa vào instanceof.' },
-      { q: 'Field trong class và prototype method khác nhau như thế nào về bộ nhớ?', a: 'Field khai báo trong thân class được gán trong constructor, tức mỗi instance có một bản riêng trong bộ nhớ, nên tốn bộ nhớ tuyến tính theo số instance. Prototype method nằm trên object prototype dùng chung, chỉ tồn tại một bản cho mọi instance. Vì vậy dữ liệu riêng của từng đối tượng đặt ở field còn hành vi đặt ở method. Nếu nhầm chỗ, ví dụ đặt dữ liệu lớn vào prototype, mọi instance sẽ cùng chia sẻ một giá trị và bug sẽ rất khó truy.' },
-      { q: 'Khi nào đáng dùng class thay vì hàm factory hoặc object thường?', a: 'Class đáng dùng khi cần nhiều instance cùng hành vi, cần quan hệ kế thừa thật sự như một lớp lỗi kế thừa Error, và muốn instanceof hoạt động. Nếu chỉ cần một hàm tạo lịch sử hay một object cấu hình thì hàm factory ngắn hơn, dễ test và không kéo theo khái niệm prototype. Với codebase dùng TypeScript, type và interface thường đã đủ để mô tả dữ liệu mà chưa cần class thật.' }
-    ],
-    pitfalls: [
-      'Tưởng thuộc tính message cũng xuất hiện khi duyệt key của object lỗi, trong khi engine tạo nó ở dạng non-enumerable.',
-      'Dựa vào instanceof để nhận diện lỗi trong khi dữ liệu đi qua iframe hoặc worker nên instanceof trả về false.',
-      'Đặt dữ liệu riêng của từng instance lên prototype rồi mọi instance bất ngờ chia sẻ chung một giá trị.',
-      'Quên gọi super trong constructor của lớp con, khiến khởi tạo hỏng.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa giải thích được vì sao thuộc tính message do engine tạo không xuất hiện khi duyệt key của object lỗi.',
-      'Tôi giải thích được prototype chain bằng ví dụ một object thường vẫn gọi được phương thức toString kế thừa từ Object.prototype.',
-      'Tôi có thể viết lớp lỗi HTTP kế thừa Error để cả instanceof Error lẫn instanceof lớp con đều cho kết quả đúng.'
-    ],
-    refs: ['mdn-execution-model']
+  "anchor": "Callback cần this của instance mà dùng function thường nhận this theo nơi gọi = this không còn là object nên truy cập method ném TypeError.",
+  "q": "Closure giữ gì lại sau khi hàm ngoài kết thúc, và vì sao arrow function khác function thường khi nói về ràng buộc this?",
+  "oral": "Closure là khả năng một hàm vẫn truy cập được biến của phạm vi đã kết thúc, vì mỗi lần gọi hàm tạo ra một môi trường riêng và các hàm con giữ tham chiếu tới môi trường đó. Nhờ vậy mỗi lần gọi makeCounter sinh ra một bộ đếm riêng, và các callback được lưu trong mảng hay đưa cho setTimeout vẫn nhớ đúng giá trị đã bị ghi đè ở các lần sau. Về this, function thường nhận this theo quy tắc gọi: gọi như method của object thì this là object đó, gọi tách khỏi object thì this không còn là object đó, và trong strict mode thì thành undefined. Arrow function không có tham số this, nó chụp lại this tại nơi được tạo ra, nên luôn bám theo this của scope cha và không đổi khi được truyền đi. Vì vậy callback nên dùng arrow, còn method cần this động thì phải dùng function thường. Một ngoại lệ đáng nhớ là dùng arrow function cho method trong object literal sẽ this lấy từ scope ngoài và thường là undefined.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>closure (JS)</strong>: Hàm con giữ tham chiếu tới biến trong phạm vi hàm cha kể cả sau khi cha kết thúc; biến được giữ bởi con trỏ scope chứ không phải copy giá trị.</li><li><strong>this (ràng buộc call)</strong>: this không phải thuộc về hàm định nghĩa — nó là object gọi: obj.m() thì this là obj, m() trần thì this là global (hay undefined trong strict mode), bind() khóa từ trước.</li><li><strong>arrow function (this lexical)</strong>: Arrow không có this riêng — nó giữ this của nơi khai báo (lexical this). Không được bind, không được làm constructor, không có arguments.</li><li><strong>method trong object literal</strong>: m() { } trong object tự ràng buộc this là chính object đó (shorthand method) — khác với gán function thường obj.f = function() mà this mất đi.</li></ul><p>10h10 ô tìm kiếm chết ngay sau khi dev đổi callback của setTimeout từ arrow sang function thường. Console chỉ có một TypeError nhắc this.run không phải hàm, và đổi lại arrow thì mọi thứ chạy bình thường. Bạn không sửa logic nào mà chỉ đổi cách hàm nhận this.</p><p>Closure là hàm con giữ tham chiếu tới môi trường của lần gọi đã kết thúc, nhờ đó counter riêng, cache và callback bất đồng bộ còn nhớ đúng dữ liệu. Function thường nhận this theo cách gọi nên tách method ra biến là mất liên kết, và trong strict mode this thành undefined. Arrow function không có this riêng nên chụp this của scope cha tại nơi định nghĩa và giữ nguyên khi truyền đi.</p><ul><li><strong>Function thường lấy this lúc gọi, còn arrow chụp this lúc tạo:</strong> cái đầu đổi theo receiver trước dấu chấm, cái sau bám theo scope bao quanh dù bạn truyền nó đi đâu.</li><li><strong>Dùng khi:</strong> callback cần this của instance thì arrow, method cần this động hay cần <code>arguments</code> và <code>new</code> thì function thường. <strong>Không dùng khi:</strong> không dùng arrow làm method của object literal vì this sẽ trỏ ra module ngoài.</li><li><strong>Lỗi hay gặp:</strong> tách method class ra biến rồi gọi trần, và nhầm mọi closure đều là rò bộ nhớ.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> callback một lần giữ ngữ cảnh thì arrow gọn nhất, method truyền cho onClick hay thư viện ngoài thì bạn phải bind tường minh, còn code chạy strict mode thì lỗi mất this lộ ra sớm thay vì lặng lẽ trỏ global.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Closure và this ở Bài L12, arrow và phương thức object ở Bài L17, và pattern sửa onClick mất this trong component ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: callback cần this của instance thì dùng arrow, method cần this động thì dùng function thường\nclass SearchBox {\n  constructor() {\n    this.query = \"\";\n  }\n  start() {\n    setTimeout(function () {\n      this.run(); // this ở đây là Timeout của Node, không phải box\n    }, 0);\n  }\n  startArrow() {\n    setTimeout(() => {\n      this.run(); // arrow chụp this của startArrow tức instance box\n    }, 0);\n  }\n  run() {\n    console.log(\"run\", this.query);\n  }\n}\nconst box = new SearchBox();\nbox.start();\nbox.startArrow();",
+  "expected": "Chạy nguyên snippet bằng Node thì tiến trình dừng ngay ở timer thứ nhất với TypeError: this.run is not a function và exit code 1, nên dòng run ... của startArrow không bao giờ được in. Phân tích: thân class luôn chạy ở strict mode, nên this trong callback function thường không còn là box; Node truyền chính đối tượng Timeout làm this, và Timeout không có method run nên typeof this.run là undefined và lời gọi ném lỗi. Nếu bắt được lỗi để tiến trình sống tiếp thì timer thứ hai mới chạy và in ra run \"\" — arrow function không có this riêng, nó chụp this của startArrow tức instance box, nên this.run tìm thấy method và this.query là chuỗi rỗng. Callback cần this của instance thì dùng arrow, method cần this động theo nơi gọi thì dùng function thường.",
+  "followups": [
+    {
+      "q": "Vì sao tách một method class ra khỏi object rồi gọi lại sẽ hỏng, và cách sửa ra sao?",
+      "a": "Method class được gọi với this là chính object khi dùng dấu chấm. Khi bạn lưu method vào một biến rồi gọi biến đó, lời gọi không còn receiver nên this trở thành undefined, và truy cập thuộc tính sẽ ném lỗi ngay. Ba cách sửa là gọi trực tiếp trên object, dùng bind khi truyền method đi nơi khác, hoặc chuyển method thành arrow function để this gắn theo scope. Trong ứng dụng, nguyên nhân phổ biến nhất là truyền method trực tiếp làm prop cho onClick hay cho mảng sự kiện."
+    },
+    {
+      "q": "Vòng lặp tạo closure theo cách nào và tại sao từng lần lặp với let lại tách binding?",
+      "a": "Mỗi lần lặp với khai báo let hoặc const tạo một binding mới cho thân vòng lặp, và hàm được tạo trong lần lặp đó chụp lại đúng binding này. Nhờ vậy mỗi callback giữ một giá trị riêng. Với var thì tất cả vòng lặp dùng chung một biến ở phạm vi hàm, nên các callback cùng đọc một vùng nhớ và đều thấy giá trị cuối cùng. Nếu cần tương đương bằng closure thủ công, hãy tạo một hàm factory nhận giá trị làm tham số rồi trả về hàm đọc giá trị đó."
+    },
+    {
+      "q": "Khi nào arrow function dùng this lại là lỗi chứ không phải lợi thế?",
+      "a": "Arrow function chụp this theo scope, nên dùng nó làm method của object literal sẽ lấy this của module hoặc global, thường là undefined, và mọi truy cập thuộc tính trong đó sẽ hỏng. Tương tự, dùng arrow làm method class sẽ khiến this bị chụp ở thời điểm khởi tạo instance nên các instance khác nhau cùng chia sẻ một this. Arrow cũng không có arguments và không dùng được với new. Quy tắc nhớ: cần this động thì function thường, chỉ callback không cần this riêng thì arrow."
+    }
+  ],
+  "pitfalls": [
+    "Tách method class ra biến rồi gọi, trong khi thân class luôn strict nên this thành undefined và truy cập thuộc tính ném lỗi.",
+    "Dùng arrow function làm method của object literal và hy vọng this trỏ tới object đó.",
+    "Tưởng arrow function có this riêng và phải bind thủ công, trong khi nó chụp this từ scope cha.",
+    "Nhầm closure với rò bộ nhớ, coi mọi closure đều là lỗi."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa giải thích được vì sao arrow function trong object literal lại không có this trỏ tới object.",
+    "Tôi giải thích được closure bằng ví dụ hai lần gọi makeCounter tạo ra hai bộ đếm hoàn toàn độc lập.",
+    "Tôi có thể sửa một sự kiện onClick bị hỏng do this mất liên kết mà không phải đụng tới logic giao diện."
+  ],
+  "refs": [
+    "mdn-closure",
+    "mdn-this"
+  ]
+},
+{
+  "id": "B05",
+  "group": "B",
+  "topic": "Prototype chain và lớp ở tầng ứng dụng",
+  "prio": "P0",
+  "level": "L2",
+  "type": "concept",
+  "attacks": [
+    {
+      "q": "Vì sao gọi phương thức qua biến tách rời lại mất ngữ cảnh?",
+      "a": "Vì ngữ cảnh được quyết định tại thời điểm gọi, dựa trên cách hàm được gọi chứ không dựa trên nơi nó được định nghĩa. Khi bạn viết obj.method(), ngữ cảnh là obj. Khi bạn gán const f = obj.method rồi gọi f(), không còn object nào đứng trước dấu chấm, nên ngữ cảnh là undefined ở chế độ nghiêm ngặt hoặc đối tượng toàn cục ở chế độ thường. Đây chính là lý do callback hay bị mất ngữ cảnh, và cũng là lý do việc ràng buộc ngữ cảnh tồn tại."
+    },
+    {
+      "q": "Kế thừa theo prototype và kế thừa theo lớp khác nhau ở đâu?",
+      "a": "Kế thừa theo lớp là cú pháp được xây trên cùng cơ chế prototype, nên về bản chất không có hai hệ thống chạy song song. Khác biệt thực tế nằm ở chỗ tra cứu thuộc tính vẫn đi theo chuỗi prototype, nên bạn có thể thêm thuộc tính vào nguyên mẫu của một hàm tạo và mọi instance thấy ngay — điều không làm được với lớp theo nghĩa chặt. Ngoài ra lớp có những ràng buộc mà hàm tạo không có: không gọi được nếu thiếu từ khoá khởi tạo, và phải gọi hàm khởi tạo của lớp cha trước khi dùng ngữ cảnh. Hiểu điều này quan trọng vì nó giải thích những hành vi trông có vẻ lạ khi trộn hai cách viết."
+    }
+  ],
+  "incident": "<p>13h20, lớp HttpError kế thừa Error được đưa vào dùng cho tầng gọi API. Bộ ghi log lỗi của nhóm gửi object lỗi lên hệ thống tập trung, và trên dashboard toàn bộ lỗi 404 hiện ra dưới dạng object rỗng nên không ai biết lỗi gì. Mười lỗi trong ngày đều bị mất thông tin, trong khi đọc trực tiếp e.message trong code thì vẫn ra đúng chuỗi Not Found. Không có exception nào, chỉ có log thiếu dữ liệu ở đúng chỗ cần dữ liệu nhất.</p>",
+  "askFirst": [
+    "Thuộc tính message do engine tạo có hiện khi duyệt key không? → Giải mã: không — message do engine gán làm own non-enumerable property nên Object.keys và for...in chỉ hiện name; muốn message hiện phải gán lại own enumerable property hoặc dùng JSON.stringify với replacer",
+    "Vì sao JSON.stringify một object lỗi lại ra chuỗi rỗng? → Giải mã: JSON.stringify bỏ mọi non-enumerable property; message của Error là non-enumerable nên object lỗi serialize ra {} — muốn gửi log phải gán message thành property enumerable hoặc extract thủ công trước"
+  ],
+  "predict": {
+    "q": "Bạn đoán Object.keys của một object Error kế thừa chỉ có thuộc tính message sẽ trả về gì?",
+    "a": "<p>Với new Error(\"x\"), Object.keys trả về [] vì message do engine tạo ở dạng non-enumerable. Với lớp HttpError trong đoạn code, name và status là thuộc tính tự gán nên enumerable: Object.keys ra name và status, còn JSON.stringify(e) ra {\"name\":\"HttpError\",\"status\":404}, message vẫn không có.</p>"
   },
-  {
-    id: 'B06',
-    group: 'B',
-    topic: 'Call stack, event loop, task và microtask với Promise và async await',
-    prio: 'P0',
-    level: 'L3',
-    type: 'predict',
-    attacks: [{"q":"Vì sao <code>setTimeout(fn, 0)</code> không chạy trước một promise đã resolve?","a":"Vì promise và timer nằm ở hai hàng đợi khác nhau với mức ưu tiên khác nhau. Sau khi đoạn mã đồng bộ hiện tại kết thúc, hệ thống xử lý hết toàn bộ hàng đợi vi tác vụ — nơi callback của promise nằm — rồi mới lấy một tác vụ vĩ mô từ hàng đợi còn lại, nơi timer nằm. Độ trễ bằng không chỉ có nghĩa là \"sớm nhất có thể sau khi hàng đợi vi tác vụ rỗng\", chứ không có nghĩa là chạy ngay. Đây là lý do thứ tự thực thi trong các ví dụ về vòng lặp sự kiện thường gây bất ngờ nếu chỉ đọc code theo thứ tự viết."},{"q":"Nếu một vi tác vụ liên tục đẩy thêm vi tác vụ vào hàng đợi thì chuyện gì xảy ra?","a":"Hàng đợi vi tác vụ không bao giờ rỗng, nên hệ thống không bao giờ chuyển sang tác vụ vĩ mô tiếp theo. Hệ quả là giao diện đứng hoàn toàn: không vẽ lại, không xử lý sự kiện người dùng, và timer không chạy. Đây là một dạng treo khó chẩn đoán vì tiến trình vẫn dùng CPU và không có lỗi nào được ném ra. Cách phòng là không tạo chuỗi vi tác vụ vô hạn, và nếu cần xử lý khối lượng lớn thì chia thành các phần nhỏ rồi nhường quyền cho tác vụ vĩ mô giữa các phần."}],
-    incident: '<p>15h00, màn hình xem trước đơn hàng chạy một hàm async ghi lại nhật ký thao tác sau khi gọi API. Nhân viên bấm Lưu và nhật ký ghi thao tác tiếp theo lên trước thao tác vừa bấm, còn spinner tắt sau khi dữ liệu đã hiện. Mười người dùng thấy thứ tự dòng thời gian sai lệch trên trang lịch sử, và nếu hàm đồng bộ trước đó chạy nặng thì giao diện đứng hình một nhịp. Không có exception nào, chỉ có thứ tự log khác với thứ tự thao tác thật.</p>',
-    askFirst: [
-      'Phần code sau await chạy ở hàng đợi nào?',
-      'Vì sao setTimeout với độ trễ không vẫn chạy sau Promise callback?'
-    ],
-    predict: { q: 'Bạn đoán thứ tự in ra của console.log đồng bộ, callback Promise.resolve().then và setTimeout độ trễ không?', a: '<p>Code đồng bộ in trước, rồi microtask của Promise, cuối cùng mới tới task của setTimeout. Event loop dọn hết microtask đang chờ trước khi lấy một task mới, và mỗi task lại tạo cơ hội dọn microtask. Vì vậy giảm độ trễ của setTimeout xuống không giúp nó chạy trước.</p>' },
-    anchor: 'Microtask luôn được dọn hết trước khi lấy task mới mà setTimeout nằm ở hàng đợi task = callback hẹn giờ chạy sau cả phần code sau await.',
-    q: 'Đoạn code in log dưới đây theo đúng thứ tự nào, và vì sao phần nào chạy đồng bộ còn phần nào bị đẩy sang hàng đợi?',
-    oral: 'JavaScript chạy mã đồng bộ trên một call stack duy nhất, và mỗi hàm đồng bộ giữ trọn call stack cho tới khi return. Sau đó event loop lấy việc từ hàng đợi task như setTimeout, sự kiện giao diện hay xử lý IO, nhưng trước khi lấy task mới nó luôn dọn hết hàng đợi microtask đã sẵn sàng. Promise callback và phần code sau await đều được xếp vào microtask, còn setTimeout nằm ở task nên luôn chạy sau. Dễ nhầm nhất là await: nó tạm dừng hàm ngay cả khi không có Promise nào, và phần còn lại được lên lịch như một microtask. Vì vậy trong đoạn ví dụ, A, D, F chạy đồng bộ theo thứ tự xuất hiện trong mã, C chạy trước E vì được xếp vào microtask sớm hơn, và B chạy cuối cùng vì nằm trong task. Nếu thay setTimeout bằng một microtask ví dụ queueMicrotask thì thứ tự hoàn toàn khác, vì cả hai lúc đó đều là microtask và sẽ xen theo thứ tự được lên lịch.',
-    deep: '<p>15h00 trang lịch sử ghi thao tác tiếp theo lên trước thao tác vừa bấm, và spinner tắt sau khi dữ liệu đã hiện. Hàm async ghi nhật ký sau gọi API nhưng phần sau <code>await</code> không chạy ngay. Bạn đọc code theo thứ tự dòng nên tưởng thứ tự chạy cũng vậy.</p><p>Code đồng bộ chiếm call stack tới khi return. Event loop chỉ lấy việc khi stack rỗng. Việc chờ nằm ở hai hàng: task cho <code>setTimeout</code> và sự kiện IO, microtask cho callback Promise và phần sau <code>await</code>. Gặp <code>await</code> thì hàm dừng, trả quyền về stack, phần còn lại xếp vào microtask — y hệt event loop của asyncio: <code>await</code> như <code>yield</code>, phần sau await được schedule lại thành microtask.</p><ul><li><strong>Microtask dọn sạch trước, còn task chờ lượt:</strong> microtask chạy hết rồi mới lấy một task, sau mỗi task lại quay về dọn microtask. Vì vậy Promise callback luôn thắng <code>setTimeout</code> hẹn 0ms.</li><li><strong>Dùng khi:</strong> tách việc nặng khỏi microtask để giao diện còn vẽ lại, giống React gộp nhiều setState trong một handler rồi mới render một lần. <strong>Không dùng khi:</strong> không xếp vòng lặp await vô hạn vào microtask vì event loop không bao giờ tới task vẽ.</li><li><strong>Lỗi hay gặp:</strong> tưởng <code>await null</code> chạy tiếp ngay, và tưởng thân async chạy song song từ lúc gọi.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> một microtask lẻ thì thứ tự chỉ lệch vài bước, chuỗi microtask tự sinh thêm microtask thì bạn treo luôn giao diện và phải cắt nhỏ vòng lặp.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: đồng bộ chạy trước, rồi microtask dọn hết, cuối cùng mới tới task\nconsole.log("A");\nsetTimeout(() => console.log("B"), 0); // task — chạy cuối\nPromise.resolve().then(() => console.log("C")); // microtask\n(async () => {\n  console.log("D");\n  await null; // dừng tại đây, phần sau là microtask\n  console.log("E");\n})();\nconsole.log("F");',
-    expected: 'Thứ tự in ra là A, D, F, C, E, B. Nguyên nhân: A, D, F chạy đồng bộ ngay khi được gọi, vì hàm async chạy tới lệnh await mới tạm dừng và phần còn lại được lên lịch như một microtask. Sau khi call stack rỗng, microtask queue được dọn theo thứ tự lên lịch nên C chạy trước E. Cuối cùng mới đến task của setTimeout nên B chạy sau cùng, dù thời gian chờ là không.',
-    followups: [
-      { q: 'Vì sao code sau await chạy chậm hơn Promise.resolve().then dù không có Promise nào?', a: 'Vì await trên bất kỳ giá trị nào cũng phải đi qua một bước bất đồng bộ chuẩn, nên phần còn lại của hàm async luôn được lên lịch ở một microtask kế tiếp chứ không chạy tức thì. Trong khi đó callback truyền cho then được gọi khi promise đã hoàn tất, cũng nằm trong microtask nhưng được đẩy vào hàng đợi sớm hơn vì nó xuất hiện trước trong mã và được ghi nhận ngay khi gọi Promise.resolve. Thứ tự cuối cùng quyết định bởi thứ tự lên lịch trong hàng đợi microtask chứ không phải thứ tự viết dòng thẳng.' },
-      { q: 'Khi nào microtask gây treo giao diện, và cách nhận biết ra sao?', a: 'Khi một chuỗi microtask không bao giờ kết thúc, ví dụ vòng lặp await trên một giá trị sẵn có, event loop sẽ không bao giờ quay lại lấy task nên giao diện không vẽ lại và không nhận được input. Cách nhận biết là mở tab Performance trong devtools và nhìn mục Task nào chiếm 100 phần trăm thời gian với các lát nhỏ lặp lại. Cách tránh là cắt nhỏ vòng lặp, đưa phần tính nặng ra khỏi microtask, hoặc hợp nhất các promise thành một chuỗi tuần tự thay vì hàng trăm microtask nhỏ.' },
-      { q: 'Tại sao setTimeout với độ trễ không thay đổi được thứ tự chạy của nó với microtask?', a: 'Vì setTimeout luôn đẩy callback vào hàng đợi task, còn microtask luôn được dọn trước khi lấy task kế tiếp. Giảm độ trễ xuống không chỉ làm callback được gọi sớm hơn theo thời gian, mà còn phải chờ microtask rỗng. Vì vậy callback của setTimeout không bao giờ chạy trước dù hàng nghìn microtask đang chờ đã được lên lịch trước đó.' }
-    ],
-    pitfalls: [
-      'Tưởng setTimeout với độ trễ không sẽ chạy trước microtask vì được gọi trước trong mã.',
-      'Tưởng await một giá trị không phải Promise thì phần sau chạy ngay, trong khi nó vẫn phải qua một microtask.',
-      'Tưởng phần thân của hàm async chạy song song khi gọi, trong khi nó chạy đồng bộ tới lệnh await đầu tiên.',
-      'Dùng queueMicrotask cho tác vụ nặng và vô tình chặn không cho event loop chạy nhiệm vụ khác.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa nhớ rõ sự khác biệt giữa task và microtask mà không cần mở tài liệu.',
-      'Tôi giải thích được vì sao C chạy trước E và B chạy cuối cùng trong ví dụ của câu hỏi này.',
-      'Tôi có thể khoanh vùng một vòng lặp await nặng đang treo giao diện bằng tab Performance.'
-    ],
-    refs: ['mdn-execution-model', 'mdn-promise']
+  "anchor": "Thuộc tính message do engine tạo ở dạng non-enumerable mà log lại serialize object lỗi = thông tin lỗi biến mất trên hệ thống tập trung dù đọc trực tiếp vẫn đúng.",
+  "q": "Prototype chain dùng để làm gì trong JavaScript, và khi viết một lớp lỗi HTTP trong dự án thật thì việc kế thừa Error ảnh hưởng gì tới việc kiểm tra lỗi?",
+  "oral": "Object trong JavaScript đều có liên kết nội bộ tới prototype, và prototype lại trỏ tới prototype khác, tạo thành chuỗi tra cứu thuộc tính. Đó là cơ chế chia sẻ hành vi mà không cần kế thừa class: object bình thường có prototype là Object.prototype nên vẫn có hasOwnProperty và toString. Cú pháp class tạo một hàm constructor, gán method lên prototype của hàm đó, và mọi instance tạo bằng new đều trỏ về cùng một object. instanceof đi duyệt chuỗi prototype — giống isinstance() duyệt __mro__ trong Python — nên lớp con của Error thỏa cả instanceof Error lẫn instanceof lớp con, và lớp bọc lỗi HTTP nên kế thừa Error để mọi nơi bắt lỗi theo Error vẫn bắt được. Chi tiết hay gây bất ngờ là thuộc tính message do engine tạo ở dạng non-enumerable nên không xuất hiện khi duyệt key, còn thuộc tính bạn tự gán thì hiện bình thường.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>prototype chain</strong>: Mỗi object có [[Prototype]] trỏ object khác; đọc thuộc tính không có ở object thì chạy theo chuỗi prototype; dừng ở null. this là object hiện hành, không phải prototype.</li><li><strong>inheriting Error</strong>: Kế thừa Error trực tiếp có vấn đề: name và message được set bằng own property từ bên trong, không phải prototype; instanceof mới ra đúng nếu prototype chain được dựng thủ công đúng.</li><li><strong>instanceof</strong>: Kiểm tra [[Prototype]] có nằm trên chuỗi hay không; qua realm khác (iframe, worker, hai bản thư viện) prototype khác nhau nên instanceof sai.</li><li><strong>non-enumerable property</strong>: Thuộc tính không hiện trong for...in hay Object.keys; message của Error là non-enumerable nên duyệt key chỉ thấy name, không thấy message.</li></ul><p>13h20 dashboard lỗi hiện toàn object rỗng dù đọc e.message trực tiếp vẫn ra Not Found. Lớp HttpError kế thừa Error nên log serialize mất hết message, và mười lỗi trong ngày không tra được. Bạn thấy dữ liệu đúng ở code mà sai ở hệ thống tập trung vì hai nơi đọc object theo hai cách khác nhau.</p><p>Mỗi object có liên kết nội bộ tới prototype, và đọc thuộc tính vắng mặt thì engine leo tiếp tới null. Cú pháp class tạo hàm constructor, gán method lên prototype chung, và new nối instance về prototype đó nên mọi instance dùng chung một bản method. Toán tử instanceof leo đúng chuỗi này nên lớp con của Error thỏa cả hai kiểm tra.</p><ul><li><strong>Thuộc tính riêng nằm trên instance, còn method nằm trên prototype:</strong> cái đầu mỗi object giữ một bản nên tốn bộ nhớ theo số lượng, cái sau cả họ dùng chung một bản.</li><li><strong>Dùng khi:</strong> nhiều instance cùng hành vi hay bọc lỗi HTTP cần instanceof Error để mọi catch cũ vẫn bắt được. <strong>Không dùng khi:</strong> object cấu hình một lần hay dữ liệu thuần thì factory và interface gọn hơn class.</li><li><strong>Lỗi hay gặp:</strong> tưởng message hiện khi duyệt key trong khi engine tạo nó dạng non-enumerable, và dựa vào instanceof qua iframe hay worker nơi prototype khác realm.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> lỗi chỉ sống trong một bundle thì instanceof đủ, lỗi đi qua worker hay nhiều bản thư viện thì bạn phải kiểm tra name và status tường minh và serialize message bằng tay trước khi gửi log.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Prototype chain và instanceof ở Bài L14, Error subclass đúng pattern ở Bài L19, và cách serialize lỗi qua worker/iframe ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: lớp lỗi nghiệp vụ nên kế thừa Error để instanceof Error vẫn bắt được\nclass HttpError extends Error {\n  constructor(status, message) {\n    super(message);\n    this.name = \"HttpError\"; // tự gán nên enumerable\n    this.status = status;\n  }\n}\nconst e = new HttpError(404, \"Not Found\");\nconsole.log(e instanceof HttpError, e instanceof Error, e.message, e.name);\nconsole.log(Object.keys(e)); // chỉ thấy name, status — message là non-enumerable",
+  "expected": "In ra hai dòng: true true Not Found HttpError, rồi [ 'name', 'status' ]. Phân tích: class HttpError extends Error khiến prototype của instance nối vào HttpError.prototype rồi tới Error.prototype, nên instanceof duyệt chuỗi và thỏa cả hai — đó là lý do lớp lỗi nghiệp vụ nên kế thừa Error để mọi chỗ catch (e) theo Error vẫn bắt được. e.message là \"Not Found\" vì engine tạo thuộc tính message từ tham số truyền cho Error ở dạng non-enumerable, còn this.name = \"HttpError\" và this.status = 404 do constructor tự gán nên là thuộc tính thường và enumerable. Vì vậy Object.keys(e) chỉ trả về [ 'name', 'status' ], và JSON.stringify(e) cho {\"name\":\"HttpError\",\"status\":404}, message vẫn không xuất hiện vì nó non-enumerable. Đọc e.message thì được, nhưng duyệt key hay serialize thì mất.",
+  "followups": [
+    {
+      "q": "Vì sao instanceof đôi khi trả về false dù vẫn là cùng một kiểu dữ liệu?",
+      "a": "instanceof duyệt chuỗi prototype của đối tượng, nên nó thất bại khi giá trị đến từ realm khác như cửa sổ iframe, khi dữ liệu được chuyển qua worker, hoặc khi chạy nhiều bản sao thư viện trong cùng bundle và mỗi bản có prototype riêng. Nó cũng trả về false nếu ai đó gán lại prototype của object. Trong code chạy qua nhiều bundle hoặc dữ liệu đi qua worker, hãy kiểm tra lỗi bằng thuộc tính tường minh như name hoặc status thay vì chỉ dựa vào instanceof."
+    },
+    {
+      "q": "Field trong class và prototype method khác nhau như thế nào về bộ nhớ?",
+      "a": "Field khai báo trong thân class được gán trong constructor, tức mỗi instance có một bản riêng trong bộ nhớ, nên tốn bộ nhớ tuyến tính theo số instance. Prototype method nằm trên object prototype dùng chung, chỉ tồn tại một bản cho mọi instance. Vì vậy dữ liệu riêng của từng đối tượng đặt ở field còn hành vi đặt ở method. Nếu nhầm chỗ, ví dụ đặt dữ liệu lớn vào prototype, mọi instance sẽ cùng chia sẻ một giá trị và bug sẽ rất khó truy."
+    },
+    {
+      "q": "Khi nào đáng dùng class thay vì hàm factory hoặc object thường?",
+      "a": "Class đáng dùng khi cần nhiều instance cùng hành vi, cần quan hệ kế thừa thật sự như một lớp lỗi kế thừa Error, và muốn instanceof hoạt động. Nếu chỉ cần một hàm tạo lịch sử hay một object cấu hình thì hàm factory ngắn hơn, dễ test và không kéo theo khái niệm prototype. Với codebase dùng TypeScript, type và interface thường đã đủ để mô tả dữ liệu mà chưa cần class thật."
+    }
+  ],
+  "pitfalls": [
+    "Tưởng thuộc tính message cũng xuất hiện khi duyệt key của object lỗi, trong khi engine tạo nó ở dạng non-enumerable.",
+    "Dựa vào instanceof để nhận diện lỗi trong khi dữ liệu đi qua iframe hoặc worker nên instanceof trả về false.",
+    "Đặt dữ liệu riêng của từng instance lên prototype rồi mọi instance bất ngờ chia sẻ chung một giá trị.",
+    "Quên gọi super trong constructor của lớp con, khiến khởi tạo hỏng."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa giải thích được vì sao thuộc tính message do engine tạo không xuất hiện khi duyệt key của object lỗi.",
+    "Tôi giải thích được prototype chain bằng ví dụ một object thường vẫn gọi được phương thức toString kế thừa từ Object.prototype.",
+    "Tôi có thể viết lớp lỗi HTTP kế thừa Error để cả instanceof Error lẫn instanceof lớp con đều cho kết quả đúng."
+  ],
+  "refs": [
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "B06",
+  "group": "B",
+  "topic": "Call stack, event loop, task và microtask với Promise và async await",
+  "prio": "P0",
+  "level": "L3",
+  "type": "predict",
+  "attacks": [
+    {
+      "q": "Vì sao <code>setTimeout(fn, 0)</code> không chạy trước một promise đã resolve?",
+      "a": "Vì promise và timer nằm ở hai hàng đợi khác nhau với mức ưu tiên khác nhau. Sau khi đoạn mã đồng bộ hiện tại kết thúc, hệ thống xử lý hết toàn bộ hàng đợi vi tác vụ — nơi callback của promise nằm — rồi mới lấy một tác vụ vĩ mô từ hàng đợi còn lại, nơi timer nằm. Độ trễ bằng không chỉ có nghĩa là \"sớm nhất có thể sau khi hàng đợi vi tác vụ rỗng\", chứ không có nghĩa là chạy ngay. Đây là lý do thứ tự thực thi trong các ví dụ về vòng lặp sự kiện thường gây bất ngờ nếu chỉ đọc code theo thứ tự viết."
+    },
+    {
+      "q": "Nếu một vi tác vụ liên tục đẩy thêm vi tác vụ vào hàng đợi thì chuyện gì xảy ra?",
+      "a": "Hàng đợi vi tác vụ không bao giờ rỗng, nên hệ thống không bao giờ chuyển sang tác vụ vĩ mô tiếp theo. Hệ quả là giao diện đứng hoàn toàn: không vẽ lại, không xử lý sự kiện người dùng, và timer không chạy. Đây là một dạng treo khó chẩn đoán vì tiến trình vẫn dùng CPU và không có lỗi nào được ném ra. Cách phòng là không tạo chuỗi vi tác vụ vô hạn, và nếu cần xử lý khối lượng lớn thì chia thành các phần nhỏ rồi nhường quyền cho tác vụ vĩ mô giữa các phần."
+    }
+  ],
+  "incident": "<p>15h00, màn hình xem trước đơn hàng chạy một hàm async ghi lại nhật ký thao tác sau khi gọi API. Nhân viên bấm Lưu và nhật ký ghi thao tác tiếp theo lên trước thao tác vừa bấm, còn spinner tắt sau khi dữ liệu đã hiện. Mười người dùng thấy thứ tự dòng thời gian sai lệch trên trang lịch sử, và nếu hàm đồng bộ trước đó chạy nặng thì giao diện đứng hình một nhịp. Không có exception nào, chỉ có thứ tự log khác với thứ tự thao tác thật.</p>",
+  "askFirst": [
+    "Phần code sau await chạy ở hàng đợi nào? → Giải mã: phần sau await nằm trong microtask queue — Promise job; khi event loop hết macrotask hiện hành, nó chạy hết microtask (kể cả microtask con sinh ra trong đó) rồi mới tới task kế",
+    "Vì sao setTimeout với độ trễ không vẫn chạy sau Promise callback? → Giải mã: setTimeout(0) luôn vào macrotask queue, Promise resolve vào microtask queue; event loop chạy hết microtask trước khi lấy macrotask tiếp — nên callback Promise luôn chạy trước setTimeout dù cùng độ trễ 0"
+  ],
+  "predict": {
+    "q": "Bạn đoán thứ tự in ra của console.log đồng bộ, callback Promise.resolve().then và setTimeout độ trễ không?",
+    "a": "<p>Code đồng bộ in trước, rồi microtask của Promise, cuối cùng mới tới task của setTimeout. Event loop dọn hết microtask đang chờ trước khi lấy một task mới, và mỗi task lại tạo cơ hội dọn microtask. Vì vậy giảm độ trễ của setTimeout xuống không giúp nó chạy trước.</p>"
   },
-  {
-    id: 'B07',
-    group: 'B',
-    topic: 'Promise.all, allSettled, race, any và giới hạn số request chạy song song',
-    prio: 'P1',
-    level: 'L2',
-    type: 'code',
-    incident: "<p>Một dashboard gọi 40 endpoint để dựng bốn thẻ số liệu. Dev dùng <code>Promise.all([...])</code> cho cả 40. Một endpoint phụ — dịch vụ đọc số lượt xem — bị lỗi 500 trong 2 giây, và toàn bộ dashboard trắng: không thẻ nào hiện, dù 39 endpoint còn lại đã trả dữ liệu thành công. Người dùng báo \"dashboard hỏng\", trong khi thực tế chỉ một ô số liệu phụ hỏng.</p>",
-    askFirst: ["Promise.all làm gì với các promise còn lại khi một cái reject?","Khi nào bạn cần tất cả thành công, khi nào chỉ cần những cái thành công?","Làm sao giới hạn số request chạy song song mà vẫn nhanh?"],
-    predict: {"q":"Bốn promise, cái thứ ba reject sau 10 ms, ba cái kia resolve sau 5 giây. <code>Promise.all</code>, <code>allSettled</code>, <code>race</code> và <code>any</code> trả về gì?","a":"<p><code>Promise.all</code> reject sau 10 ms với lỗi của promise thứ ba, và ba promise còn lại <em>vẫn tiếp tục chạy</em> — chúng không bị huỷ. <code>allSettled</code> chờ đủ 5 giây rồi trả mảng bốn phần tử, mỗi phần tử có <code>status</code> là <code>fulfilled</code> hoặc <code>rejected</code>. <code>race</code> settle theo kết quả đầu tiên, tức reject sau 10 ms. <code>any</code> chờ tới khi có ít nhất một promise <code>fulfilled</code>, nên nó resolve sau 5 giây; nếu tất cả đều reject thì nó reject bằng <code>AggregateError</code>.</p>"},
-    anchor: "Promise.all là \"tất cả hoặc không gì cả\" — một lỗi phụ làm sập cả kết quả, và các promise còn lại vẫn chạy tiếp chứ không được huỷ.",
-    attacks: [{"q":"Bạn nói Promise.all không huỷ các promise còn lại. Vậy làm sao thực sự huỷ chúng?","a":"Phải truyền tín hiệu huỷ vào chính hàm thực hiện công việc, thường qua AbortController. Promise.all chỉ quan sát, nó không có quyền dừng một tác vụ đang chạy. Mẫu đúng là tạo một controller, truyền controller.signal vào từng lời gọi, và trong nhánh catch gọi controller.abort(). Lưu ý là huỷ chỉ có tác dụng nếu tầng bên dưới thực sự tôn trọng signal — một lời gọi không nhận signal thì vẫn chạy tới hết."},{"q":"Có 2.000 URL cần gọi. Bạn giới hạn đồng thời thế nào mà không viết lại toàn bộ?","a":"Chia thành các lô: cắt mảng thành nhóm 20 rồi await Promise.all từng nhóm theo thứ tự. Cách này đơn giản, dễ đọc, và giới hạn cứng số request đang bay. Cách tổng quát hơn là một worker pool — duy trì N worker cùng rút việc từ một hàng đợi chung, nên worker nào xong trước thì nhận việc tiếp, không phải chờ cả lô. Đánh đổi: chia lô dễ viết nhưng có hiện tượng một lô chậm giữ chỗ; worker pool tận dụng tốt hơn nhưng phức tạp hơn và khó suy luận về thứ tự."}],
-    q: 'Khi gọi nhiều API song song, bạn chọn Promise.all, allSettled, race hay any thế nào, và làm sao giới hạn số request chạy đồng thời mà vẫn lấy đủ kết quả?',
-    oral: 'Chốt: bốn cách ghép promise này khác nhau ở câu hỏi cần trả lời. Promise.all chờ tất cả và resolve khi mọi cái thành công, chỉ cần một cái reject là cả chuỗi reject ngay. Promise.allSettled luôn chờ hết và không bao giờ reject, trả về mảng kết quả có nhãn trạng thái từng phần tử. Promise.race trả về phần tử thắng đầu tiên dù thắng hay thua, phù hợp bài timeout. Promise.any ngược lại với all, chỉ thất bại khi tất cả cùng thất bại và trả về một lỗi tổng hợp. Cơ chế: all giữ đúng thứ tự đầu vào, race chốt theo phần tử xong đầu tiên, any bỏ qua lỗi và chờ cái thành công đầu tiên — tương tự asyncio.as_completed trong Python. Kinh nghiệm: dùng all khi cần đủ dữ liệu, allSettled khi vẫn muốn hiện phần tải được, race cho timeout, any cho nhanh nhất. Với hàng trăm request, cần giới hạn số chạy song song bằng cách chia lô cố định hoặc chạy pool worker với số worker bằng số request trên giây cho phép. Bắt lỗi rejection riêng để tránh cảnh báo unhandled rejection.',
-    deep: '<p>Dashboard gọi 40 endpoint bằng một <code>Promise.all</code> rồi trắng toàn bộ vì dịch vụ đếm lượt xem lỗi 500 trong 2 giây. 39 endpoint còn lại đã trả dữ liệu thành công nhưng không thẻ nào hiện. Bạn mất cả trang vì một ô số liệu phụ.</p><p>Bốn hàm ghép nhận một iterable và trả một promise duy nhất. <code>all</code> chờ tất cả và reject ngay khi một phần tử reject, kết quả giữ đúng thứ tự đầu vào. <code>allSettled</code> chờ hết và gắn nhãn từng kết quả nên không bao giờ reject. <code>race</code> chốt theo phần tử xong đầu tiên dù thắng hay thua. <code>any</code> bỏ qua lỗi và chờ cái thành công đầu tiên — tương tự asyncio.as_completed ở Python.</p><ul><li><strong><code>all</code> cần mọi cái thắng, còn <code>allSettled</code> chấp nhận thắng thua lẫn lộn:</strong> cái đầu hỏi đủ dữ liệu chưa, cái sau hỏi phần nào xong rồi hiện phần đó.</li><li><strong>Dùng khi:</strong> cần đủ token và quyền mới dựng trang thì <code>all</code>, muốn hiện phần tải được thì <code>allSettled</code>, timeout thì <code>race</code>. <strong>Không dùng khi:</strong> không bắn hàng trăm request cùng lúc mà thiếu pool giới hạn, và không dùng <code>all</code> khi một lỗi phụ được phép bỏ qua, giống React gộp nhiều setState trong một handler rồi mới render một lần.</li><li><strong>Lỗi hay gặp:</strong> tưởng <code>all</code> hủy request còn lại trong khi chúng vẫn chạy và vẫn tốn băng thông, và quên bắt AggregateError của <code>any</code>.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> vài request độc lập thì bắn thẳng, vài trăm id thì bạn chia lô hoặc chạy pool tối đa k worker rồi thu thập kết quả.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: minh họa bốn cách ghép promise và yêu cầu về số request đồng thời\nconst slow = new Promise((r) => setTimeout(() => r("slow"), 50));\nconst failing = new Promise((_, reject) =>\n  setTimeout(() => reject(new Error("boom")), 10)\n);\n\nPromise.all([slow, failing]).catch((e) => console.log("all:", e.message));\nPromise.allSettled([slow, failing]).then((res) =>\n  console.log("settled:", res.map((r) => r.status).join(","))\n);\nPromise.race([slow, failing]).catch((e) => console.log("race:", e.message));\nPromise.any([slow, failing]).then((v) => console.log("any:", v));',
-    expected: 'Thứ tự in ra: all: boom, race: boom, settled: fulfilled,rejected, any: slow. Phân tích: failing reject ở mốc 10ms nên Promise.all reject ngay tại đó dù slow chưa xong — all chỉ cần một cái reject là cả chuỗi reject. Promise.race cũng kết thúc ở mốc 10ms vì failing là cái đầu tiên kết thúc, bất kể thành công hay thất bại. Promise.allSettled chờ tới mốc 50ms mới xong và trả mảng nhãn fulfilled,rejected theo đúng thứ tự đầu vào — nó không bao giờ reject. Promise.any ngược lại: nó bỏ qua lỗi và chờ cái thành công đầu tiên, nên sau khi failing reject nó vẫn tiếp tục chờ và resolve slow ở mốc 50ms.',
-    followups: [
-      { q: 'Vì sao Promise.all reject sớm nhưng các request còn lại vẫn chạy, và cách dừng chúng là gì?', a: 'Promise.all chỉ ghi nhận lỗi đầu tiên rồi reject, nó không có cơ chế truyền tín hiệu huỷ xuống các promise con vì mỗi promise là độc lập. Vì vậy các request còn lại vẫn chiếm băng thông và nếu chúng reject mà không có bắt lỗi thì Node hoặc trình duyệt sẽ báo unhandled rejection. Cách dừng thật sự là tạo một AbortController dùng chung, truyền signal vào lời gọi HTTP của mọi request, rồi gọi abort khi một request thất bại.' },
-      { q: 'Khi nào allSettled lại là lựa chọn sai dù nó không bao giờ reject?', a: 'allSettled phù hợp khi bạn coi mỗi kết quả là độc lập và vẫn muốn hiện phần đã tải được, ví dụ tải danh sách avatar cùng lúc với tên hiển thị. Nó sai khi dữ liệu có quan hệ phụ thuộc: nếu không có token xác thực thì mọi request đều hỏng và allSettled sẽ trả về một mảng toàn lỗi rồi bạn vẫn phải xử lý. Khi đó nên kiểm tra điều kiện tiên quyết trước rồi mới phát tán request, hoặc dùng all để lỗi hiện ra sớm.' }
-    ],
-    pitfalls: [
-      'Dùng Promise.all và coi nó như công cụ hủy các request còn lại, trong khi nó chỉ reject sớm chứ không huỷ gì.',
-      'Dùng Promise.race cho timeout mà quên bọc request vào một promise bù luôn resolve, nên nếu request thắng trước thì race vẫn treo.',
-      'Dùng Promise.any rồi không bắt AggregateError, biến tình huống tất cả nguồn dữ liệu hỏng thành lỗi không ai xử lý.',
-      'Phát tán hàng trăm request cùng lúc và tưởng trình duyệt chạy hết song song.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa phân biệt được khi nào dùng race và khi nào dùng any mà không cần tra lại tài liệu.',
-      'Tôi giải thích được lý do Promise.all reject sớm bằng ví dụ hai request cùng chạy trong đó request lỗi vẫn tiêu tốn băng thông.',
-      'Tôi có thể viết một pool chạy đồng thời tối đa k worker cho danh sách vài trăm id mà vẫn thu thập đủ kết quả.'
-    ],
-    refs: ['mdn-promise', 'mdn-abortcontroller']
+  "anchor": "Microtask luôn được dọn hết trước khi lấy task mới mà setTimeout nằm ở hàng đợi task = callback hẹn giờ chạy sau cả phần code sau await.",
+  "q": "Đoạn code in log dưới đây theo đúng thứ tự nào, và vì sao phần nào chạy đồng bộ còn phần nào bị đẩy sang hàng đợi?",
+  "oral": "JavaScript chạy mã đồng bộ trên một call stack duy nhất, và mỗi hàm đồng bộ giữ trọn call stack cho tới khi return. Sau đó event loop lấy việc từ hàng đợi task như setTimeout, sự kiện giao diện hay xử lý IO, nhưng trước khi lấy task mới nó luôn dọn hết hàng đợi microtask đã sẵn sàng. Promise callback và phần code sau await đều được xếp vào microtask, còn setTimeout nằm ở task nên luôn chạy sau. Dễ nhầm nhất là await: nó tạm dừng hàm ngay cả khi không có Promise nào, và phần còn lại được lên lịch như một microtask. Vì vậy trong đoạn ví dụ, A, D, F chạy đồng bộ theo thứ tự xuất hiện trong mã, C chạy trước E vì được xếp vào microtask sớm hơn, và B chạy cuối cùng vì nằm trong task. Nếu thay setTimeout bằng một microtask ví dụ queueMicrotask thì thứ tự hoàn toàn khác, vì cả hai lúc đó đều là microtask và sẽ xen theo thứ tự được lên lịch.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>call stack</strong>: Hàng gọi hàm đồng bộ; mỗi lần call là push một frame, return là pop; stack đầy (đệ quy sâu) là RangeError Maximum call stack size exceeded.</li><li><strong>macrotask (task queue)</strong>: Hàng chứa setTimeout, setInterval, I/O callback; mỗi vòng event loop chỉ lấy MỘT macrotask rồi chạy hết microtask trước khi lấy macrotask tiếp.</li><li><strong>microtask (promise job)</strong>: Hàng ngắn hơn, luôn chạy hết trước khi event loop vào task kế; then, catch, finally đều vào microtask; microtask sinh microtask khác thì vẫn cùng một vòng, không trả quyền.</li><li><strong>await (gián đoạn)</strong>: await chia hàm async thành hai đoạn: phần trước chạy đồng bộ tới await, phần sau là một callback microtask — thân async không song song, nó bị đoạn tại await.</li></ul><p>15h00 trang lịch sử ghi thao tác tiếp theo lên trước thao tác vừa bấm, và spinner tắt sau khi dữ liệu đã hiện. Hàm async ghi nhật ký sau gọi API nhưng phần sau <code>await</code> không chạy ngay. Bạn đọc code theo thứ tự dòng nên tưởng thứ tự chạy cũng vậy.</p><p>Code đồng bộ chiếm call stack tới khi return. Event loop chỉ lấy việc khi stack rỗng. Việc chờ nằm ở hai hàng: task cho <code>setTimeout</code> và sự kiện IO, microtask cho callback Promise và phần sau <code>await</code>. Gặp <code>await</code> thì hàm dừng, trả quyền về stack, phần còn lại xếp vào microtask — y hệt event loop của asyncio: <code>await</code> như <code>yield</code>, phần sau await được schedule lại thành microtask.</p><ul><li><strong>Microtask dọn sạch trước, còn task chờ lượt:</strong> microtask chạy hết rồi mới lấy một task, sau mỗi task lại quay về dọn microtask. Vì vậy Promise callback luôn thắng <code>setTimeout</code> hẹn 0ms.</li><li><strong>Dùng khi:</strong> tách việc nặng khỏi microtask để giao diện còn vẽ lại, giống React gộp nhiều setState trong một handler rồi mới render một lần. <strong>Không dùng khi:</strong> không xếp vòng lặp await vô hạn vào microtask vì event loop không bao giờ tới task vẽ.</li><li><strong>Lỗi hay gặp:</strong> tưởng <code>await null</code> chạy tiếp ngay, và tưởng thân async chạy song song từ lúc gọi.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> một microtask lẻ thì thứ tự chỉ lệch vài bước, chuỗi microtask tự sinh thêm microtask thì bạn treo luôn giao diện và phải cắt nhỏ vòng lặp.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Call stack và event loop ở Bài L12, microtask và macrotask ở Bài L13, và pattern await nặng trong UI ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: đồng bộ chạy trước, rồi microtask dọn hết, cuối cùng mới tới task\nconsole.log(\"A\");\nsetTimeout(() => console.log(\"B\"), 0); // task — chạy cuối\nPromise.resolve().then(() => console.log(\"C\")); // microtask\n(async () => {\n  console.log(\"D\");\n  await null; // dừng tại đây, phần sau là microtask\n  console.log(\"E\");\n})();\nconsole.log(\"F\");",
+  "expected": "Thứ tự in ra là A, D, F, C, E, B. Nguyên nhân: A, D, F chạy đồng bộ ngay khi được gọi, vì hàm async chạy tới lệnh await mới tạm dừng và phần còn lại được lên lịch như một microtask. Sau khi call stack rỗng, microtask queue được dọn theo thứ tự lên lịch nên C chạy trước E. Cuối cùng mới đến task của setTimeout nên B chạy sau cùng, dù thời gian chờ là không.",
+  "followups": [
+    {
+      "q": "Vì sao code sau await chạy chậm hơn Promise.resolve().then dù không có Promise nào?",
+      "a": "Vì await trên bất kỳ giá trị nào cũng phải đi qua một bước bất đồng bộ chuẩn, nên phần còn lại của hàm async luôn được lên lịch ở một microtask kế tiếp chứ không chạy tức thì. Trong khi đó callback truyền cho then được gọi khi promise đã hoàn tất, cũng nằm trong microtask nhưng được đẩy vào hàng đợi sớm hơn vì nó xuất hiện trước trong mã và được ghi nhận ngay khi gọi Promise.resolve. Thứ tự cuối cùng quyết định bởi thứ tự lên lịch trong hàng đợi microtask chứ không phải thứ tự viết dòng thẳng."
+    },
+    {
+      "q": "Khi nào microtask gây treo giao diện, và cách nhận biết ra sao?",
+      "a": "Khi một chuỗi microtask không bao giờ kết thúc, ví dụ vòng lặp await trên một giá trị sẵn có, event loop sẽ không bao giờ quay lại lấy task nên giao diện không vẽ lại và không nhận được input. Cách nhận biết là mở tab Performance trong devtools và nhìn mục Task nào chiếm 100 phần trăm thời gian với các lát nhỏ lặp lại. Cách tránh là cắt nhỏ vòng lặp, đưa phần tính nặng ra khỏi microtask, hoặc hợp nhất các promise thành một chuỗi tuần tự thay vì hàng trăm microtask nhỏ."
+    },
+    {
+      "q": "Tại sao setTimeout với độ trễ không thay đổi được thứ tự chạy của nó với microtask?",
+      "a": "Vì setTimeout luôn đẩy callback vào hàng đợi task, còn microtask luôn được dọn trước khi lấy task kế tiếp. Giảm độ trễ xuống không chỉ làm callback được gọi sớm hơn theo thời gian, mà còn phải chờ microtask rỗng. Vì vậy callback của setTimeout không bao giờ chạy trước dù hàng nghìn microtask đang chờ đã được lên lịch trước đó."
+    }
+  ],
+  "pitfalls": [
+    "Tưởng setTimeout với độ trễ không sẽ chạy trước microtask vì được gọi trước trong mã.",
+    "Tưởng await một giá trị không phải Promise thì phần sau chạy ngay, trong khi nó vẫn phải qua một microtask.",
+    "Tưởng phần thân của hàm async chạy song song khi gọi, trong khi nó chạy đồng bộ tới lệnh await đầu tiên.",
+    "Dùng queueMicrotask cho tác vụ nặng và vô tình chặn không cho event loop chạy nhiệm vụ khác."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa nhớ rõ sự khác biệt giữa task và microtask mà không cần mở tài liệu.",
+    "Tôi giải thích được vì sao C chạy trước E và B chạy cuối cùng trong ví dụ của câu hỏi này.",
+    "Tôi có thể khoanh vùng một vòng lặp await nặng đang treo giao diện bằng tab Performance."
+  ],
+  "refs": [
+    "mdn-execution-model",
+    "mdn-promise"
+  ]
+},
+{
+  "id": "B07",
+  "group": "B",
+  "topic": "Promise.all, allSettled, race, any và giới hạn số request chạy song song",
+  "prio": "P1",
+  "level": "L2",
+  "type": "code",
+  "incident": "<p>Một dashboard gọi 40 endpoint để dựng bốn thẻ số liệu. Dev dùng <code>Promise.all([...])</code> cho cả 40. Một endpoint phụ — dịch vụ đọc số lượt xem — bị lỗi 500 trong 2 giây, và toàn bộ dashboard trắng: không thẻ nào hiện, dù 39 endpoint còn lại đã trả dữ liệu thành công. Người dùng báo \"dashboard hỏng\", trong khi thực tế chỉ một ô số liệu phụ hỏng.</p>",
+  "askFirst": [
+    "Promise.all làm gì với các promise còn lại khi một cái reject? → Giải mã: reject ngay với lỗi đầu tiên (fail-fast); các promise còn lại không bị hủy — chúng vẫn chạy tới kết, tốn băng thông; muốn hủy phải AbortController truyền signal",
+    "Khi nào bạn cần tất cả thành công, khi nào chỉ cần những cái thành công? → Giải mã: tất cả phải thành công (API phụ thuộc nhau, form validation) dùng all; chỉ cần phần thành công, chấp nhận phần lỗi (nạp nhiều thẻ độc lập, gợi ý) dùng allSettled và lọc fulfilled",
+    "Làm sao giới hạn số request chạy song song mà vẫn nhanh? → Giải mã: dùng queue + đếm bộ đang chạy: khởi tạo tối đa k promise, mỗi lần settle lấy job tiếp; kết quả gom theo index để giữ thứ tự ban đầu không phụ thuộc độ trễ từng request"
+  ],
+  "predict": {
+    "q": "Bốn promise, cái thứ ba reject sau 10 ms, ba cái kia resolve sau 5 giây. <code>Promise.all</code>, <code>allSettled</code>, <code>race</code> và <code>any</code> trả về gì?",
+    "a": "<p><code>Promise.all</code> reject sau 10 ms với lỗi của promise thứ ba, và ba promise còn lại <em>vẫn tiếp tục chạy</em> — chúng không bị huỷ. <code>allSettled</code> chờ đủ 5 giây rồi trả mảng bốn phần tử, mỗi phần tử có <code>status</code> là <code>fulfilled</code> hoặc <code>rejected</code>. <code>race</code> settle theo kết quả đầu tiên, tức reject sau 10 ms. <code>any</code> chờ tới khi có ít nhất một promise <code>fulfilled</code>, nên nó resolve sau 5 giây; nếu tất cả đều reject thì nó reject bằng <code>AggregateError</code>.</p>"
   },
-  {
-    id: 'B08',
-    group: 'B',
-    topic: 'Debounce, throttle, race giữa các request và AbortController',
-    prio: 'P1',
-    level: 'L3',
-    type: 'situation',
-    incident: "<p>Ô tìm kiếm gọi API mỗi lần gõ phím. Người dùng gõ \"da\" rồi sửa thành \"danang\" trong vòng 200 ms. Request cho \"da\" tới server sau request cho \"danang\" nhưng lại trả về trước, và kết quả \"da\" ghi đè kết quả đúng. Người dùng thấy danh sách của \"da\" trong khi ô nhập ghi \"danang\". Thêm debounce 300 ms làm giảm số request nhưng lỗi vẫn còn, chỉ ít xuất hiện hơn.</p>",
-    askFirst: ["Debounce giải quyết vấn đề gì, và không giải quyết vấn đề gì?","Vì sao response về sai thứ tự lại ghi đè được kết quả mới?","Cần thêm cơ chế gì ngoài debounce?"],
-    predict: {"q":"Hai request được phát ra: A cho \"da\" và B cho \"danang\". B trả về sau A. Nếu code chỉ có <code>.then(data => state.q = data)</code> thì state cuối cùng là gì?","a":"<p>State cuối cùng là kết quả của B, tức \"danang\" — trong trường hợp này đúng. Nhưng nếu mạng chậm bất thường và A trả về <em>sau</em> B, state cuối cùng là \"da\", sai. Điểm cốt lõi là thứ tự hoàn thành không được bảo đảm bởi thứ tự phát ra, nên code đúng phải <em>không phụ thuộc</em> vào thứ tự đó. Hai cách: huỷ request cũ bằng <code>AbortController</code>, hoặc gắn số thứ tự tăng dần cho mỗi lần gọi và bỏ qua response có số nhỏ hơn số mới nhất đã phát.</p>"},
-    anchor: "Debounce giảm số request chứ không bảo đảm thứ tự trả về, nên vẫn phải có tín hiệu huỷ hoặc số thứ tự để chống ghi đè.",
-    attacks: [{"q":"Debounce và throttle khác nhau ở đâu, và bạn chọn cái nào cho ô tìm kiếm?","a":"Debounce chờ cho tới khi người dùng ngừng thao tác trong một khoảng, rồi mới chạy một lần — phù hợp với ô tìm kiếm vì bạn chỉ muốn gọi khi người dùng đã gõ xong. Throttle chạy đều đặn tối đa một lần trong mỗi khoảng, bất kể người dùng còn thao tác — phù hợp với sự kiện cuộn hay kéo chuột, nơi bạn cần cập nhật liên tục nhưng có giới hạn. Với tìm kiếm, debounce là lựa chọn đúng; nhưng nhớ rằng debounce chỉ giảm tần suất, nên vẫn cần xử lý thứ tự."},{"q":"Nếu tôi so sánh từ khoá trả về với từ khoá hiện tại trong state trước khi gán thì đã đủ chưa?","a":"Đủ cho trường hợp hai lần gõ khác nhau, nhưng không đủ khi người dùng gõ cùng một từ khoá hai lần — ví dụ gõ \"da\", xoá, rồi gõ lại \"da\". Hai request có cùng từ khoá, nên phép so sánh không phân biệt được cái nào mới hơn, và kết quả cũ có thể ghi đè. Cách chắc chắn là dùng định danh đơn điệu — số thứ tự tăng dần hoặc một token cho mỗi lần gọi — và chỉ nhận response khi định danh của nó bằng định danh mới nhất."}],
-    q: 'Người dùng gõ nhanh vào ô tìm kiếm và mỗi lần gõ bạn đều gọi API, bạn làm sao để vừa bớt request vừa không để kết quả cũ ghi đè kết quả mới?',
-    oral: 'Có ba việc phải làm đồng thời. Thứ nhất là debounce: chờ người dùng ngừng gõ một khoảng thời gian rồi mới gọi API, nên gõ liên tục mười ký tự chỉ tốn một request thay vì mười. Thứ hai là thứ tự trả về không đảm bảo: request sau có thể hoàn tất trước request trước, và nếu bạn gán thẳng kết quả vào state thì kết quả cũ sẽ đè lên kết quả mới. Cách phổ biến là gắn một số thứ tự cho mỗi lần chạy và chỉ nhận kết quả của lần chạy mới nhất. Thứ ba là hủy thật: promise không tự huỷ được nên phải dùng AbortController, truyền signal vào lời gọi HTTP rồi gọi abort ở lần gõ kế tiếp. Nhớ bắt riêng lỗi AbortError vì đó là hủy có chủ ý chứ không phải lỗi mạng, không bắt riêng thì giao diện sẽ hiện thông báo lỗi giả mỗi lần gõ. Nếu thay bằng throttle thì request vẫn chạy đều theo nhịp để giữ dữ liệu tươi, phù hợp hơn với cuộn trang vô hạn.',
-    deep: '<p>Người dùng gõ da rồi sửa thành danang trong 200ms, request cho da về sau nhưng ghi đè kết quả đúng. Ô nhập ghi danang mà danh sách hiện của da. Bạn thêm debounce 300ms mà lỗi vẫn còn, chỉ thưa hơn.</p><p>Gõ phím tạo ba lớp vấn đề riêng. Debounce xóa timer cũ và đặt lại timer mới nên gõ liên tục mười ký tự chỉ tốn một request. Throttle cho chạy tối đa một lần mỗi khoảng nên hợp cuộn vô hạn. Race condition là request cũ về sau và ghi đè state mới, vì thứ tự hoàn thành không theo thứ tự phát ra.</p><ul><li><strong>Debounce chờ yên mới chạy, còn throttle chạy đều theo nhịp:</strong> cái đầu lấy trạng thái cuối của ô tìm kiếm, cái sau giữ cập nhật liên tục khi cuộn hay kéo.</li><li><strong>Dùng khi:</strong> ô tìm kiếm thì debounce cộng AbortController và số thứ tự tăng dần, chỉ nhận response của lần mới nhất. <strong>Không dùng khi:</strong> không dùng debounce cho cuộn vô hạn vì cuộn liên tục thì callback không bao giờ chạy.</li><li><strong>Lỗi hay gặp:</strong> bắt AbortError như lỗi mạng nên mỗi lần gõ hiện thông báo giả, và chỉ so từ khóa mà không hủy request cũ nên vẫn tốn băng thông.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> mạng ổn định thì số thứ tự đã đủ đúng, mạng chập chờn hay user gõ cùng từ khóa hai lần thì bạn phải hủy thật bằng signal.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: dùng AbortController cho mỗi lần gọi, giữ signal trong biến cục bộ của chính lần chạy đó, tránh sai thứ tự trả về.\nlet timer = null;\nlet inflight = null;   // controller của lần gọi đang bay, không phải biến module dùng chung\nlet latest = 0;\n\nasync function search(keyword) {\n  if (timer) clearTimeout(timer);\n\n  timer = setTimeout(async () => {\n    // Tạo controller mới ngay trước khi gọi, và giữ tham chiếu trong biến riêng\n    // của lần chạy này. Nếu để setTimeout đọc biến controller ở cấp module thì\n    // signal sẽ là của lần gọi mới nhất, không phải của lần gọi này.\n    if (inflight) inflight.abort();\n    const ctrl = new AbortController();\n    inflight = ctrl;\n    const runId = ++latest;\n\n    try {\n      const res = await api.get("/api/search", {\n        signal: ctrl.signal,               // signal của chính lần chạy này\n        params: { q: keyword },\n        headers: { Accept: "application/json" }\n      });\n      if (runId === latest) render(res.data);\n    } catch (err) {\n      if (err.name !== "AbortError") showError(err);\n    }\n  }, 300);\n}',
-    expected: 'Snippet không chạy được nguyên trạng vì API, render và showError đến từ tầng ứng dụng, nên phần dưới mô tả trình tự thực thi theo đúng các cơ chế trong code, không phải output chạy trực tiếp snippet. Trình tự: mỗi lần gõ, hàm xóa timer cũ bằng clearTimeout và hẹn lại một lần chạy mới sau 300ms. Khi lần chạy đó bắt đầu, nó mới hủy request đang bay và tạo AbortController mới, rồi giữ signal trong một biến cục bộ của chính lần chạy đó. Vì debounce 300ms, hai lần gõ cách nhau 150ms chỉ sinh một request — lần gõ sau xóa timer của lần trước nên lần trước chưa kịp gọi API. Khi request cũ bị hủy, lời gọi HTTP từ chối với lỗi tên AbortError và nhánh catch bỏ qua, nên giao diện không hiện thông báo lỗi giả. Nếu request cũ vẫn về, chốt if (runId === latest) mới cho phép ghi vào state nên kết quả cũ không đè kết quả mới. Theo trình tự trên, log in ra đúng hai dòng: AbortError: bỏ qua, không hiển thị lỗi rồi render kết quả ab. Một chi tiết dễ viết sai và làm cả cơ chế mất tác dụng: nếu setTimeout đọc thẳng một biến controller khai ở cấp module thì signal truyền đi là của lần gọi mới nhất chứ không phải của lần gọi này, nên abort không hủy đúng request và nhánh AbortError không bao giờ chạy — code trông vẫn đúng mà hành vi thì khác hẳn. Điểm cần nhớ: debounce chỉ giảm số request chứ không bảo đảm thứ tự, nên phải thêm số thứ tự lần chạy hoặc AbortController, và luôn bắt riêng AbortError.',
-    followups: [
-      { q: 'Vì sao lọc AbortError lại quan trọng, và nếu quên thì người dùng thấy gì?', a: 'Khi request bị hủy, lời gọi HTTP bị từ chối với lỗi tên AbortError chứ không phải lỗi mạng. Nếu code xử lý mọi lỗi giống nhau thì mỗi lần người dùng gõ ký tự mới sẽ bật lên thông báo lỗi, dù hệ thống hoàn toàn ổn. Người dùng sẽ tưởng sản phẩm bị lỗi liên tục. Cách xử lý đúng là bắt lỗi ở đây rồi bỏ qua khi tên lỗi là AbortError, còn lỗi thật mới đưa vào hệ thống báo cáo lỗi.' },
-      { q: 'Debounce và throttle khác nhau thế nào khi người dùng cuộn trang vô hạn?', a: 'Debounce chỉ chạy sau khi người dùng ngừng hành động, nên khi cuộn liên tục nó sẽ không bao giờ chạy và trang sẽ không tải thêm dữ liệu. Throttle chạy tối đa một lần mỗi khoảng thời gian kể cả khi hành động chưa dừng, nên phù hợp với cuộn vô hạn, kéo thanh trượt và theo dõi vị trí chuột. Nguyên tắc chọn là: hành động liên tục mà mất dữ liệu thì throttle, hành động liên tục mà chỉ lấy trạng thái cuối cùng thì debounce.' }
-    ],
-    pitfalls: [
-      'Chỉ so sánh response cũ với response mới mà không hủy request cũ, nên băng thông vẫn bị dùng cho các request không còn ai cần.',
-      'Bắt mọi lỗi giống nhau nên lần gõ mới làm hiện thông báo lỗi dù nguyên nhân chỉ là yêu cầu bị hủy có chủ ý.',
-      'Dùng debounce cho cuộn trang vô hạn, kết quả là khi cuộn liên tục không bao giờ có request nào chạy.',
-      'Gọi lại API liên tục khi server cần header Authorization, làm phát sinh preflight không cần thiết.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa phân biệt được khi nào chọn debounce và khi nào chọn throttle mà không cần suy nghĩ lại.',
-      'Tôi giải thích được lỗi kết quả cũ ghi đè kết quả mới bằng ví dụ hai request cùng tới server với độ trễ khác nhau.',
-      'Tôi có thể thêm debounce cùng AbortController vào ô tìm kiếm mà không làm hiện thông báo lỗi giả.'
-    ],
-    refs: ['mdn-abortcontroller', 'mdn-cors']
+  "anchor": "Promise.all là \"tất cả hoặc không gì cả\" — một lỗi phụ làm sập cả kết quả, và các promise còn lại vẫn chạy tiếp chứ không được huỷ.",
+  "attacks": [
+    {
+      "q": "Bạn nói Promise.all không huỷ các promise còn lại. Vậy làm sao thực sự huỷ chúng?",
+      "a": "Phải truyền tín hiệu huỷ vào chính hàm thực hiện công việc, thường qua AbortController. Promise.all chỉ quan sát, nó không có quyền dừng một tác vụ đang chạy. Mẫu đúng là tạo một controller, truyền controller.signal vào từng lời gọi, và trong nhánh catch gọi controller.abort(). Lưu ý là huỷ chỉ có tác dụng nếu tầng bên dưới thực sự tôn trọng signal — một lời gọi không nhận signal thì vẫn chạy tới hết."
+    },
+    {
+      "q": "Có 2.000 URL cần gọi. Bạn giới hạn đồng thời thế nào mà không viết lại toàn bộ?",
+      "a": "Chia thành các lô: cắt mảng thành nhóm 20 rồi await Promise.all từng nhóm theo thứ tự. Cách này đơn giản, dễ đọc, và giới hạn cứng số request đang bay. Cách tổng quát hơn là một worker pool — duy trì N worker cùng rút việc từ một hàng đợi chung, nên worker nào xong trước thì nhận việc tiếp, không phải chờ cả lô. Đánh đổi: chia lô dễ viết nhưng có hiện tượng một lô chậm giữ chỗ; worker pool tận dụng tốt hơn nhưng phức tạp hơn và khó suy luận về thứ tự."
+    }
+  ],
+  "q": "Khi gọi nhiều API song song, bạn chọn Promise.all, allSettled, race hay any thế nào, và làm sao giới hạn số request chạy đồng thời mà vẫn lấy đủ kết quả?",
+  "oral": "Chốt: bốn cách ghép promise này khác nhau ở câu hỏi cần trả lời. Promise.all chờ tất cả và resolve khi mọi cái thành công, chỉ cần một cái reject là cả chuỗi reject ngay. Promise.allSettled luôn chờ hết và không bao giờ reject, trả về mảng kết quả có nhãn trạng thái từng phần tử. Promise.race trả về phần tử thắng đầu tiên dù thắng hay thua, phù hợp bài timeout. Promise.any ngược lại với all, chỉ thất bại khi tất cả cùng thất bại và trả về một lỗi tổng hợp. Cơ chế: all giữ đúng thứ tự đầu vào, race chốt theo phần tử xong đầu tiên, any bỏ qua lỗi và chờ cái thành công đầu tiên — tương tự asyncio.as_completed trong Python. Kinh nghiệm: dùng all khi cần đủ dữ liệu, allSettled khi vẫn muốn hiện phần tải được, race cho timeout, any cho nhanh nhất. Với hàng trăm request, cần giới hạn số chạy song song bằng cách chia lô cố định hoặc chạy pool worker với số worker bằng số request trên giây cho phép. Bắt lỗi rejection riêng để tránh cảnh báo unhandled rejection.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>Promise.all</strong>: Gom nhiều promise: tất cả resolve mới resolve (theo thứ tự), một reject là reject ngay (fail-fast); các promise còn lại vẫn chạy nền, không bị hủy.</li><li><strong>allSettled</strong>: Chờ tất cả kết thúc, trả array status và value/reason — không throw; dùng khi muốn biết từng kết quả chứ không cần fail-fast.</li><li><strong>Promise.race / any</strong>: race trả kết quả đầu tiên (dù fulfill hay reject); any trả fulfill đầu tiên, nếu toàn reject thì ném AggregateError; dùng cho timeout hay song song chọn nhanh.</li><li><strong>semaphore / pool</strong>: Trần số promise chạy đồng thời: giữ hàng đợi + bộ đang chạy; chỉ khởi tạo promise mới khi có chỗ trống, tránh mở nghìn kết nối cùng lúc.</li></ul><p>Dashboard gọi 40 endpoint bằng một <code>Promise.all</code> rồi trắng toàn bộ vì dịch vụ đếm lượt xem lỗi 500 trong 2 giây. 39 endpoint còn lại đã trả dữ liệu thành công nhưng không thẻ nào hiện. Bạn mất cả trang vì một ô số liệu phụ.</p><p>Bốn hàm ghép nhận một iterable và trả một promise duy nhất. <code>all</code> chờ tất cả và reject ngay khi một phần tử reject, kết quả giữ đúng thứ tự đầu vào. <code>allSettled</code> chờ hết và gắn nhãn từng kết quả nên không bao giờ reject. <code>race</code> chốt theo phần tử xong đầu tiên dù thắng hay thua. <code>any</code> bỏ qua lỗi và chờ cái thành công đầu tiên — tương tự asyncio.as_completed ở Python.</p><ul><li><strong><code>all</code> cần mọi cái thắng, còn <code>allSettled</code> chấp nhận thắng thua lẫn lộn:</strong> cái đầu hỏi đủ dữ liệu chưa, cái sau hỏi phần nào xong rồi hiện phần đó.</li><li><strong>Dùng khi:</strong> cần đủ token và quyền mới dựng trang thì <code>all</code>, muốn hiện phần tải được thì <code>allSettled</code>, timeout thì <code>race</code>. <strong>Không dùng khi:</strong> không bắn hàng trăm request cùng lúc mà thiếu pool giới hạn, và không dùng <code>all</code> khi một lỗi phụ được phép bỏ qua, giống React gộp nhiều setState trong một handler rồi mới render một lần.</li><li><strong>Lỗi hay gặp:</strong> tưởng <code>all</code> hủy request còn lại trong khi chúng vẫn chạy và vẫn tốn băng thông, và quên bắt AggregateError của <code>any</code>.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> vài request độc lập thì bắn thẳng, vài trăm id thì bạn chia lô hoặc chạy pool tối đa k worker rồi thu thập kết quả.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Promise combinator ở Bài L13, AbortController và giới hạn đồng thời ở Bài L19, và pattern pool k worker trong service ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: minh họa bốn cách ghép promise và yêu cầu về số request đồng thời\nconst slow = new Promise((r) => setTimeout(() => r(\"slow\"), 50));\nconst failing = new Promise((_, reject) =>\n  setTimeout(() => reject(new Error(\"boom\")), 10)\n);\n\nPromise.all([slow, failing]).catch((e) => console.log(\"all:\", e.message));\nPromise.allSettled([slow, failing]).then((res) =>\n  console.log(\"settled:\", res.map((r) => r.status).join(\",\"))\n);\nPromise.race([slow, failing]).catch((e) => console.log(\"race:\", e.message));\nPromise.any([slow, failing]).then((v) => console.log(\"any:\", v));",
+  "expected": "Thứ tự in ra: all: boom, race: boom, settled: fulfilled,rejected, any: slow. Phân tích: failing reject ở mốc 10ms nên Promise.all reject ngay tại đó dù slow chưa xong — all chỉ cần một cái reject là cả chuỗi reject. Promise.race cũng kết thúc ở mốc 10ms vì failing là cái đầu tiên kết thúc, bất kể thành công hay thất bại. Promise.allSettled chờ tới mốc 50ms mới xong và trả mảng nhãn fulfilled,rejected theo đúng thứ tự đầu vào — nó không bao giờ reject. Promise.any ngược lại: nó bỏ qua lỗi và chờ cái thành công đầu tiên, nên sau khi failing reject nó vẫn tiếp tục chờ và resolve slow ở mốc 50ms.",
+  "followups": [
+    {
+      "q": "Vì sao Promise.all reject sớm nhưng các request còn lại vẫn chạy, và cách dừng chúng là gì?",
+      "a": "Promise.all chỉ ghi nhận lỗi đầu tiên rồi reject, nó không có cơ chế truyền tín hiệu huỷ xuống các promise con vì mỗi promise là độc lập. Vì vậy các request còn lại vẫn chiếm băng thông và nếu chúng reject mà không có bắt lỗi thì Node hoặc trình duyệt sẽ báo unhandled rejection. Cách dừng thật sự là tạo một AbortController dùng chung, truyền signal vào lời gọi HTTP của mọi request, rồi gọi abort khi một request thất bại."
+    },
+    {
+      "q": "Khi nào allSettled lại là lựa chọn sai dù nó không bao giờ reject?",
+      "a": "allSettled phù hợp khi bạn coi mỗi kết quả là độc lập và vẫn muốn hiện phần đã tải được, ví dụ tải danh sách avatar cùng lúc với tên hiển thị. Nó sai khi dữ liệu có quan hệ phụ thuộc: nếu không có token xác thực thì mọi request đều hỏng và allSettled sẽ trả về một mảng toàn lỗi rồi bạn vẫn phải xử lý. Khi đó nên kiểm tra điều kiện tiên quyết trước rồi mới phát tán request, hoặc dùng all để lỗi hiện ra sớm."
+    }
+  ],
+  "pitfalls": [
+    "Dùng Promise.all và coi nó như công cụ hủy các request còn lại, trong khi nó chỉ reject sớm chứ không huỷ gì.",
+    "Dùng Promise.race cho timeout mà quên bọc request vào một promise bù luôn resolve, nên nếu request thắng trước thì race vẫn treo.",
+    "Dùng Promise.any rồi không bắt AggregateError, biến tình huống tất cả nguồn dữ liệu hỏng thành lỗi không ai xử lý.",
+    "Phát tán hàng trăm request cùng lúc và tưởng trình duyệt chạy hết song song."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa phân biệt được khi nào dùng race và khi nào dùng any mà không cần tra lại tài liệu.",
+    "Tôi giải thích được lý do Promise.all reject sớm bằng ví dụ hai request cùng chạy trong đó request lỗi vẫn tiêu tốn băng thông.",
+    "Tôi có thể viết một pool chạy đồng thời tối đa k worker cho danh sách vài trăm id mà vẫn thu thập đủ kết quả."
+  ],
+  "refs": [
+    "mdn-promise",
+    "mdn-abortcontroller"
+  ]
+},
+{
+  "id": "B08",
+  "group": "B",
+  "topic": "Debounce, throttle, race giữa các request và AbortController",
+  "prio": "P1",
+  "level": "L3",
+  "type": "situation",
+  "incident": "<p>Ô tìm kiếm gọi API mỗi lần gõ phím. Người dùng gõ \"da\" rồi sửa thành \"danang\" trong vòng 200 ms. Request cho \"da\" tới server sau request cho \"danang\" nhưng lại trả về trước, và kết quả \"da\" ghi đè kết quả đúng. Người dùng thấy danh sách của \"da\" trong khi ô nhập ghi \"danang\". Thêm debounce 300 ms làm giảm số request nhưng lỗi vẫn còn, chỉ ít xuất hiện hơn.</p>",
+  "askFirst": [
+    "Debounce giải quyết vấn đề gì, và không giải quyết vấn đề gì? → Giải mã: giải quyết bớt số request (gom nhiều lần gõ thành một), không giải quyết response về sai thứ tự — đó là hai vấn đề khác nhau cần hai cơ chế khác nhau",
+    "Vì sao response về sai thứ tự lại ghi đè được kết quả mới? → Giải mã: vì không có thứ tự bảo đảm — fetch nào về trước thì ghi state trước; request gõ từ khóa \"a\" gửi đi trước \"b\" nhưng về sau thì ghi đè; phải có counter hoặc AbortController để hủy request cũ",
+    "Cần thêm cơ chế gì ngoài debounce? → Giải mã: AbortController để hủy request cũ khi từ khóa mới gõ (bớt băng thông + phòng ghi đè), và counter để so khi response tới — mạng ổn thì counter đủ, mạng chập chờn thì bắt buộc signal"
+  ],
+  "predict": {
+    "q": "Hai request được phát ra: A cho \"da\" và B cho \"danang\". B trả về sau A. Nếu code chỉ có <code>.then(data => state.q = data)</code> thì state cuối cùng là gì?",
+    "a": "<p>State cuối cùng là kết quả của B, tức \"danang\" — trong trường hợp này đúng. Nhưng nếu mạng chậm bất thường và A trả về <em>sau</em> B, state cuối cùng là \"da\", sai. Điểm cốt lõi là thứ tự hoàn thành không được bảo đảm bởi thứ tự phát ra, nên code đúng phải <em>không phụ thuộc</em> vào thứ tự đó. Hai cách: huỷ request cũ bằng <code>AbortController</code>, hoặc gắn số thứ tự tăng dần cho mỗi lần gọi và bỏ qua response có số nhỏ hơn số mới nhất đã phát.</p>"
   },
-  {
-    id: 'B09',
-    group: 'B',
-    topic: 'type và interface, union, narrowing và generics cơ bản',
-    prio: 'P1',
-    level: 'L2',
-    type: 'code',
-    incident: "<p>Một response API có trường <code>status</code> nhận ba giá trị chuỗi. Dev khai báo <code>status: string</code> rồi viết chuỗi <code>if/else</code> so sánh với từng giá trị. Khi backend thêm giá trị thứ tư, không có lỗi biên dịch nào, và nhánh mặc định âm thầm hiển thị sai nhãn cho một trạng thái mới. Lỗi chỉ lộ ra khi khách hàng báo đơn hàng hiển thị sai trạng thái.</p>",
-    askFirst: ["Kiểu string cho một tập giá trị hữu hạn đánh mất thông tin gì?","Union của các literal khác gì enum, và khi nào chọn cái nào?","TypeScript có kiểm tra gì ở ranh giới mạng không?"],
-    predict: {"q":"Với <code>type Status = \"new\" | \"paid\" | \"shipped\"</code> và một hàm nhận <code>Status</code>, điều gì xảy ra nếu bạn truyền một biến kiểu <code>string</code> vào?","a":"<p>Lỗi biên dịch: <code>string</code> không gán được cho union của ba literal, vì <code>string</code> rộng hơn. Đây chính là giá trị của union literal — nó thu hẹp miền giá trị và buộc mọi nơi phải xử lý đúng tập đó. Hệ quả thực tế rất đáng giá: nếu bạn dùng <code>switch</code> trên union và bật kiểm tra đầy đủ, thêm một giá trị mới vào union sẽ làm compiler báo lỗi ngay tại mọi chỗ chưa xử lý. Còn nếu bạn ép bằng <code>as Status</code> thì bạn đã tự tay tắt bảo vệ đó.</p>"},
-    anchor: "Khai báo kiểu càng rộng thì compiler càng ít giúp được — union của literal biến \"thêm giá trị mới\" thành lỗi biên dịch thay vì lỗi production.",
-    attacks: [{"q":"type và interface khác nhau thế nào, và bạn chọn cái nào?","a":"Khác biệt thực tế nhỏ hơn nhiều so với các cuộc tranh luận trên mạng. interface có thể được khai báo bổ sung nhiều lần và tự gộp lại — hữu ích khi mở rộng kiểu của thư viện bên ngoài; nó cũng cho thông báo lỗi dễ đọc hơn trong nhiều trường hợp. type linh hoạt hơn: nó biểu diễn được union, intersection, tuple, mapped type và conditional type — những thứ interface không làm được. Quy tắc thực dụng: dùng interface cho hình dạng object công khai của module, dùng type khi cần union hoặc các phép biến đổi kiểu."},{"q":"TypeScript có bảo vệ bạn trước dữ liệu sai từ API không?","a":"Không, và đây là hiểu nhầm tốn kém nhất về TypeScript. Kiểu bị xoá hoàn toàn khi biên dịch, nên const data: User = await res.json() không kiểm tra gì cả — nó chỉ là một lời khẳng định với compiler. Nếu backend trả về hình dạng khác, bạn nhận lỗi runtime ở tận sâu trong component. Cách đúng là coi dữ liệu mạng là unknown và kiểm tra ở biên bằng type guard hoặc thư viện validate schema, rồi mới chuyển thành kiểu có tên."}],
-    q: 'Khi nào nên dùng type và khi nào dùng interface trong TypeScript, và viết một hàm generic nhận nhiều kiểu payload cùng lúc thế nào?',
-    oral: 'Hai từ khoá này gần như tương đương ở phần lớn trường hợp, nhưng khác ở khả năng mở rộng. Interface mở được, nghĩa là sau khi khai báo bạn có thể khai báo thêm thuộc tính bằng cách khai báo lại interface và trộn chúng với nhau. Type thì không mở được, nhưng làm được union, intersection và các kiểu có điều kiện. Quy tắc thực tế của tôi là dùng interface cho hình dạng object và type cho mọi thứ còn lại. Union mô tả một giá trị chỉ có thể là một trong vài lựa chọn, và khi các lựa chọn có một trường phân biệt thì TypeScript tự thu hẹp kiểu qua trường đó trong switch, đó gọi là discriminated union và là cách diễn đạt trạng thái lỗi an toàn hơn việc trả về null. Generics cho phép hàm giữ quan hệ giữa kiểu tham số và kiểu trả về, nên hàm bọc response trả về đúng kiểu dữ liệu bên trong thay vì any. Hãy để suy luận tự động thay vì ghi type thủ công.',
-    deep: '<p>Backend thêm giá trị status thứ tư mà không có lỗi biên dịch nào, và đơn hàng mới hiển thị sai nhãn tới khi khách báo. Trường status khai báo <code>string</code> nên compiler không biết tập giá trị hữu hạn. Bạn mất bảo vệ ngay chỗ cần nhất.</p><p><code>interface</code> mô tả hình object và mở rộng được bằng khai báo lại, còn <code>type</code> làm union, intersection và kiểu có điều kiện. Union của literal thu hẹp miền giá trị, và khi các nhánh có trường phân biệt thì <code>switch</code> theo trường đó tự thu hẹp kiểu. Generic giữ quan hệ giữa kiểu đầu vào và kiểu trả về nên hàm bọc response trả đúng kiểu bên trong.</p><ul><li><strong><code>interface</code> mở được hợp đồng, còn <code>type</code> tính được tập hợp:</strong> cái đầu hợp cho hình object công khai của module, cái sau hợp cho union và biến đổi kiểu.</li><li><strong>Dùng khi:</strong> trạng thái nghiệp vụ thì discriminated union, hàm tái dùng nhiều payload thì generic. <strong>Không dùng khi:</strong> không khai báo <code>string</code> cho tập bốn giá trị, và không ép <code>as Status</code> để bịt lỗi kiểu.</li><li><strong>Lỗi hay gặp:</strong> tưởng TypeScript kiểm tra dữ liệu mạng lúc chạy, và khai báo trả về <code>any</code> làm mất hết ý nghĩa generic.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> thêm một giá trị vào union kèm kiểm tra đầy đủ thì compiler báo ngay mọi chỗ thiếu nhánh, còn để kiểu rộng thì lỗi đó thành bug production.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: dùng union literal để thu hẹp kiểu, giống React component props type hạn chế các giá trị cho phép.\ntype Status = "idle" | "loading" | "done" | "error";\n\ninterface ApiResponse<T> {\n  data: T;\n  status: number;\n}\n\ntype Result<T> =\n  | { kind: "ok"; value: T }\n  | { kind: "err"; message: string };\n\nasync function unwrap<T>(res: ApiResponse<T>): Promise<Result<T>> {\n  if (res.status < 200 || res.status >= 300) {\n    return { kind: "err", message: "HTTP " + res.status };\n  }\n  return { kind: "ok", value: res.data };\n}',
-    expected: 'Snippet chỉ khai báo kiểu nên không in gì khi chạy. Thứ nhất, đoạn code này compile sạch dưới strict mode, không có lỗi kiểu nào. Thứ hai, khi tự gọi unwrap({ data: { id: 7 }, status: 200 }) và unwrap({ data: 0, status: 404 }) thì kết quả in lần lượt là {"kind":"ok","value":{"id":7}} và {"kind":"err","message":"HTTP 404"}. Phân tích: generic <T> giữ quan hệ giữa kiểu bên trong data và kiểu bên trong Result, nên nơi gọi nhận đúng kiểu của value mà không phải ép kiểu thủ công. Discriminated union hoạt động vì cả hai nhánh đều có trường kind với literal type khác nhau: res.status chỉ điều khiển luồng lúc chạy, còn TypeScript thu hẹp kiểu khi bạn rẽ nhánh theo kind — truy cập .value mà chưa kiểm tra kind bị báo TS2339. Điểm cần nhớ: interface mở rộng được bằng extends và declaration merging, type thì làm được union và intersection; chọn interface cho hình dạng object, chọn type cho union và kiểu tổ hợp.',
-    followups: [
-      { q: 'Khi nào dùng discriminated union lại tốt hơn việc trả về null hoặc ném lỗi?', a: 'Khi trạng thái lỗi là một phần bình thường của nghiệp vụ, ví dụ bản ghi có thể chưa duyệt, thì discriminated union mô tả đúng các khả năng và bắt buộc người gọi xử lý hết. Nếu hàm âm thầm trả null, người gọi có thể quên kiểm tra và lỗi hiện ra rất xa từ nguyên nhân. Ném lỗi thì phù hợp khi lỗi thật sự là ngoại lệ, chẳng hạn mất kết nối, vì khi đó stack trace giúp truy nguyên dễ hơn.' },
-      { q: 'Generic khác gì với union rộng, và khi nào chọn cái nào?', a: 'Generic giữ quan hệ giữa kiểu đầu vào và kiểu đầu ra, nên hàm bọc response trả về đúng kiểu dữ liệu bên trong và người gọi không phải ghi type thủ công. Union rộng chỉ nói giá trị có thể thuộc một trong vài kiểu nhưng không giữ quan hệ đó, nên kết quả là thường phải ép kiểu ở nơi dùng. Chọn generic khi bạn viết hàm tái sử dụng nhiều kiểu payload, chọn union khi các biến thể thực sự khác nhau về hình dạng dữ liệu.' }
-    ],
-    pitfalls: [
-      'Khai báo lại interface để mở rộng rồi tưởng rằng type cũng làm được như vậy, trong khi type báo lỗi khai báo trùng.',
-      'Dùng union cho dữ liệu không có trường phân biệt nên không tự thu hẹp được và phải ép kiểu ở khắp nơi.',
-      'Khai báo kiểu trả về là any cho hàm có generic, làm mất toàn bộ ý nghĩa của việc dùng generic.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa nhớ chắc tình huống nào bắt buộc phải dùng type thay vì interface.',
-      'Tôi giải thích được discriminated union bằng ví dụ kiểu kết quả có hai nhánh ok và err được thu hẹp qua trường kind.',
-      'Tôi có thể đổi một hàm bọc response trả any sang generic và bỏ được các ép kiểu thủ công trong code gọi.'
-    ],
-    refs: ['ts-handbook', 'ts-narrowing']
+  "anchor": "Debounce giảm số request chứ không bảo đảm thứ tự trả về, nên vẫn phải có tín hiệu huỷ hoặc số thứ tự để chống ghi đè.",
+  "attacks": [
+    {
+      "q": "Debounce và throttle khác nhau ở đâu, và bạn chọn cái nào cho ô tìm kiếm?",
+      "a": "Debounce chờ cho tới khi người dùng ngừng thao tác trong một khoảng, rồi mới chạy một lần — phù hợp với ô tìm kiếm vì bạn chỉ muốn gọi khi người dùng đã gõ xong. Throttle chạy đều đặn tối đa một lần trong mỗi khoảng, bất kể người dùng còn thao tác — phù hợp với sự kiện cuộn hay kéo chuột, nơi bạn cần cập nhật liên tục nhưng có giới hạn. Với tìm kiếm, debounce là lựa chọn đúng; nhưng nhớ rằng debounce chỉ giảm tần suất, nên vẫn cần xử lý thứ tự."
+    },
+    {
+      "q": "Nếu tôi so sánh từ khoá trả về với từ khoá hiện tại trong state trước khi gán thì đã đủ chưa?",
+      "a": "Đủ cho trường hợp hai lần gõ khác nhau, nhưng không đủ khi người dùng gõ cùng một từ khoá hai lần — ví dụ gõ \"da\", xoá, rồi gõ lại \"da\". Hai request có cùng từ khoá, nên phép so sánh không phân biệt được cái nào mới hơn, và kết quả cũ có thể ghi đè. Cách chắc chắn là dùng định danh đơn điệu — số thứ tự tăng dần hoặc một token cho mỗi lần gọi — và chỉ nhận response khi định danh của nó bằng định danh mới nhất."
+    }
+  ],
+  "q": "Người dùng gõ nhanh vào ô tìm kiếm và mỗi lần gõ bạn đều gọi API, bạn làm sao để vừa bớt request vừa không để kết quả cũ ghi đè kết quả mới?",
+  "oral": "Có ba việc phải làm đồng thời. Thứ nhất là debounce: chờ người dùng ngừng gõ một khoảng thời gian rồi mới gọi API, nên gõ liên tục mười ký tự chỉ tốn một request thay vì mười. Thứ hai là thứ tự trả về không đảm bảo: request sau có thể hoàn tất trước request trước, và nếu bạn gán thẳng kết quả vào state thì kết quả cũ sẽ đè lên kết quả mới. Cách phổ biến là gắn một số thứ tự cho mỗi lần chạy và chỉ nhận kết quả của lần chạy mới nhất. Thứ ba là hủy thật: promise không tự huỷ được nên phải dùng AbortController, truyền signal vào lời gọi HTTP rồi gọi abort ở lần gõ kế tiếp. Nhớ bắt riêng lỗi AbortError vì đó là hủy có chủ ý chứ không phải lỗi mạng, không bắt riêng thì giao diện sẽ hiện thông báo lỗi giả mỗi lần gõ. Nếu thay bằng throttle thì request vẫn chạy đều theo nhịp để giữ dữ liệu tươi, phù hợp hơn với cuộn trang vô hạn.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>debounce</strong>: Chờ một khoảng lặng (không gõ mới chạy): gom nhiều lần gõ thành một request khi người dùng dừng; không giải quyết được vấn đề response sai thứ tự.</li><li><strong>throttle</strong>: Trần tần suất: tối đa một lần trong khoảng thời gian cho trước; hợp cho scroll/resize, không hợp cho tìm kiếm (người dùng mong khi dừng gõ là thấy kết quả).</li><li><strong>AbortController</strong>: Tạo signal, truyền vào fetch; gọi controller.abort() thì request đang chờ bị hủy ngay, free băng thông; fetch ném AbortError để phân biệt hủy do người dùng và lỗi mạng thật.</li><li><strong>stale response race</strong>: Request chậm hơn gửi đi trước request nhanh; nếu không hủy hay so thứ tự thì response chậm ghi đè kết quả mới, hiện kết quả của từ khóa cũ.</li></ul><p>Người dùng gõ da rồi sửa thành danang trong 200ms, request cho da về sau nhưng ghi đè kết quả đúng. Ô nhập ghi danang mà danh sách hiện của da. Bạn thêm debounce 300ms mà lỗi vẫn còn, chỉ thưa hơn.</p><p>Gõ phím tạo ba lớp vấn đề riêng. Debounce xóa timer cũ và đặt lại timer mới nên gõ liên tục mười ký tự chỉ tốn một request. Throttle cho chạy tối đa một lần mỗi khoảng nên hợp cuộn vô hạn. Race condition là request cũ về sau và ghi đè state mới, vì thứ tự hoàn thành không theo thứ tự phát ra.</p><ul><li><strong>Debounce chờ yên mới chạy, còn throttle chạy đều theo nhịp:</strong> cái đầu lấy trạng thái cuối của ô tìm kiếm, cái sau giữ cập nhật liên tục khi cuộn hay kéo.</li><li><strong>Dùng khi:</strong> ô tìm kiếm thì debounce cộng AbortController và số thứ tự tăng dần, chỉ nhận response của lần mới nhất. <strong>Không dùng khi:</strong> không dùng debounce cho cuộn vô hạn vì cuộn liên tục thì callback không bao giờ chạy.</li><li><strong>Lỗi hay gặp:</strong> bắt AbortError như lỗi mạng nên mỗi lần gõ hiện thông báo giả, và chỉ so từ khóa mà không hủy request cũ nên vẫn tốn băng thông.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> mạng ổn định thì số thứ tự đã đủ đúng, mạng chập chờn hay user gõ cùng từ khóa hai lần thì bạn phải hủy thật bằng signal.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Debounce/throttle ở Bài L19, AbortController và fetch signal ở Bài L19, và pattern tìm kiếm an toàn trong component ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: dùng AbortController cho mỗi lần gọi, giữ signal trong biến cục bộ của chính lần chạy đó, tránh sai thứ tự trả về.\nlet timer = null;\nlet inflight = null;   // controller của lần gọi đang bay, không phải biến module dùng chung\nlet latest = 0;\n\nasync function search(keyword) {\n  if (timer) clearTimeout(timer);\n\n  timer = setTimeout(async () => {\n    // Tạo controller mới ngay trước khi gọi, và giữ tham chiếu trong biến riêng\n    // của lần chạy này. Nếu để setTimeout đọc biến controller ở cấp module thì\n    // signal sẽ là của lần gọi mới nhất, không phải của lần gọi này.\n    if (inflight) inflight.abort();\n    const ctrl = new AbortController();\n    inflight = ctrl;\n    const runId = ++latest;\n\n    try {\n      const res = await api.get(\"/api/search\", {\n        signal: ctrl.signal,               // signal của chính lần chạy này\n        params: { q: keyword },\n        headers: { Accept: \"application/json\" }\n      });\n      if (runId === latest) render(res.data);\n    } catch (err) {\n      if (err.name !== \"AbortError\") showError(err);\n    }\n  }, 300);\n}",
+  "expected": "Snippet không chạy được nguyên trạng vì API, render và showError đến từ tầng ứng dụng, nên phần dưới mô tả trình tự thực thi theo đúng các cơ chế trong code, không phải output chạy trực tiếp snippet. Trình tự: mỗi lần gõ, hàm xóa timer cũ bằng clearTimeout và hẹn lại một lần chạy mới sau 300ms. Khi lần chạy đó bắt đầu, nó mới hủy request đang bay và tạo AbortController mới, rồi giữ signal trong một biến cục bộ của chính lần chạy đó. Vì debounce 300ms, hai lần gõ cách nhau 150ms chỉ sinh một request — lần gõ sau xóa timer của lần trước nên lần trước chưa kịp gọi API. Khi request cũ bị hủy, lời gọi HTTP từ chối với lỗi tên AbortError và nhánh catch bỏ qua, nên giao diện không hiện thông báo lỗi giả. Nếu request cũ vẫn về, chốt if (runId === latest) mới cho phép ghi vào state nên kết quả cũ không đè kết quả mới. Theo trình tự trên, log in ra đúng hai dòng: AbortError: bỏ qua, không hiển thị lỗi rồi render kết quả ab. Một chi tiết dễ viết sai và làm cả cơ chế mất tác dụng: nếu setTimeout đọc thẳng một biến controller khai ở cấp module thì signal truyền đi là của lần gọi mới nhất chứ không phải của lần gọi này, nên abort không hủy đúng request và nhánh AbortError không bao giờ chạy — code trông vẫn đúng mà hành vi thì khác hẳn. Điểm cần nhớ: debounce chỉ giảm số request chứ không bảo đảm thứ tự, nên phải thêm số thứ tự lần chạy hoặc AbortController, và luôn bắt riêng AbortError.",
+  "followups": [
+    {
+      "q": "Vì sao lọc AbortError lại quan trọng, và nếu quên thì người dùng thấy gì?",
+      "a": "Khi request bị hủy, lời gọi HTTP bị từ chối với lỗi tên AbortError chứ không phải lỗi mạng. Nếu code xử lý mọi lỗi giống nhau thì mỗi lần người dùng gõ ký tự mới sẽ bật lên thông báo lỗi, dù hệ thống hoàn toàn ổn. Người dùng sẽ tưởng sản phẩm bị lỗi liên tục. Cách xử lý đúng là bắt lỗi ở đây rồi bỏ qua khi tên lỗi là AbortError, còn lỗi thật mới đưa vào hệ thống báo cáo lỗi."
+    },
+    {
+      "q": "Debounce và throttle khác nhau thế nào khi người dùng cuộn trang vô hạn?",
+      "a": "Debounce chỉ chạy sau khi người dùng ngừng hành động, nên khi cuộn liên tục nó sẽ không bao giờ chạy và trang sẽ không tải thêm dữ liệu. Throttle chạy tối đa một lần mỗi khoảng thời gian kể cả khi hành động chưa dừng, nên phù hợp với cuộn vô hạn, kéo thanh trượt và theo dõi vị trí chuột. Nguyên tắc chọn là: hành động liên tục mà mất dữ liệu thì throttle, hành động liên tục mà chỉ lấy trạng thái cuối cùng thì debounce."
+    }
+  ],
+  "pitfalls": [
+    "Chỉ so sánh response cũ với response mới mà không hủy request cũ, nên băng thông vẫn bị dùng cho các request không còn ai cần.",
+    "Bắt mọi lỗi giống nhau nên lần gõ mới làm hiện thông báo lỗi dù nguyên nhân chỉ là yêu cầu bị hủy có chủ ý.",
+    "Dùng debounce cho cuộn trang vô hạn, kết quả là khi cuộn liên tục không bao giờ có request nào chạy.",
+    "Gọi lại API liên tục khi server cần header Authorization, làm phát sinh preflight không cần thiết."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa phân biệt được khi nào chọn debounce và khi nào chọn throttle mà không cần suy nghĩ lại.",
+    "Tôi giải thích được lỗi kết quả cũ ghi đè kết quả mới bằng ví dụ hai request cùng tới server với độ trễ khác nhau.",
+    "Tôi có thể thêm debounce cùng AbortController vào ô tìm kiếm mà không làm hiện thông báo lỗi giả."
+  ],
+  "refs": [
+    "mdn-abortcontroller",
+    "mdn-cors"
+  ]
+},
+{
+  "id": "B09",
+  "group": "B",
+  "topic": "type và interface, union, narrowing và generics cơ bản",
+  "prio": "P1",
+  "level": "L2",
+  "type": "code",
+  "incident": "<p>Một response API có trường <code>status</code> nhận ba giá trị chuỗi. Dev khai báo <code>status: string</code> rồi viết chuỗi <code>if/else</code> so sánh với từng giá trị. Khi backend thêm giá trị thứ tư, không có lỗi biên dịch nào, và nhánh mặc định âm thầm hiển thị sai nhãn cho một trạng thái mới. Lỗi chỉ lộ ra khi khách hàng báo đơn hàng hiển thị sai trạng thái.</p>",
+  "askFirst": [
+    "Kiểu string cho một tập giá trị hữu hạn đánh mất thông tin gì? → Giải mã: đánh mất constraint tập hữu hạn — string cho mọi chuỗi, không biết được chỉ có \"shipped\"; lỗi \"shipped\" viết thành \"Shiped\" không ai bắt được, union literal thì báo ngay",
+    "Union của các literal khác gì enum, và khi nào chọn cái nào? → Giải mã: union literal là tập giá trị cố định, enum là object runtime có reverse mapping (và thêm runtime cost) — union rẻ hơn, không phát sinh mã runtime, nên ưu tiên union; enum chỉ khi cần runtime access hoặc library cũ yêu cầu",
+    "TypeScript có kiểm tra gì ở ranh giới mạng không? → Giải mã: không — TypeScript chỉ kiểm tra tĩnh ở biên compile, không có runtime check khi dữ liệu mạng về; mọi response JSON vẫn phải kiểm tra bằng schema (zod, io-ts) tại biên API trước khi dùng"
+  ],
+  "predict": {
+    "q": "Với <code>type Status = \"new\" | \"paid\" | \"shipped\"</code> và một hàm nhận <code>Status</code>, điều gì xảy ra nếu bạn truyền một biến kiểu <code>string</code> vào?",
+    "a": "<p>Lỗi biên dịch: <code>string</code> không gán được cho union của ba literal, vì <code>string</code> rộng hơn. Đây chính là giá trị của union literal — nó thu hẹp miền giá trị và buộc mọi nơi phải xử lý đúng tập đó. Hệ quả thực tế rất đáng giá: nếu bạn dùng <code>switch</code> trên union và bật kiểm tra đầy đủ, thêm một giá trị mới vào union sẽ làm compiler báo lỗi ngay tại mọi chỗ chưa xử lý. Còn nếu bạn ép bằng <code>as Status</code> thì bạn đã tự tay tắt bảo vệ đó.</p>"
   },
-  {
-    id: 'B10',
-    group: 'B',
-    topic: 'unknown, any, never, optional và nullability, ép kiểu không kiểm tra lúc chạy',
-    prio: 'P1',
-    level: 'L2',
-    type: 'concept',
-    incident: "<p>Một thành phần hiển thị thông tin người dùng gọi <code>user.profile.name</code>. Backend đổi để <code>profile</code> có thể là <code>null</code> cho tài khoản chưa hoàn tất hồ sơ. Vì kiểu ở client vẫn khai báo <code>profile: Profile</code>, không có lỗi biên dịch nào; production ném <code>Cannot read properties of null</code> và trắng trang với những tài khoản đó. Một dev đề xuất đổi sang <code>any</code> để \"hết lỗi kiểu\".</p>",
-    askFirst: ["Vì sao any không sửa được lỗi này mà chỉ làm nó muộn hơn?","unknown khác any ở điểm nào?","Chỗ nào là nơi đúng để kiểm tra dữ liệu từ mạng?"],
-    predict: {"q":"Biến <code>x: any</code> và <code>y: unknown</code> — bạn làm được gì với mỗi biến?","a":"<p>Với <code>any</code> bạn làm được mọi thứ: đọc thuộc tính bất kỳ, gọi nó như hàm, gán nó vào biến kiểu khác — compiler không kiểm tra gì. Với <code>unknown</code> bạn chỉ được gán vào <code>any</code> hoặc <code>unknown</code>; muốn dùng phải thu hẹp trước bằng type guard, phép so sánh, hoặc validate schema. Nói cách khác <code>any</code> tắt kiểm tra và lan truyền sự im lặng đó ra khắp nơi nó chảy qua, còn <code>unknown</code> buộc bạn chứng minh kiểu trước khi dùng. Đó là lý do <code>unknown</code> là kiểu đúng cho mọi dữ liệu đến từ bên ngoài.</p>"},
-    anchor: 'Ép kiểu hay any chỉ đổi điều compiler tin, không kiểm tra dữ liệu = backend trả profile null là trắng trang ở production dù build vẫn xanh.',
-    code: '// [OK] Cách làm chuẩn: kiểu unknown cho dữ liệu mạng, thu hẹp trước khi dùng, never trong default để bắt case thiếu\ntype Config = { retries: number; token: string };\n\nconst raw: unknown = await response.json();\nconst config = raw as Config;\n\nfunction render(state: "idle" | "done"): void {\n  switch (state) {\n    case "idle":\n      console.log("idle");\n      break;\n    default: {\n      const exhaustive: never = state;\n      console.log(exhaustive);\n    }\n  }\n}',
-    attacks: [{"q":"never dùng để làm gì trong thực tế?","a":"Hai công dụng chính. Thứ nhất, nó là kiểu của nhánh không bao giờ trả về — hàm luôn ném lỗi, hoặc vòng lặp vô hạn. Thứ hai, và hữu ích hơn, nó dùng để kiểm tra tính đầy đủ: trong nhánh default của một switch trên union, nếu bạn gán giá trị còn lại cho biến kiểu never, compiler sẽ báo lỗi ngay khi bạn thêm một giá trị mới vào union mà quên xử lý. Đó là cách biến một lỗi production thành một lỗi biên dịch."},{"q":"Nếu backend của chính team mình viết thì có cần kiểm tra dữ liệu không?","a":"Cần, vì \"backend của mình\" không loại bỏ được các nguyên nhân khác: một bản deploy cũ còn chạy, một proxy trả về trang lỗi HTML với status 200, một trường bị đổi tên trong nhánh chưa merge, hoặc cache trả về payload của phiên bản trước. Ranh giới mạng là ranh giới không tin được bất kể ai viết đầu bên kia. Chi phí kiểm tra ở một chỗ — hàm parse response — nhỏ hơn nhiều so với chi phí gỡ một lỗi null ở tận sâu trong cây component."}],
-    q: 'Khác biệt giữa any và unknown trong TypeScript là gì, và vì sao ép kiểu không thay thế được cho việc kiểm tra dữ liệu lúc chạy?',
-    oral: 'any tắt hết kiểm tra kiểu, mọi thao tác trên nó đều hợp lệ và nó lan truyền theo kiểu any ra toàn bộ biểu thức chứa nó. unknown thì ngược lại, là kiểu an toàn mặc định: bạn không được dùng nó như thể nó có thuộc tính nào, và không gán nó sang kiểu khác được, chỉ có thể kiểm tra trước rồi mới thu hẹp. Vì vậy dữ liệu từ bên ngoài như response của lời gọi HTTP hay JSON.parse nên là unknown rồi kiểm tra trước. never là kiểu không có giá trị nào thỏa mãn, dùng cho hàm không bao giờ trả về và cho trường hợp default trong switch để bắt nhánh chưa xử lý khi bạn thêm giá trị mới vào union. Về nullability, khai báo optional và khai báo kiểu có thêm undefined là hai việc khác nhau. Quan trọng nhất: ép kiểu chỉ thay đổi điều công cụ build tin, nó không kiểm tra gì lúc chạy, nên dữ liệu từ mạng vẫn có thể sai và gây lỗi ở xa hơn chỗ gốc.',
-    deep: '<p>Production trắng trang cho đúng nhóm tài khoản chưa hoàn tất hồ sơ, lỗi Cannot read properties of null trong khi build im lặng. Backend bắt đầu gửi profile là null, nhưng kiểu client vẫn ghi <code>profile: Profile</code>. Bạn đề xuất đổi sang <code>any</code> thì lỗi kiểu hết thật, nhưng lỗi chạy còn nguyên.</p><p><code>any</code> tắt mọi kiểm tra và lan sang cả biểu thức chứa nó nên một chỗ any làm mất kiểm tra cả chuỗi gọi. <code>unknown</code> cấm đọc thuộc tính và cấm gán sang kiểu khác cho tới khi bạn thu hẹp bằng type guard hay kiểm tra tường minh. <code>never</code> là kiểu không giá trị nào thỏa, dùng cho hàm không bao giờ trả về và cho nhánh default bắt union thiếu case. Ép kiểu chỉ đổi điều compiler tin vì nó bị xóa lúc build.</p><ul><li><strong><code>any</code> miễn hỏi, còn <code>unknown</code> bắt chứng minh trước:</strong> cái đầu cho bạn làm mọi thứ ngay, cái sau bắt bạn kiểm tra ở biên rồi mới cho dùng.</li><li><strong>Dùng khi:</strong> dữ liệu từ fetch hay JSON.parse thì <code>unknown</code> cộng kiểm tra ở biên, union thêm giá trị thì <code>never</code> ở default. <strong>Không dùng khi:</strong> không dùng <code>any</code> cho response API, không dùng ép kiểu thay kiểm tra chạy.</li><li><strong>Lỗi hay gặp:</strong> ép JSON sai thành Config rồi đọc thuộc tính, và nhầm optional với nullable khi backend gửi null tường minh.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> object nhỏ ổn định thì type guard tay đủ, dữ liệu lớn nhiều kiểu thì bạn chuyển sang schema kiểm tra ở biên và coi phần trong đã tin cậy.</li></ul>',
-    expected: 'Snippet không chạy được nguyên trạng: dòng đầu tham chiếu biến response không tồn tại nên Node ném ReferenceError: response is not defined. Khi thay response.json() bằng một giá trị unknown thật, ví dụ JSON.parse(\'{"retries":"nhieu","token":42}\'), thì raw as Config không kiểm tra gì cả: config.retries in ra chuỗi "nhieu" và config.retries + 1 cho "nhieu1", còn config.token là số 42 dù khai báo là string. Phân tích: ép kiểu as chỉ ghi lại điều công cụ build tin, nó bị xóa hoàn toàn khi biên dịch sang JavaScript, nên dữ liệu sai vẫn đi qua và lỗi chỉ lộ ra ở chỗ dùng. unknown an toàn hơn hẳn vì bạn không đọc được thuộc tính nào cho tới khi thu hẹp bằng typeof, instanceof hoặc type guard tự viết. Về phần switch: union chỉ có "idle" và "done" mà default lại khai báo const exhaustive: never = state, nên TypeScript báo TS2322 Type \'"done"\' is not assignable to type \'never\' — đây chính là cơ chế bắt lỗi khi thêm giá trị mới vào union mà quên xử lý; lúc chạy thì không có kiểm tra nào, render("done") rơi vào default và in ra done. Điểm cần nhớ: as không thay thế được kiểm tra lúc chạy, và never trong default là chốt exhaustiveness.',
-    followups: [
-      { q: 'Làm sao kiểm tra một giá trị unknown ở biên mà không phải viết tay từng trường?', a: 'Hai lựa chọn phổ biến là dùng type guard do bạn tự viết, hoặc dùng một thư viện kiểm tra schema theo khai báo. Type guard tự viết cho kiểu dữ liệu nhỏ và ổn định, còn schema library đáng dùng khi dữ liệu lớn, có nhiều kiểu hoặc cần sinh tài liệu. Điểm chung là phải kiểm tra ở biên nơi dữ liệu vào ứng dụng và coi phần còn lại của codebase là đã tin cậy. Chỉ ép kiểu thì không có tác dụng gì ở lúc chạy.' },
-      { q: 'Vì sao không nên dùng any cho dữ liệu từ lời gọi HTTP, kể cả khi kiểu đó đúng ở thời điểm viết?', a: 'Vì server có thể đổi kiểu trả về bất cứ lúc nào mà không báo bạn, và nếu kiểu đó bị any thì công cụ build im lặng, và lỗi chỉ xuất hiện khi chạy với dữ liệu thật. unknown buộc bạn phải kiểm tra trước khi dùng nên chi phí trả trước rất nhỏ so với thời gian debug một lỗi dữ liệu ở môi trường khác. Ngoài ra any còn lan truyền và làm mất kiểm tra kiểu cho cả biểu thức chứa nó.' }
-    ],
-    pitfalls: [
-      'Ép kiểu dữ liệu từ JSON.parse và coi đó là kiểm tra lúc chạy, trong khi code sinh ra hoàn toàn không có kiểm tra gì.',
-      'Khai dữ liệu từ lời gọi HTTP là any rồi truy cập thuộc tính, khiến mọi lỗi kiểu chỉ lộ ra ở môi trường thật thay vì lúc build.',
-      'Thêm một giá trị vào union rồi quên xử lý nhánh mới, và không dùng never trong default để bắt lỗi ngay lúc build.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa nhuần nhuyễn viết hàm kiểm tra cho một kiểu unknown từ response của API.',
-      'Tôi giải thích được vì sao ép kiểu không bắt được dữ liệu sai, bằng ví dụ ép một chuỗi thành object rồi đọc thuộc tính.',
-      'Tôi có thể thay any trong một lớp gọi API bằng unknown cộng kiểm tra biên mà không phải đụng tới logic nghiệp vụ.'
-    ],
-    refs: ['ts-handbook', 'ts-narrowing']
+  "anchor": "Khai báo kiểu càng rộng thì compiler càng ít giúp được — union của literal biến \"thêm giá trị mới\" thành lỗi biên dịch thay vì lỗi production.",
+  "attacks": [
+    {
+      "q": "type và interface khác nhau thế nào, và bạn chọn cái nào?",
+      "a": "Khác biệt thực tế nhỏ hơn nhiều so với các cuộc tranh luận trên mạng. interface có thể được khai báo bổ sung nhiều lần và tự gộp lại — hữu ích khi mở rộng kiểu của thư viện bên ngoài; nó cũng cho thông báo lỗi dễ đọc hơn trong nhiều trường hợp. type linh hoạt hơn: nó biểu diễn được union, intersection, tuple, mapped type và conditional type — những thứ interface không làm được. Quy tắc thực dụng: dùng interface cho hình dạng object công khai của module, dùng type khi cần union hoặc các phép biến đổi kiểu."
+    },
+    {
+      "q": "TypeScript có bảo vệ bạn trước dữ liệu sai từ API không?",
+      "a": "Không, và đây là hiểu nhầm tốn kém nhất về TypeScript. Kiểu bị xoá hoàn toàn khi biên dịch, nên const data: User = await res.json() không kiểm tra gì cả — nó chỉ là một lời khẳng định với compiler. Nếu backend trả về hình dạng khác, bạn nhận lỗi runtime ở tận sâu trong component. Cách đúng là coi dữ liệu mạng là unknown và kiểm tra ở biên bằng type guard hoặc thư viện validate schema, rồi mới chuyển thành kiểu có tên."
+    }
+  ],
+  "q": "Khi nào nên dùng type và khi nào dùng interface trong TypeScript, và viết một hàm generic nhận nhiều kiểu payload cùng lúc thế nào?",
+  "oral": "Hai từ khoá này gần như tương đương ở phần lớn trường hợp, nhưng khác ở khả năng mở rộng. Interface mở được, nghĩa là sau khi khai báo bạn có thể khai báo thêm thuộc tính bằng cách khai báo lại interface và trộn chúng với nhau. Type thì không mở được, nhưng làm được union, intersection và các kiểu có điều kiện. Quy tắc thực tế của tôi là dùng interface cho hình dạng object và type cho mọi thứ còn lại. Union mô tả một giá trị chỉ có thể là một trong vài lựa chọn, và khi các lựa chọn có một trường phân biệt thì TypeScript tự thu hẹp kiểu qua trường đó trong switch, đó gọi là discriminated union và là cách diễn đạt trạng thái lỗi an toàn hơn việc trả về null. Generics cho phép hàm giữ quan hệ giữa kiểu tham số và kiểu trả về, nên hàm bọc response trả về đúng kiểu dữ liệu bên trong thay vì any. Hãy để suy luận tự động thay vì ghi type thủ công.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>type alias (type X = ...)</strong>: Gọi tên cho một cấu hình: union, object literal, tuple; không có cấu trúc thành viên riêng, dùng khi cần union của các shape hoặc khi dùng trong generic.</li><li><strong>interface</strong>: Khai báo cấu trúc object với các thuộc tính; có thể mở rộng (declaration merging) nên hợp khi mô tả API hoặc object lớn; khác type ở chỗ mở rộng được và hợp nhất được.</li><li><strong>union literal</strong>: Tập hữu hạn giá trị như \"pending\" | \"shipped\" | \"returned\"; hơn string ở chỗ type chỉ chấp nhận đúng các giá trị đã liệt kê, sai là báo ngay ở compile time.</li><li><strong>narrowing</strong>: Type system thu hẹp kiểu từ rộng xuống hẹp tại từng nhánh (if x không null, instanceof, tag discriminating union) — compiler biết nội bộ từng nhánh đúng.</li></ul><p>Backend thêm giá trị status thứ tư mà không có lỗi biên dịch nào, và đơn hàng mới hiển thị sai nhãn tới khi khách báo. Trường status khai báo <code>string</code> nên compiler không biết tập giá trị hữu hạn. Bạn mất bảo vệ ngay chỗ cần nhất.</p><p><code>interface</code> mô tả hình object và mở rộng được bằng khai báo lại, còn <code>type</code> làm union, intersection và kiểu có điều kiện. Union của literal thu hẹp miền giá trị, và khi các nhánh có trường phân biệt thì <code>switch</code> theo trường đó tự thu hẹp kiểu. Generic giữ quan hệ giữa kiểu đầu vào và kiểu trả về nên hàm bọc response trả đúng kiểu bên trong.</p><ul><li><strong><code>interface</code> mở được hợp đồng, còn <code>type</code> tính được tập hợp:</strong> cái đầu hợp cho hình object công khai của module, cái sau hợp cho union và biến đổi kiểu.</li><li><strong>Dùng khi:</strong> trạng thái nghiệp vụ thì discriminated union, hàm tái dùng nhiều payload thì generic. <strong>Không dùng khi:</strong> không khai báo <code>string</code> cho tập bốn giá trị, và không ép <code>as Status</code> để bịt lỗi kiểu.</li><li><strong>Lỗi hay gặp:</strong> tưởng TypeScript kiểm tra dữ liệu mạng lúc chạy, và khai báo trả về <code>any</code> làm mất hết ý nghĩa generic.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> thêm một giá trị vào union kèm kiểm tra đầy đủ thì compiler báo ngay mọi chỗ thiếu nhánh, còn để kiểu rộng thì lỗi đó thành bug production.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Type và interface ở Bài L13, union và narrowing ở Bài L14, và generic với discriminated union ở Bài L15.</p>",
+  "code": "// [OK] Cách làm chuẩn: dùng union literal để thu hẹp kiểu, giống React component props type hạn chế các giá trị cho phép.\ntype Status = \"idle\" | \"loading\" | \"done\" | \"error\";\n\ninterface ApiResponse<T> {\n  data: T;\n  status: number;\n}\n\ntype Result<T> =\n  | { kind: \"ok\"; value: T }\n  | { kind: \"err\"; message: string };\n\nasync function unwrap<T>(res: ApiResponse<T>): Promise<Result<T>> {\n  if (res.status < 200 || res.status >= 300) {\n    return { kind: \"err\", message: \"HTTP \" + res.status };\n  }\n  return { kind: \"ok\", value: res.data };\n}",
+  "expected": "Snippet chỉ khai báo kiểu nên không in gì khi chạy. Thứ nhất, đoạn code này compile sạch dưới strict mode, không có lỗi kiểu nào. Thứ hai, khi tự gọi unwrap({ data: { id: 7 }, status: 200 }) và unwrap({ data: 0, status: 404 }) thì kết quả in lần lượt là {\"kind\":\"ok\",\"value\":{\"id\":7}} và {\"kind\":\"err\",\"message\":\"HTTP 404\"}. Phân tích: generic <T> giữ quan hệ giữa kiểu bên trong data và kiểu bên trong Result, nên nơi gọi nhận đúng kiểu của value mà không phải ép kiểu thủ công. Discriminated union hoạt động vì cả hai nhánh đều có trường kind với literal type khác nhau: res.status chỉ điều khiển luồng lúc chạy, còn TypeScript thu hẹp kiểu khi bạn rẽ nhánh theo kind — truy cập .value mà chưa kiểm tra kind bị báo TS2339. Điểm cần nhớ: interface mở rộng được bằng extends và declaration merging, type thì làm được union và intersection; chọn interface cho hình dạng object, chọn type cho union và kiểu tổ hợp.",
+  "followups": [
+    {
+      "q": "Khi nào dùng discriminated union lại tốt hơn việc trả về null hoặc ném lỗi?",
+      "a": "Khi trạng thái lỗi là một phần bình thường của nghiệp vụ, ví dụ bản ghi có thể chưa duyệt, thì discriminated union mô tả đúng các khả năng và bắt buộc người gọi xử lý hết. Nếu hàm âm thầm trả null, người gọi có thể quên kiểm tra và lỗi hiện ra rất xa từ nguyên nhân. Ném lỗi thì phù hợp khi lỗi thật sự là ngoại lệ, chẳng hạn mất kết nối, vì khi đó stack trace giúp truy nguyên dễ hơn."
+    },
+    {
+      "q": "Generic khác gì với union rộng, và khi nào chọn cái nào?",
+      "a": "Generic giữ quan hệ giữa kiểu đầu vào và kiểu đầu ra, nên hàm bọc response trả về đúng kiểu dữ liệu bên trong và người gọi không phải ghi type thủ công. Union rộng chỉ nói giá trị có thể thuộc một trong vài kiểu nhưng không giữ quan hệ đó, nên kết quả là thường phải ép kiểu ở nơi dùng. Chọn generic khi bạn viết hàm tái sử dụng nhiều kiểu payload, chọn union khi các biến thể thực sự khác nhau về hình dạng dữ liệu."
+    }
+  ],
+  "pitfalls": [
+    "Khai báo lại interface để mở rộng rồi tưởng rằng type cũng làm được như vậy, trong khi type báo lỗi khai báo trùng.",
+    "Dùng union cho dữ liệu không có trường phân biệt nên không tự thu hẹp được và phải ép kiểu ở khắp nơi.",
+    "Khai báo kiểu trả về là any cho hàm có generic, làm mất toàn bộ ý nghĩa của việc dùng generic."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa nhớ chắc tình huống nào bắt buộc phải dùng type thay vì interface.",
+    "Tôi giải thích được discriminated union bằng ví dụ kiểu kết quả có hai nhánh ok và err được thu hẹp qua trường kind.",
+    "Tôi có thể đổi một hàm bọc response trả any sang generic và bỏ được các ép kiểu thủ công trong code gọi."
+  ],
+  "refs": [
+    "ts-handbook",
+    "ts-narrowing"
+  ]
+},
+{
+  "id": "B10",
+  "group": "B",
+  "topic": "unknown, any, never, optional và nullability, ép kiểu không kiểm tra lúc chạy",
+  "prio": "P1",
+  "level": "L2",
+  "type": "concept",
+  "incident": "<p>Một thành phần hiển thị thông tin người dùng gọi <code>user.profile.name</code>. Backend đổi để <code>profile</code> có thể là <code>null</code> cho tài khoản chưa hoàn tất hồ sơ. Vì kiểu ở client vẫn khai báo <code>profile: Profile</code>, không có lỗi biên dịch nào; production ném <code>Cannot read properties of null</code> và trắng trang với những tài khoản đó. Một dev đề xuất đổi sang <code>any</code> để \"hết lỗi kiểu\".</p>",
+  "askFirst": [
+    "Vì sao any không sửa được lỗi này mà chỉ làm nó muộn hơn? → Giải mã: any không loại lỗi — nó tắt kiểm tra tĩnh cho biểu thức đó, nên mọi access bên trong không bị báo; lỗi vẫn tồn tại, chỉ hiện muộn hơn ở runtime khi đọc property sai kiểu",
+    "unknown khác any ở điểm nào? → Giải mã: unknown nhận bất kỳ (như any) nhưng bắt buộc phải narrow trước khi dùng; any thì đọc luôn được, unknown thì đọc không narrow là báo lỗi — đó là sự khác biệt then chốt",
+    "Chỗ nào là nơi đúng để kiểm tra dữ liệu từ mạng? → Giải mã: ở biên nơi dữ liệu đi từ outside vào (response API, env variable, event từ web worker) — kiểm tra bằng type guard hoặc schema library, mọi tầng trong coi data đã tin; không kiểm tra rải khắp nơi"
+  ],
+  "predict": {
+    "q": "Biến <code>x: any</code> và <code>y: unknown</code> — bạn làm được gì với mỗi biến?",
+    "a": "<p>Với <code>any</code> bạn làm được mọi thứ: đọc thuộc tính bất kỳ, gọi nó như hàm, gán nó vào biến kiểu khác — compiler không kiểm tra gì. Với <code>unknown</code> bạn chỉ được gán vào <code>any</code> hoặc <code>unknown</code>; muốn dùng phải thu hẹp trước bằng type guard, phép so sánh, hoặc validate schema. Nói cách khác <code>any</code> tắt kiểm tra và lan truyền sự im lặng đó ra khắp nơi nó chảy qua, còn <code>unknown</code> buộc bạn chứng minh kiểu trước khi dùng. Đó là lý do <code>unknown</code> là kiểu đúng cho mọi dữ liệu đến từ bên ngoài.</p>"
   },
-  {
-    id: 'B11',
-    group: 'B',
-    topic: 'Module, import và export, phụ thuộc giữa các file',
-    prio: 'P1',
-    level: 'L1',
-    type: 'concept',
-    incident: "<p>Một module tiện ích vừa export một hàm vừa chạy code ở cấp module để đăng ký một listener toàn cục. Khi một file khác import nó chỉ để dùng một hàm định dạng ngày, listener cũng được đăng ký, và một kết nối bị mở thêm. Trên trang có nhiều bundle, việc này xảy ra nhiều lần, và log cho thấy cùng một listener được đăng ký bốn lần.</p>",
-    askFirst: ["Code ở cấp module chạy khi nào, và bao nhiêu lần?","Vì sao import để dùng một hàm nhỏ lại kéo theo tác dụng phụ?","Làm sao giữ module không có tác dụng phụ?"],
-    predict: {"q":"Hai file cùng <code>import { fmt } from \"./utils.js\"</code>. Code ở cấp module của <code>utils.js</code> chạy mấy lần?","a":"<p>Đúng một lần. Module trong ESM được đánh giá một lần duy nhất cho mỗi lần tải, và kết quả được cache; các lần import sau nhận cùng một thực thể module. Đây là lý do state ở cấp module hoạt động như một singleton trong phạm vi một bản tải. Nhưng cũng chính vì vậy, nếu module đó chạy tác dụng phụ ở cấp cao nhất thì tác dụng phụ đó xảy ra ngay khi module đầu tiên import nó — kể cả khi mục đích chỉ là dùng một hàm thuần tuý.</p>"},
-    anchor: "Module được đánh giá đúng một lần và cache lại, nên tác dụng phụ ở cấp module biến mọi import — kể cả import chỉ để dùng một hàm nhỏ — thành một hành động có hệ quả.",
-    attacks: [{"q":"Vậy singleton đặt ở cấp module có an toàn không?","a":"An toàn trong phạm vi một tiến trình và một bản tải module, nhưng có ba điểm cần lưu ý. Thứ nhất, trên server, state cấp module được chia sẻ giữa mọi request của cùng tiến trình — đó chính là bẫy rò rỉ dữ liệu giữa người dùng. Thứ hai, trong quá trình phát triển có hot reload, module có thể được đánh giá lại nên singleton bị tạo mới và state cũ mất. Thứ ba, nếu có nhiều bản sao của cùng một package trong cây phụ thuộc, bạn có nhiều thực thể module khác nhau và singleton không còn là singleton."},{"q":"Làm sao phát hiện một module có tác dụng phụ mà không đọc hết file?","a":"Nhìn phần đầu và phần cuối file: mọi câu lệnh không nằm trong khai báo hàm hay lớp đều là tác dụng phụ ở cấp module. Tìm các mẫu như gọi hàm ngay khi định nghĩa, đăng ký listener, mở kết nối, đọc biến môi trường, hoặc ghi vào đối tượng toàn cục. Một dấu hiệu gián tiếp mạnh là lỗi chỉ xuất hiện khi chạy test cho một module khác — nghĩa là module bị import gián tiếp đã gây tác dụng phụ."}],
-    q: 'Cấu trúc module ES giải quyết vấn đề gì so với nhét mọi thứ vào một file script, và khi nào nên dùng import động?',
-    oral: 'Trước khi có module, mọi script nạp vào cùng một phạm vi toàn cục, nên hai file khai báo trùng tên sẽ đè lên nhau và thứ tự thẻ script trong HTML trở thành điều kiện chạy đúng. Module ES giải quyết đúng chỗ đó: mỗi file có phạm vi riêng, import được nâng lên và chạy trước phần thân của file nhập, và export khai báo cái gì được phép lộ ra. Một module chỉ chạy đúng một lần dù được nạp qua nhiều đường, và các import được liên kết trước khi thực thi nên bạn không còn lo thứ tự. Ngoài ra công cụ build có thể thấy cái nào không dùng và loại bỏ, nên code chết sẽ không vào gói phát hành. Phần lớn dự án hiện đại dùng import tĩnh ở đầu file. Import động trả về một promise và chỉ tải code khi thật sự chạy tới, hợp với phần nặng ít dùng như trình soạn thảo hay thư viện biểu đồ. Nhưng import động làm cây phụ thuộc khó suy luận hơn, nên chỉ dùng khi lợi ích chia tải rõ ràng.',
-    deep: '<p>Một file chỉ import hàm fmt từ utils.js mà listener toàn cục vẫn được đăng ký, và trang nhiều bundle log cùng một listener bốn lần. Module có tác dụng phụ ở cấp top-level nên import nào cũng kéo theo, kể cả import chỉ dùng một hàm thuần.</p><p>Mỗi module có phạm vi riêng, và engine đánh giá thân module đúng một lần rồi cache lại registry nên nhiều đường import chung một thực thể. Import tĩnh được hoisting và liên kết trước thân file nên bạn dùng được ngay từ dòng đầu. Export kiểm soát duy nhất thứ lộ ra ngoài.</p><ul><li><strong>Import tĩnh chạy ngay khi tải, còn import động chờ tới khi biểu thức chạy tới:</strong> cái đầu hợp cho phụ thuộc chắc chắn, cái sau trì hoãn thư viện nặng sang bundle riêng và chỉ tải khi nút bấm thật sự kích hoạt.</li><li><strong>Dùng khi:</strong> chia nhỏ code nên module luôn, thư viện nặng ít dùng thì import động. <strong>Không dùng khi:</strong> không đặt tác dụng phụ top-level vào module được import lan, và không tạo vòng phụ thuộc vì export chưa gán khi module kia chạy sẽ ra undefined.</li><li><strong>Lỗi hay gặp:</strong> tưởng import chỉ kéo theo cái mình export, và tưởng module chạy mỗi lần có file import.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> tách module chung ra thứ ba thì vòng phụ thuộc tan, và singleton top-level an toàn trong một tiến trình nhưng khi hot reload hay chạy trên server thì state bị chia sẻ hoặc tạo mới giữa các request.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: module không có tác dụng phụ ở cấp cao nhất, import động cho phần nặng ít dùng\n// cart.js\nexport const taxRate = 0.1;\nexport function total(items) {\n  return items.reduce((s, it) => s + it.price * (1 + taxRate), 0);\n}\n\n// checkout.js\nimport { total } from "./cart.js";\nconsole.log(total([{ price: 100 }]));\n\n// heavy-editor.js, chỉ tải khi cần\nasync function openEditor(doc) {\n  const mod = await import("./editor/index.js");\n  return mod.mount(doc);\n}',
-    expected: 'Chạy phần cart.js và checkout.js (tách thành hai file .mjs) in ra 110.00000000000001. Phân tích: total nhận [{ price: 100 }] rồi cộng 100 * (1 + 0.1); vì 0.1 là số dấu phẩy động nhị phân nên 100 * 1.1 không cho đúng 110 mà lệch một ulp, đó là lý do phần đuôi lẻ — muốn tính tiền chính xác thì dùng số nguyên đơn vị nhỏ nhất hoặc thư viện decimal. Về cơ chế module: mỗi file có phạm vi riêng nên taxRate và total không rơi vào global scope, import được hoisting và liên kết trước khi thân checkout.js chạy, và cart.js chỉ được đánh giá đúng một lần dù nhiều file cùng import. Phần heavy-editor dùng import động: biểu thức await import(...) trả về một promise và chỉ được thực thi khi chạy tới dòng đó, nhờ vậy editor không nằm trong bundle ban đầu; cái giá là phải chờ và code tải theo nhu cầu có thể thất bại lúc chạy nên phải bọc try/catch. Điểm cần nhớ: import tĩnh cho thứ luôn cần, import động cho phần nặng ít dùng, và phụ thuộc vòng làm export của module kia là undefined tại thời điểm đọc.',
-    followups: [
-      { q: 'Import động khác gì import tĩnh về mặt thời điểm thực thi và phạm vi?', a: 'Import tĩnh được nâng lên đầu module và thực thi trước thân file nhập, nên giá trị import luôn sẵn sàng khi code của bạn chạy. Import động nằm trong một biểu thức, chỉ được thực thi khi chạy tới dòng đó và trả về một promise, nên bạn phải chờ bằng await. Đổi lại bạn được trì hoãn tải code cho tới lúc thật sự cần, đổi tên biến trong module đích cũng không va chạm với biến trong module gọi.' },
-      { q: 'Phụ thuộc vòng giữa hai module gây ra lỗi gì và cách sửa ra sao?', a: 'Khi module A import B và B ngược lại import A, engine vẫn liên kết được nhưng ở thời điểm module nào chạy trước, các export của module kia có thể chưa được gán, nên bạn nhận undefined mà không có lỗi cú pháp nào báo. Cách sửa là tách phần dùng chung ra một module thứ ba rồi cho cả hai cùng phụ thuộc vào module đó. Trong trường hợp không tách được, hãy trì hoãn việc dùng bằng import động trong một hàm để phá vòng phụ thuộc ở thời điểm chạy.' }
-    ],
-    pitfalls: [
-      'Gộp hết mã vào một script toàn cục rồi hy vọng thứ tự thẻ script luôn giữ nguyên sau mỗi lần sửa.',
-      'Dùng import tĩnh cho một thư viện nặng chỉ cần ở một màn hình hiếm gặp, làm gói phát hành to ra vô dùng.',
-      'Tạo phụ thuộc vòng giữa hai module và gặp giá trị undefined mà không hiểu vì sao.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa biết chính xác trường hợp nào lỗi undefined do phụ thuộc vòng và trường hợp nào do sai thứ tự nạp.',
-      'Tôi giải thích được cơ chế module chạy đúng một lần bằng ví dụ hai file cùng import một module tiện ích.',
-      'Tôi có thể tách một cặp module phụ thuộc vòng trong dự án thật bằng cách đưa phần dùng chung ra module thứ ba.'
-    ],
-    refs: ['mdn-execution-model']
+  "anchor": "Ép kiểu hay any chỉ đổi điều compiler tin, không kiểm tra dữ liệu = backend trả profile null là trắng trang ở production dù build vẫn xanh.",
+  "code": "// [OK] Cách làm chuẩn: kiểu unknown cho dữ liệu mạng, thu hẹp trước khi dùng, never trong default để bắt case thiếu\ntype Config = { retries: number; token: string };\n\nconst raw: unknown = await response.json();\nconst config = raw as Config;\n\nfunction render(state: \"idle\" | \"done\"): void {\n  switch (state) {\n    case \"idle\":\n      console.log(\"idle\");\n      break;\n    default: {\n      const exhaustive: never = state;\n      console.log(exhaustive);\n    }\n  }\n}",
+  "attacks": [
+    {
+      "q": "never dùng để làm gì trong thực tế?",
+      "a": "Hai công dụng chính. Thứ nhất, nó là kiểu của nhánh không bao giờ trả về — hàm luôn ném lỗi, hoặc vòng lặp vô hạn. Thứ hai, và hữu ích hơn, nó dùng để kiểm tra tính đầy đủ: trong nhánh default của một switch trên union, nếu bạn gán giá trị còn lại cho biến kiểu never, compiler sẽ báo lỗi ngay khi bạn thêm một giá trị mới vào union mà quên xử lý. Đó là cách biến một lỗi production thành một lỗi biên dịch."
+    },
+    {
+      "q": "Nếu backend của chính team mình viết thì có cần kiểm tra dữ liệu không?",
+      "a": "Cần, vì \"backend của mình\" không loại bỏ được các nguyên nhân khác: một bản deploy cũ còn chạy, một proxy trả về trang lỗi HTML với status 200, một trường bị đổi tên trong nhánh chưa merge, hoặc cache trả về payload của phiên bản trước. Ranh giới mạng là ranh giới không tin được bất kể ai viết đầu bên kia. Chi phí kiểm tra ở một chỗ — hàm parse response — nhỏ hơn nhiều so với chi phí gỡ một lỗi null ở tận sâu trong cây component."
+    }
+  ],
+  "q": "Khác biệt giữa any và unknown trong TypeScript là gì, và vì sao ép kiểu không thay thế được cho việc kiểm tra dữ liệu lúc chạy?",
+  "oral": "any tắt hết kiểm tra kiểu, mọi thao tác trên nó đều hợp lệ và nó lan truyền theo kiểu any ra toàn bộ biểu thức chứa nó. unknown thì ngược lại, là kiểu an toàn mặc định: bạn không được dùng nó như thể nó có thuộc tính nào, và không gán nó sang kiểu khác được, chỉ có thể kiểm tra trước rồi mới thu hẹp. Vì vậy dữ liệu từ bên ngoài như response của lời gọi HTTP hay JSON.parse nên là unknown rồi kiểm tra trước. never là kiểu không có giá trị nào thỏa mãn, dùng cho hàm không bao giờ trả về và cho trường hợp default trong switch để bắt nhánh chưa xử lý khi bạn thêm giá trị mới vào union. Về nullability, khai báo optional và khai báo kiểu có thêm undefined là hai việc khác nhau. Quan trọng nhất: ép kiểu chỉ thay đổi điều công cụ build tin, nó không kiểm tra gì lúc chạy, nên dữ liệu từ mạng vẫn có thể sai và gây lỗi ở xa hơn chỗ gốc.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>any</strong>: Tắt mọi kiểm tra tĩnh: gán bất kỳ, gọi bất kỳ, đọc bất kỳ; dùng any là chuyển lỗi từ biên compile sang biên runtime — không sửa gì, chỉ làm muộn hơn.</li><li><strong>unknown</strong>: Kiểu \"cái gì đó\": nhận được, không đọc được cho tới khi narrow bằng kiểm tra (type guard, typeof, in); khác any ở chỗ đọc không narrow thì báo lỗi — an toàn hơn nhiều.</li><li><strong>optional (?) / undefined</strong>: T?: number có nghĩa undefined hợp lệ; backend gửi null tường minh không khớp — optional và null là hai khái niệm riêng, phải xử lý cả hai.</li><li><strong>type guard (narrow)</strong>: Hàm kiểm trả về is T (function isNumber(x: unknown): x is number) — compiler dùng để thu hẹp kiểu; là nơi đúng để kiểm tra dữ liệu từ mạng.</li></ul><p>Production trắng trang cho đúng nhóm tài khoản chưa hoàn tất hồ sơ, lỗi Cannot read properties of null trong khi build im lặng. Backend bắt đầu gửi profile là null, nhưng kiểu client vẫn ghi <code>profile: Profile</code>. Bạn đề xuất đổi sang <code>any</code> thì lỗi kiểu hết thật, nhưng lỗi chạy còn nguyên.</p><p><code>any</code> tắt mọi kiểm tra và lan sang cả biểu thức chứa nó nên một chỗ any làm mất kiểm tra cả chuỗi gọi. <code>unknown</code> cấm đọc thuộc tính và cấm gán sang kiểu khác cho tới khi bạn thu hẹp bằng type guard hay kiểm tra tường minh. <code>never</code> là kiểu không giá trị nào thỏa, dùng cho hàm không bao giờ trả về và cho nhánh default bắt union thiếu case. Ép kiểu chỉ đổi điều compiler tin vì nó bị xóa lúc build.</p><ul><li><strong><code>any</code> miễn hỏi, còn <code>unknown</code> bắt chứng minh trước:</strong> cái đầu cho bạn làm mọi thứ ngay, cái sau bắt bạn kiểm tra ở biên rồi mới cho dùng.</li><li><strong>Dùng khi:</strong> dữ liệu từ fetch hay JSON.parse thì <code>unknown</code> cộng kiểm tra ở biên, union thêm giá trị thì <code>never</code> ở default. <strong>Không dùng khi:</strong> không dùng <code>any</code> cho response API, không dùng ép kiểu thay kiểm tra chạy.</li><li><strong>Lỗi hay gặp:</strong> ép JSON sai thành Config rồi đọc thuộc tính, và nhầm optional với nullable khi backend gửi null tường minh.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> object nhỏ ổn định thì type guard tay đủ, dữ liệu lớn nhiều kiểu thì bạn chuyển sang schema kiểm tra ở biên và coi phần trong đã tin cậy.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> any/unknown/never ở Bài L14, optional và nullability ở Bài L15, và pattern schema tại biên trong service ở Bài L19.</p>",
+  "expected": "Snippet không chạy được nguyên trạng: dòng đầu tham chiếu biến response không tồn tại nên Node ném ReferenceError: response is not defined. Khi thay response.json() bằng một giá trị unknown thật, ví dụ JSON.parse('{\"retries\":\"nhieu\",\"token\":42}'), thì raw as Config không kiểm tra gì cả: config.retries in ra chuỗi \"nhieu\" và config.retries + 1 cho \"nhieu1\", còn config.token là số 42 dù khai báo là string. Phân tích: ép kiểu as chỉ ghi lại điều công cụ build tin, nó bị xóa hoàn toàn khi biên dịch sang JavaScript, nên dữ liệu sai vẫn đi qua và lỗi chỉ lộ ra ở chỗ dùng. unknown an toàn hơn hẳn vì bạn không đọc được thuộc tính nào cho tới khi thu hẹp bằng typeof, instanceof hoặc type guard tự viết. Về phần switch: union chỉ có \"idle\" và \"done\" mà default lại khai báo const exhaustive: never = state, nên TypeScript báo TS2322 Type '\"done\"' is not assignable to type 'never' — đây chính là cơ chế bắt lỗi khi thêm giá trị mới vào union mà quên xử lý; lúc chạy thì không có kiểm tra nào, render(\"done\") rơi vào default và in ra done. Điểm cần nhớ: as không thay thế được kiểm tra lúc chạy, và never trong default là chốt exhaustiveness.",
+  "followups": [
+    {
+      "q": "Làm sao kiểm tra một giá trị unknown ở biên mà không phải viết tay từng trường?",
+      "a": "Hai lựa chọn phổ biến là dùng type guard do bạn tự viết, hoặc dùng một thư viện kiểm tra schema theo khai báo. Type guard tự viết cho kiểu dữ liệu nhỏ và ổn định, còn schema library đáng dùng khi dữ liệu lớn, có nhiều kiểu hoặc cần sinh tài liệu. Điểm chung là phải kiểm tra ở biên nơi dữ liệu vào ứng dụng và coi phần còn lại của codebase là đã tin cậy. Chỉ ép kiểu thì không có tác dụng gì ở lúc chạy."
+    },
+    {
+      "q": "Vì sao không nên dùng any cho dữ liệu từ lời gọi HTTP, kể cả khi kiểu đó đúng ở thời điểm viết?",
+      "a": "Vì server có thể đổi kiểu trả về bất cứ lúc nào mà không báo bạn, và nếu kiểu đó bị any thì công cụ build im lặng, và lỗi chỉ xuất hiện khi chạy với dữ liệu thật. unknown buộc bạn phải kiểm tra trước khi dùng nên chi phí trả trước rất nhỏ so với thời gian debug một lỗi dữ liệu ở môi trường khác. Ngoài ra any còn lan truyền và làm mất kiểm tra kiểu cho cả biểu thức chứa nó."
+    }
+  ],
+  "pitfalls": [
+    "Ép kiểu dữ liệu từ JSON.parse và coi đó là kiểm tra lúc chạy, trong khi code sinh ra hoàn toàn không có kiểm tra gì.",
+    "Khai dữ liệu từ lời gọi HTTP là any rồi truy cập thuộc tính, khiến mọi lỗi kiểu chỉ lộ ra ở môi trường thật thay vì lúc build.",
+    "Thêm một giá trị vào union rồi quên xử lý nhánh mới, và không dùng never trong default để bắt lỗi ngay lúc build."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa nhuần nhuyễn viết hàm kiểm tra cho một kiểu unknown từ response của API.",
+    "Tôi giải thích được vì sao ép kiểu không bắt được dữ liệu sai, bằng ví dụ ép một chuỗi thành object rồi đọc thuộc tính.",
+    "Tôi có thể thay any trong một lớp gọi API bằng unknown cộng kiểm tra biên mà không phải đụng tới logic nghiệp vụ."
+  ],
+  "refs": [
+    "ts-handbook",
+    "ts-narrowing"
+  ]
+},
+{
+  "id": "B11",
+  "group": "B",
+  "topic": "Module, import và export, phụ thuộc giữa các file",
+  "prio": "P1",
+  "level": "L1",
+  "type": "concept",
+  "incident": "<p>Một module tiện ích vừa export một hàm vừa chạy code ở cấp module để đăng ký một listener toàn cục. Khi một file khác import nó chỉ để dùng một hàm định dạng ngày, listener cũng được đăng ký, và một kết nối bị mở thêm. Trên trang có nhiều bundle, việc này xảy ra nhiều lần, và log cho thấy cùng một listener được đăng ký bốn lần.</p>",
+  "askFirst": [
+    "Code ở cấp module chạy khi nào, và bao nhiêu lần? → Giải mã: code top-level chạy ngay khi file được import lần đầu, và chỉ chạy MỘT LẦN — module được cache; import thêm lần nào cũng đọc cache, không re-execute",
+    "Vì sao import để dùng một hàm nhỏ lại kéo theo tác dụng phụ? → Giải mã: vì import kích hoạt toàn bộ module, không chỉ export đó; nếu module có side effect top-level (gọi API, đặt timer, gán global) thì import kéo theo tác dụng phụ không ai muốn",
+    "Làm sao giữ module không có tác dụng phụ? → Giải mã: module thuần: chỉ export function/const, mọi effect nằm trong function được gọi (không chạy top-level); kiểm tra bằng lint rule no-import-as-value, no side-effect trong test; tách singleton thành factory nếu cần kiểm soát scope"
+  ],
+  "predict": {
+    "q": "Hai file cùng <code>import { fmt } from \"./utils.js\"</code>. Code ở cấp module của <code>utils.js</code> chạy mấy lần?",
+    "a": "<p>Đúng một lần. Module trong ESM được đánh giá một lần duy nhất cho mỗi lần tải, và kết quả được cache; các lần import sau nhận cùng một thực thể module. Đây là lý do state ở cấp module hoạt động như một singleton trong phạm vi một bản tải. Nhưng cũng chính vì vậy, nếu module đó chạy tác dụng phụ ở cấp cao nhất thì tác dụng phụ đó xảy ra ngay khi module đầu tiên import nó — kể cả khi mục đích chỉ là dùng một hàm thuần tuý.</p>"
   },
-  {
-    id: 'B12',
-    group: 'B',
-    topic: 'Bộ nhớ, dọn listener và timer, rò rỉ trong vòng đời component',
-    prio: 'P2',
-    level: 'L2',
-    type: 'debug',
-    incident: "<p>Một trang danh sách có thể mở và đóng một bảng chi tiết nhiều lần. Mỗi lần mở, component đăng ký một listener <code>resize</code> và một <code>setInterval</code> làm mới dữ liệu. Component bị gỡ nhưng không ai huỷ đăng ký. Sau khoảng 30 lần mở, trang chậm hẳn, và log cho thấy hàm làm mới được gọi 30 lần mỗi giây thay vì một lần.</p>",
-    askFirst: ["Cái gì giữ cho component đã gỡ vẫn chạy?","Vì sao số lần gọi tăng theo số lần mở thay vì giữ nguyên?","Dọn dẹp đúng cách trông như thế nào?"],
-    predict: {"q":"Một <code>setInterval</code> được tạo trong component nhưng không bị huỷ khi component unmount. Chuyện gì xảy ra với callback của nó?","a":"<p>Callback tiếp tục chạy mãi. <code>setInterval</code> trả về một handle do môi trường chạy giữ, không phải do component giữ, nên việc component bị gỡ không dừng được timer. Nếu callback đó tham chiếu tới state hoặc DOM của component, toàn bộ closure — và mọi thứ nó bắt giữ — không thể được thu hồi, đó chính là rò rỉ bộ nhớ. Mỗi lần component được tạo lại, một interval mới được thêm vào, nên số lần callback chạy tỉ lệ với số lần component từng được tạo.</p>"},
-    anchor: "Timer và listener do môi trường chạy giữ, không do component giữ — không huỷ chúng thì component đã gỡ vẫn tiếp tục chạy và giữ luôn bộ nhớ của nó.",
-    attacks: [{"q":"Trong Vue 3 với Composition API, bạn dọn dẹp ở đâu?","a":"Trong onBeforeUnmount hoặc onUnmounted của chính component, hoặc gọn hơn là trong onScopeDispose nếu logic nằm trong một composable — như vậy composable tự dọn phần nó đã tạo, và component dùng nó không phải nhớ. Với watch và watchEffect, Vue tự dừng chúng khi scope bị huỷ, nên bạn chỉ cần dọn những gì bạn tự tạo: setInterval, addEventListener trên window hoặc document, observer, và kết nối mạng."},{"q":"Làm sao tìm ra rò rỉ bộ nhớ trong một ứng dụng đang chạy?","a":"Ba bước thực dụng. Một là dùng tab Memory của DevTools: chụp heap snapshot, thực hiện hành động nghi ngờ mười lần, chụp lại, rồi so sánh số thực thể của lớp component — nếu số đó tăng đều theo số lần hành động thì đó là rò rỉ. Hai là xem đường giữ trong snapshot để biết ai đang giữ đối tượng; thường thủ phạm là timer, listener toàn cục, hoặc một mảng cache không có giới hạn. Ba là kiểm tra các subscription và interval trong code, vì đó là nguồn phổ biến nhất."}],
-    q: 'Đoạn code gắn sự kiện và đặt hẹn giờ bên dưới in ra gì, và vấn đề rò bộ nhớ nằm ở đâu khi nó được gọi lại nhiều lần?',
-    oral: 'Chốt: mỗi listener hay timer tạo ra phải có hàm gỡ đi kèm, và hàm gỡ phải dùng đúng tham chiếu đã đăng ký. Cơ chế: bus.addEventListener giữ hàm onTick, còn setInterval giữ callback cho tới khi clearInterval, nên closure chứa id vẫn sống dù component đã bị gỡ. Ví dụ: nếu attach("a") chạy mà không có detach, mỗi lần mở bảng chi tiết lại thêm một interval và một listener, nên sau ba mươi lần có ba mươi heartbeat mỗi giây. Kinh nghiệm: giữ hàm detach mà attach trả về, gọi nó trong cleanup của framework khi component unmount, và đừng gỡ bằng một hàm ẩn danh mới vì tham chiếu sẽ khác và việc gỡ không có tác dụng.',
-    deep: '<p>Đóng bảng chi tiết 30 lần mà trang vẫn chạy heartbeat 30 lần mỗi giây. Component đã unmount nhưng listener resize và interval vẫn đăng ký, và mỗi lần mở thêm một bản mới. Không có dòng log nào báo lỗi, chỉ có hiệu năng giảm đều.</p><p>Bộ nhớ chỉ được thu hồi khi không còn đường tham chiếu nào tới closure. addEventListener giữ hàm, và hàm giữ toàn bộ biến nó đóng bắt. setInterval giữ callback tới khi clearInterval, hoặc tới vô hạn nếu không ai dừng. Gỡ listener phải truyền đúng tham chiếu hàm đã đăng ký, một hàm ẩn danh mới dù viết giống nhau vẫn là listener khác.</p><ul><li><strong>Timer do runtime giữ còn component do bạn giữ:</strong> interval không biết component đã chết nên callback chạy và giữ closure sống, listener trên window cũng vậy vì window không bao giờ unmount.</li><li><strong>Dùng khi:</strong> tạo listener hay timer thì phải tạo hàm gỡ cùng lúc và gọi trong cleanup hook. <strong>Không dùng khi:</strong> không tin gán biến bằng null là đủ vì closure vẫn còn tham chiếu.</li><li><strong>Lỗi hay gặp:</strong> quên lưu handle của interval, và gỡ bằng một function ẩn danh mới nên listener cũ còn nguyên.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> một component mở đóng vài lần thì rò rỉ khó thấy, lặp 30 lần thì heap snapshot cho thấy node giữ tăng tuyến tính và devtools xác nhận được bằng so sánh hai lần chụp.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: mỗi listener hoặc timer tạo ra phải có hàm gỡ tương ứng, và hàm gỡ dùng đúng tham chiếu đã đăng ký\nconst bus = new EventTarget();\n\nfunction attach(id) {\n  const onTick = function () {\n    console.log("tick for", id);\n  };\n  bus.addEventListener("tick", onTick);\n  const timer = setInterval(() => console.log("heartbeat"), 1000);\n\n  return function detach() {\n    bus.removeEventListener("tick", onTick); // cùng tham chiếu onTick\n    clearInterval(timer);                    // dừng đúng interval đã tạo\n  };\n}\n\nconst detachA = attach("a");\ndetachA(); // khi component unmount thì gọi hàm gỡ\nattach("b");\nbus.dispatchEvent(new Event("tick"));',
-    expected: 'In ra "tick for b" khi dispatch, vì listener của a đã được gỡ bằng detachA trước đó. Đồng thời dòng "heartbeat" lặp lại mỗi giây từ interval của b. Interval của a đã bị clearInterval nên không còn in ra. Nguyên nhân: hàm detach giữ đúng tham chiếu onTick để removeEventListener và đúng id timer để clearInterval, nên tài nguyên của a được trả lại. Nếu bỏ lời gọi detachA hoặc gỡ bằng một hàm ẩn danh mới, listener và interval cũ vẫn còn và các closure của chúng vẫn bị giữ trong bộ nhớ.',
-    followups: [
-      { q: 'Vì sao hàm gỡ listener phải là đúng hàm đã đăng ký, và sai ở đâu nếu viết hàm ẩn danh?', a: 'Engine định danh listener bằng chính tham chiếu hàm cùng loại sự kiện, nên hàm gỡ truyền vào phải cùng tham chiếu với hàm đăng ký thì việc gỡ mới có tác dụng. Nếu bạn viết removeEventListener với một hàm ẩn danh mới, dù mã trông giống nhau thì hai tham chiếu khác nhau và listener cũ vẫn còn. Cách an toàn là định nghĩa hàm gắn và hàm gỡ dạng function thật, hoặc dùng một object để thu thập các hàm gỡ rồi chạy chúng trong hàm dọn dẹp.' },
-      { q: 'Làm sao phân biệt rò bộ nhớ thật với chuyện heap chỉ lớn lên rồi được thu gom lại?', a: 'Vì bộ thu gom rác không trả bộ nhớ về hệ điều hành ngay, heap có thể lớn lên rồi nhỏ lại mà không phải rò rỉ. Dấu hiệu rò rỉ thật là số object sống tăng đều sau mỗi vòng thao tác lặp lại: mở rồi đóng một màn hình nhiều lần và chụp heap ở hai thời điểm giống nhau. Trong devtools, dùng lựa chọn so sánh hai lần chụp sau khi ép thu gom, nếu các node bị giữ tăng tuyến tính theo số lần thao tác thì bạn đang giữ tham chiếu không cần thiết.' }
-    ],
-    pitfalls: [
-      'Gỡ listener bằng một hàm ẩn danh mới trong khi lúc đăng ký dùng hàm khác, nên listener cũ vẫn còn.',
-      'Quên lưu id của interval rồi cố dừng bằng một giá trị null, khiến interval chạy vô thời hạn.',
-      'Tin rằng đặt biến tham chiếu bằng null đã đủ để giải phóng bộ nhớ, trong khi listener và timer vẫn giữ closure đó.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa biết cách đếm chính xác số listener và timer đang sống trong một trang đang chạy.',
-      'Tôi giải thích được vì sao gọi detach trước khi attach lại thì mỗi tick chỉ còn một callback, dựa vào việc listener onTick của a đã bị gỡ đúng tham chiếu.',
-      'Tôi có thể thêm cặp thêm và gỡ cho một màn hình thật và xác nhận bằng devtools rằng số listener không còn tăng.'
-    ],
-    refs: ['mdn-execution-model']
+  "anchor": "Module được đánh giá đúng một lần và cache lại, nên tác dụng phụ ở cấp module biến mọi import — kể cả import chỉ để dùng một hàm nhỏ — thành một hành động có hệ quả.",
+  "attacks": [
+    {
+      "q": "Vậy singleton đặt ở cấp module có an toàn không?",
+      "a": "An toàn trong phạm vi một tiến trình và một bản tải module, nhưng có ba điểm cần lưu ý. Thứ nhất, trên server, state cấp module được chia sẻ giữa mọi request của cùng tiến trình — đó chính là bẫy rò rỉ dữ liệu giữa người dùng. Thứ hai, trong quá trình phát triển có hot reload, module có thể được đánh giá lại nên singleton bị tạo mới và state cũ mất. Thứ ba, nếu có nhiều bản sao của cùng một package trong cây phụ thuộc, bạn có nhiều thực thể module khác nhau và singleton không còn là singleton."
+    },
+    {
+      "q": "Làm sao phát hiện một module có tác dụng phụ mà không đọc hết file?",
+      "a": "Nhìn phần đầu và phần cuối file: mọi câu lệnh không nằm trong khai báo hàm hay lớp đều là tác dụng phụ ở cấp module. Tìm các mẫu như gọi hàm ngay khi định nghĩa, đăng ký listener, mở kết nối, đọc biến môi trường, hoặc ghi vào đối tượng toàn cục. Một dấu hiệu gián tiếp mạnh là lỗi chỉ xuất hiện khi chạy test cho một module khác — nghĩa là module bị import gián tiếp đã gây tác dụng phụ."
+    }
+  ],
+  "q": "Cấu trúc module ES giải quyết vấn đề gì so với nhét mọi thứ vào một file script, và khi nào nên dùng import động?",
+  "oral": "Trước khi có module, mọi script nạp vào cùng một phạm vi toàn cục, nên hai file khai báo trùng tên sẽ đè lên nhau và thứ tự thẻ script trong HTML trở thành điều kiện chạy đúng. Module ES giải quyết đúng chỗ đó: mỗi file có phạm vi riêng, import được nâng lên và chạy trước phần thân của file nhập, và export khai báo cái gì được phép lộ ra. Một module chỉ chạy đúng một lần dù được nạp qua nhiều đường, và các import được liên kết trước khi thực thi nên bạn không còn lo thứ tự. Ngoài ra công cụ build có thể thấy cái nào không dùng và loại bỏ, nên code chết sẽ không vào gói phát hành. Phần lớn dự án hiện đại dùng import tĩnh ở đầu file. Import động trả về một promise và chỉ tải code khi thật sự chạy tới, hợp với phần nặng ít dùng như trình soạn thảo hay thư viện biểu đồ. Nhưng import động làm cây phụ thuộc khó suy luận hơn, nên chỉ dùng khi lợi ích chia tải rõ ràng.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>ES module (import/export)</strong>: File là module, có scope riêng; import trả về binding live (đọc luôn giá trị hiện thời), không phải copy; module chỉ chạy một lần rồi cache, import lần sau chỉ đọc cache.</li><li><strong>dynamic import</strong>: import() trả Promise, tải module khi cần (lazy load) — hợp cho route lớn, component nặng; code được tách file riêng, tải khi người dùng tới route đó.</li><li><strong>side effect</strong>: Hành động có tác động ngoài scope module: gán global, log, đặt timer, gọi API tại cấp top-level; module có side effect thì import là kích hoạt, không thể kiểm soát lúc nào chạy.</li><li><strong>dependency cycle</strong>: File A import B, B import A — module chưa hoàn tất khi đọc giá trị, ra undefined; cách sửa là tách phần dùng chung ra module thứ ba, cả A và B cùng import từ đó.</li></ul><p>Một file chỉ import hàm fmt từ utils.js mà listener toàn cục vẫn được đăng ký, và trang nhiều bundle log cùng một listener bốn lần. Module có tác dụng phụ ở cấp top-level nên import nào cũng kéo theo, kể cả import chỉ dùng một hàm thuần.</p><p>Mỗi module có phạm vi riêng, và engine đánh giá thân module đúng một lần rồi cache lại registry nên nhiều đường import chung một thực thể. Import tĩnh được hoisting và liên kết trước thân file nên bạn dùng được ngay từ dòng đầu. Export kiểm soát duy nhất thứ lộ ra ngoài.</p><ul><li><strong>Import tĩnh chạy ngay khi tải, còn import động chờ tới khi biểu thức chạy tới:</strong> cái đầu hợp cho phụ thuộc chắc chắn, cái sau trì hoãn thư viện nặng sang bundle riêng và chỉ tải khi nút bấm thật sự kích hoạt.</li><li><strong>Dùng khi:</strong> chia nhỏ code nên module luôn, thư viện nặng ít dùng thì import động. <strong>Không dùng khi:</strong> không đặt tác dụng phụ top-level vào module được import lan, và không tạo vòng phụ thuộc vì export chưa gán khi module kia chạy sẽ ra undefined.</li><li><strong>Lỗi hay gặp:</strong> tưởng import chỉ kéo theo cái mình export, và tưởng module chạy mỗi lần có file import.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> tách module chung ra thứ ba thì vòng phụ thuộc tan, và singleton top-level an toàn trong một tiến trình nhưng khi hot reload hay chạy trên server thì state bị chia sẻ hoặc tạo mới giữa các request.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Module và import/export ở Bài L12, dynamic import và code-splitting ở Bài L13, và cách phá dependency cycle ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: module không có tác dụng phụ ở cấp cao nhất, import động cho phần nặng ít dùng\n// cart.js\nexport const taxRate = 0.1;\nexport function total(items) {\n  return items.reduce((s, it) => s + it.price * (1 + taxRate), 0);\n}\n\n// checkout.js\nimport { total } from \"./cart.js\";\nconsole.log(total([{ price: 100 }]));\n\n// heavy-editor.js, chỉ tải khi cần\nasync function openEditor(doc) {\n  const mod = await import(\"./editor/index.js\");\n  return mod.mount(doc);\n}",
+  "expected": "Chạy phần cart.js và checkout.js (tách thành hai file .mjs) in ra 110.00000000000001. Phân tích: total nhận [{ price: 100 }] rồi cộng 100 * (1 + 0.1); vì 0.1 là số dấu phẩy động nhị phân nên 100 * 1.1 không cho đúng 110 mà lệch một ulp, đó là lý do phần đuôi lẻ — muốn tính tiền chính xác thì dùng số nguyên đơn vị nhỏ nhất hoặc thư viện decimal. Về cơ chế module: mỗi file có phạm vi riêng nên taxRate và total không rơi vào global scope, import được hoisting và liên kết trước khi thân checkout.js chạy, và cart.js chỉ được đánh giá đúng một lần dù nhiều file cùng import. Phần heavy-editor dùng import động: biểu thức await import(...) trả về một promise và chỉ được thực thi khi chạy tới dòng đó, nhờ vậy editor không nằm trong bundle ban đầu; cái giá là phải chờ và code tải theo nhu cầu có thể thất bại lúc chạy nên phải bọc try/catch. Điểm cần nhớ: import tĩnh cho thứ luôn cần, import động cho phần nặng ít dùng, và phụ thuộc vòng làm export của module kia là undefined tại thời điểm đọc.",
+  "followups": [
+    {
+      "q": "Import động khác gì import tĩnh về mặt thời điểm thực thi và phạm vi?",
+      "a": "Import tĩnh được nâng lên đầu module và thực thi trước thân file nhập, nên giá trị import luôn sẵn sàng khi code của bạn chạy. Import động nằm trong một biểu thức, chỉ được thực thi khi chạy tới dòng đó và trả về một promise, nên bạn phải chờ bằng await. Đổi lại bạn được trì hoãn tải code cho tới lúc thật sự cần, đổi tên biến trong module đích cũng không va chạm với biến trong module gọi."
+    },
+    {
+      "q": "Phụ thuộc vòng giữa hai module gây ra lỗi gì và cách sửa ra sao?",
+      "a": "Khi module A import B và B ngược lại import A, engine vẫn liên kết được nhưng ở thời điểm module nào chạy trước, các export của module kia có thể chưa được gán, nên bạn nhận undefined mà không có lỗi cú pháp nào báo. Cách sửa là tách phần dùng chung ra một module thứ ba rồi cho cả hai cùng phụ thuộc vào module đó. Trong trường hợp không tách được, hãy trì hoãn việc dùng bằng import động trong một hàm để phá vòng phụ thuộc ở thời điểm chạy."
+    }
+  ],
+  "pitfalls": [
+    "Gộp hết mã vào một script toàn cục rồi hy vọng thứ tự thẻ script luôn giữ nguyên sau mỗi lần sửa.",
+    "Dùng import tĩnh cho một thư viện nặng chỉ cần ở một màn hình hiếm gặp, làm gói phát hành to ra vô dùng.",
+    "Tạo phụ thuộc vòng giữa hai module và gặp giá trị undefined mà không hiểu vì sao."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa biết chính xác trường hợp nào lỗi undefined do phụ thuộc vòng và trường hợp nào do sai thứ tự nạp.",
+    "Tôi giải thích được cơ chế module chạy đúng một lần bằng ví dụ hai file cùng import một module tiện ích.",
+    "Tôi có thể tách một cặp module phụ thuộc vòng trong dự án thật bằng cách đưa phần dùng chung ra module thứ ba."
+  ],
+  "refs": [
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "B12",
+  "group": "B",
+  "topic": "Bộ nhớ, dọn listener và timer, rò rỉ trong vòng đời component",
+  "prio": "P2",
+  "level": "L2",
+  "type": "debug",
+  "incident": "<p>Một trang danh sách có thể mở và đóng một bảng chi tiết nhiều lần. Mỗi lần mở, component đăng ký một listener <code>resize</code> và một <code>setInterval</code> làm mới dữ liệu. Component bị gỡ nhưng không ai huỷ đăng ký. Sau khoảng 30 lần mở, trang chậm hẳn, và log cho thấy hàm làm mới được gọi 30 lần mỗi giây thay vì một lần.</p>",
+  "askFirst": [
+    "Cái gì giữ cho component đã gỡ vẫn chạy? → Giải mã: closure của listener và timer — chúng giữ tham chiếu component; component unmount không có cleanup thì closure còn sống trong internal table, GC không thể thu, listener vẫn chạy",
+    "Vì sao số lần gọi tăng theo số lần mở thay vì giữ nguyên? → Giải mã: vì mỗi lần mount tạo listener/timer mới, không lần nào được gỡ (quên cleanup hay dùng function ẩn danh nên reference khác); số gọi cộng dồn theo số lần mount, heap tăng tuyến tính",
+    "Dọn dẹp đúng cách trông như thế nào? → Giải mã: mount: save handle, add listener bằng reference cụ thể; unmount: clearInterval(handle), removeEventListener cùng reference; trong framework: useEffect return cleanup; kiểm tra bằng devtools heap snapshot so sánh trước sau mount/unmount"
+  ],
+  "predict": {
+    "q": "Một <code>setInterval</code> được tạo trong component nhưng không bị huỷ khi component unmount. Chuyện gì xảy ra với callback của nó?",
+    "a": "<p>Callback tiếp tục chạy mãi. <code>setInterval</code> trả về một handle do môi trường chạy giữ, không phải do component giữ, nên việc component bị gỡ không dừng được timer. Nếu callback đó tham chiếu tới state hoặc DOM của component, toàn bộ closure — và mọi thứ nó bắt giữ — không thể được thu hồi, đó chính là rò rỉ bộ nhớ. Mỗi lần component được tạo lại, một interval mới được thêm vào, nên số lần callback chạy tỉ lệ với số lần component từng được tạo.</p>"
   },
-  {
-    id: 'B13',
-    group: 'B',
-    topic: 'structuredClone so với vòng JSON để deep copy',
-    prio: 'P2',
-    level: 'L2',
-    type: 'predict',
-    incident: "<p>Một dev cần sao chép sâu một object cấu hình trước khi sửa. Họ dùng <code>JSON.parse(JSON.stringify(cfg))</code> theo thói quen. Bản sao trông đúng cho tới khi một trường kiểu <code>Date</code> trở thành chuỗi, một trường <code>undefined</code> biến mất hoàn toàn, và một giá trị <code>NaN</code> biến thành <code>null</code>. Một so sánh sau đó sai, và bug chỉ xuất hiện ở môi trường có trường ngày tháng được đặt.</p>",
-    askFirst: ["JSON.stringify làm gì với undefined, Date, NaN và Infinity?","Có cách sao chép sâu nào đúng hơn trong môi trường hiện đại?","Sao chép sâu có luôn là điều bạn muốn không?"],
-    predict: {"q":"Cho <code>const o = { a: undefined, b: new Date(0), c: NaN, d: Infinity, e: [1,2] }</code>, bản sao qua vòng JSON có những trường nào và giá trị gì?","a":"<p>Bản sao có <code>b</code> là chuỗi ISO chứ không còn là <code>Date</code>, <code>c</code> và <code>d</code> đều thành <code>null</code> vì JSON không có cách biểu diễn chúng, và <code>a</code> biến mất hoàn toàn vì <code>undefined</code> bị bỏ qua trong object. <code>e</code> được sao chép đúng vì mảng và số là kiểu JSON biểu diễn được. Ngoài ra cách này còn ném lỗi với cấu trúc vòng, và mất mọi prototype nên kết quả không còn là thực thể của lớp ban đầu.</p>"},
-    anchor: "Vòng JSON chỉ sao chép được đúng tập giá trị mà JSON biểu diễn được — mọi thứ khác bị đổi kiểu, bị bỏ, hoặc thành null trong im lặng.",
-    attacks: [{"q":"structuredClone có thay thế được vòng JSON trong mọi trường hợp không?","a":"Không. structuredClone xử lý được Date, Map, Set, mảng có kiểu, và cả cấu trúc vòng — tốt hơn hẳn vòng JSON. Nhưng nó vẫn không sao chép được hàm, không giữ prototype tuỳ chỉnh, và ném lỗi với các đối tượng không clone được như handle của DOM hay WeakMap. Nếu object của bạn chứa phương thức hoặc thực thể của lớp, cả hai cách đều không đủ và bạn cần một hàm khởi tạo tường minh."},{"q":"Khi nào sao chép sâu lại là lựa chọn sai?","a":"Khi chi phí lớn hơn lợi ích, hoặc khi nó che đi vấn đề thiết kế. Với một cấu trúc lớn được sao chép trong mỗi lần render, bạn vừa tốn thời gian vừa tốn bộ nhớ. Trong nhiều trường hợp, cách đúng là không sửa dữ liệu dùng chung ngay từ đầu: tạo object mới bằng toán tử trải ở đúng cấp cần đổi, hoặc giữ state bất biến để việc so sánh tham chiếu trở nên rẻ và đáng tin. Sao chép sâu thường là dấu hiệu ai đó đang sửa dữ liệu mà không sở hữu nó."}],
-    q: 'Hai cách deep copy dưới đây cho kết quả khác nhau ở những điểm nào, và vì sao vòng JSON làm mất dữ liệu?',
-    oral: 'Vòng JSON serialize rồi deserialize, nên nó chỉ giữ được những gì JSON biểu diễn được. Date thành chuỗi vì JSON không có kiểu ngày, Infinity và NaN thành null vì JSON không có số vô hạn và số không phải số, và thuộc tính có giá trị undefined bị mất hẳn vì JSON không có undefined. Ngoài ra hàm, class instance và Map hay Set đều không sống sót. Ngược lại, structuredClone là API của runtime, nó đi qua thuật toán clone có cấu trúc nên giữ nguyên Date, giữ Infinity, NaN và thuộc tính undefined, và tạo mảng mới hoàn toàn tách biệt. Nhưng structuredClone không copy được hàm, không copy được node DOM, và ném lỗi khi gặp các giá trị không clone được. Vì vậy chọn theo hình dạng dữ liệu: dữ liệu thuần JSON thì cả hai đều được, có Date, Map, Set hay cần giữ undefined thì dùng structuredClone, còn dữ liệu có hàm hoặc class instance thì phải clone tay từng nhánh.',
-    deep: '<p>Deep copy cấu hình bằng JSON.parse(JSON.stringify(cfg)) rồi một so sánh ngày sau đó sai im lặng. Bản sao giữ đúng số và chuỗi, nhưng Date thành chuỗi ISO, NaN và Infinity thành null, và trường undefined biến mất khỏi key. Bạn chỉ phát hiện ở môi trường đặt ngày tháng.</p><p>Vòng JSON đi qua chuỗi trung gian nên chỉ giữ được những gì JSON biểu diễn được, mọi thứ khác bị đổi kiểu hay vứt bỏ. structuredClone là thuật toán clone có cấu trúc của runtime nên giữ Date, Map, Set, BigInt, Infinity, NaN và cả thuộc tính undefined, đồng thời tạo object mới không dùng chung tham chiếu.</p><ul><li><strong>Vòng JSON đổi kiểu, còn structuredClone giữ nguyên kiểu:</strong> cái đầu rẻ và chạy được nơi cũ, cái sau đúng hơn nhưng ném lỗi DataCloneError khi gặp hàm hoặc object không clone được.</li><li><strong>Dùng khi:</strong> dữ liệu thuần JSON để gửi postMessage hay localStorage thì vòng JSON, form có Date và Map thì structuredClone. <strong>Không dùng khi:</strong> không copy sâu ở mỗi render cho cấu trúc lớn, và không dùng structuredClone cho object có phương thức.</li><li><strong>Lỗi hay gặp:</strong> tưởng Date sống qua JSON, và không bắt lỗi khi structuredClone gặp callback trong đồ thị.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> dữ liệu thêm bản ghi có vòng tham chiếu thì vòng JSON ném lỗi, còn có class instance hay DOM handle thì cả hai cách đều không đủ và phải khởi tạo tường minh.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: structuredClone giữ được Date, Infinity, NaN và undefined; vòng JSON thì không\nconst original = {\n  when: new Date("2024-01-02T03:04:05Z"),\n  items: [1, 2],\n  skip: undefined,\n  inf: Infinity,\n  nan: NaN\n};\n\nconst viaJson = JSON.parse(JSON.stringify(original));\nconst viaClone = structuredClone(original);\n\nconsole.log(viaJson.when instanceof Date, viaJson.items === original.items);\nconsole.log(viaJson.inf, viaJson.nan, Object.keys(viaJson).join(","));\nconsole.log(viaClone.when instanceof Date, viaClone.items === original.items);\nconsole.log(viaClone.inf, viaClone.nan, "skip" in viaClone);',
-    expected: 'Bốn dòng lần lượt là false false, rồi null null when,items,inf,nan, rồi true false, rồi Infinity NaN true. Nguyên nhân: vòng JSON biến Date thành chuỗi nên instanceof Date cho false, Infinity và NaN thành null, và thuộc tính skip có giá trị undefined bị loại khỏi danh sách key. structuredClone giữ nguyên kiểu Date, giữ Infinity và NaN, giữ cả thuộc tính có giá trị undefined, và tạo một mảng items mới nên items không cùng tham chiếu với bản gốc.',
-    followups: [
-      { q: 'Khi nào vòng JSON vẫn là lựa chọn đúng dù nó mất dữ liệu?', a: 'Khi dữ liệu của bạn là JSON thuần theo đúng nghĩa, tức chỉ gồm chuỗi, số, boolean, null, object và array, và bạn cần một bản sao đơn giản để gửi qua postMessage, lưu vào localStorage hoặc so sánh. Vòng JSON rẻ, không cần thư viện và hoạt động giống nhau trên mọi môi trường cũ. Ngược lại, nếu có bất kỳ Date, Map, Set, BigInt hay thuộc tính undefined nào trong đồ thị thì nó đã ngầm đánh đổi dữ liệu lấy sự tiện lợi.' },
-      { q: 'Vì sao structuredClone ném lỗi khi dữ liệu có hàm, và lúc đó bạn làm gì?', a: 'Thuật toán clone có cấu trúc chỉ biết sao chép các cấu trúc dữ liệu mà runtime hiểu, còn hàm là hành vi gắn với scope nên không thể tái tạo độc lập. Vì vậy gặp hàm ở bất kỳ đâu trong đồ thị thì API ném lỗi DataCloneError chứ không âm thầm bỏ qua, và đó là hành vi có chủ ý để bạn không mất dữ liệu mà không hay biết. Cách xử lý là tách phần có hàm ra khỏi đồ thị cần copy, hoặc clone thủ công: copy object thuần bằng structuredClone rồi gán lại các thuộc tính chứa hàm, hoặc thay hàm bằng một tham chiếu tới nó.' }
-    ],
-    pitfalls: [
-      'Deep copy bằng vòng JSON rồi tưởng Date vẫn là Date, trong khi nó đã thành chuỗi và mọi phép tính ngày sau đó sẽ hỏng.',
-      'Dùng structuredClone trên object có hàm và không bắt lỗi, khiến cả luồng dữ liệu dừng lại với lỗi DataCloneError.',
-      'Tưởng thuộc tính undefined được giữ lại, trong khi vòng JSON loại bỏ nó khỏi danh sách key.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa nhớ đủ danh sách các kiểu dữ liệu mà mỗi cách deep copy giữ hoặc làm mất.',
-      'Tôi giải thích được vì sao vòng JSON biến Infinity thành null bằng ví dụ một object cấu hình có giá trị số vô hạn.',
-      'Tôi có thể chọn đúng cách deep copy cho một object form có Date, mảng con và một hàm callback.'
-    ],
-    refs: ['mdn-execution-model']
+  "anchor": "Timer và listener do môi trường chạy giữ, không do component giữ — không huỷ chúng thì component đã gỡ vẫn tiếp tục chạy và giữ luôn bộ nhớ của nó.",
+  "attacks": [
+    {
+      "q": "Trong Vue 3 với Composition API, bạn dọn dẹp ở đâu?",
+      "a": "Trong onBeforeUnmount hoặc onUnmounted của chính component, hoặc gọn hơn là trong onScopeDispose nếu logic nằm trong một composable — như vậy composable tự dọn phần nó đã tạo, và component dùng nó không phải nhớ. Với watch và watchEffect, Vue tự dừng chúng khi scope bị huỷ, nên bạn chỉ cần dọn những gì bạn tự tạo: setInterval, addEventListener trên window hoặc document, observer, và kết nối mạng."
+    },
+    {
+      "q": "Làm sao tìm ra rò rỉ bộ nhớ trong một ứng dụng đang chạy?",
+      "a": "Ba bước thực dụng. Một là dùng tab Memory của DevTools: chụp heap snapshot, thực hiện hành động nghi ngờ mười lần, chụp lại, rồi so sánh số thực thể của lớp component — nếu số đó tăng đều theo số lần hành động thì đó là rò rỉ. Hai là xem đường giữ trong snapshot để biết ai đang giữ đối tượng; thường thủ phạm là timer, listener toàn cục, hoặc một mảng cache không có giới hạn. Ba là kiểm tra các subscription và interval trong code, vì đó là nguồn phổ biến nhất."
+    }
+  ],
+  "q": "Đoạn code gắn sự kiện và đặt hẹn giờ bên dưới in ra gì, và vấn đề rò bộ nhớ nằm ở đâu khi nó được gọi lại nhiều lần?",
+  "oral": "Chốt: mỗi listener hay timer tạo ra phải có hàm gỡ đi kèm, và hàm gỡ phải dùng đúng tham chiếu đã đăng ký. Cơ chế: bus.addEventListener giữ hàm onTick, còn setInterval giữ callback cho tới khi clearInterval, nên closure chứa id vẫn sống dù component đã bị gỡ. Ví dụ: nếu attach(\"a\") chạy mà không có detach, mỗi lần mở bảng chi tiết lại thêm một interval và một listener, nên sau ba mươi lần có ba mươi heartbeat mỗi giây. Kinh nghiệm: giữ hàm detach mà attach trả về, gọi nó trong cleanup của framework khi component unmount, và đừng gỡ bằng một hàm ẩn danh mới vì tham chiếu sẽ khác và việc gỡ không có tác dụng.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>memory leak (component)</strong>: Component đã unmount nhưng vẫn có listener, timer, hay subscription giữ tham chiếu — GC không thu, bộ nhớ tăng tuyến tính theo số lần mount/unmount.</li><li><strong>listener (add/removeEventListener)</strong>: event listener lưu callback trong internal table của target; callback giữ closure giữ component; không gỡ thì component không bao giờ được GC; phải removeEventListener đúng callback cùng reference.</li><li><strong>interval / timer handle</strong>: setInterval trả handle; không lưu handle thì không cancel được; timer giữ callback, callback giữ closure, closure giữ component — toàn bộ không được GC.</li><li><strong>cleanup function (unmount)</strong>: Phần chạy khi component unmount (useEffect return, destroy, unmount); mọi side effect mount phải có pair cleanup unmount — số add phải bằng số remove.</li></ul><p>Đóng bảng chi tiết 30 lần mà trang vẫn chạy heartbeat 30 lần mỗi giây. Component đã unmount nhưng listener resize và interval vẫn đăng ký, và mỗi lần mở thêm một bản mới. Không có dòng log nào báo lỗi, chỉ có hiệu năng giảm đều.</p><p>Bộ nhớ chỉ được thu hồi khi không còn đường tham chiếu nào tới closure. addEventListener giữ hàm, và hàm giữ toàn bộ biến nó đóng bắt. setInterval giữ callback tới khi clearInterval, hoặc tới vô hạn nếu không ai dừng. Gỡ listener phải truyền đúng tham chiếu hàm đã đăng ký, một hàm ẩn danh mới dù viết giống nhau vẫn là listener khác.</p><ul><li><strong>Timer do runtime giữ còn component do bạn giữ:</strong> interval không biết component đã chết nên callback chạy và giữ closure sống, listener trên window cũng vậy vì window không bao giờ unmount.</li><li><strong>Dùng khi:</strong> tạo listener hay timer thì phải tạo hàm gỡ cùng lúc và gọi trong cleanup hook. <strong>Không dùng khi:</strong> không tin gán biến bằng null là đủ vì closure vẫn còn tham chiếu.</li><li><strong>Lỗi hay gặp:</strong> quên lưu handle của interval, và gỡ bằng một function ẩn danh mới nên listener cũ còn nguyên.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> một component mở đóng vài lần thì rò rỉ khó thấy, lặp 30 lần thì heap snapshot cho thấy node giữ tăng tuyến tính và devtools xác nhận được bằng so sánh hai lần chụp.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Memory và GC ở Bài L14, listener cleanup trong component ở Bài L17, và heap snapshot trong devtools ở Bài L15.</p>",
+  "code": "// [OK] Cách làm chuẩn: mỗi listener hoặc timer tạo ra phải có hàm gỡ tương ứng, và hàm gỡ dùng đúng tham chiếu đã đăng ký\nconst bus = new EventTarget();\n\nfunction attach(id) {\n  const onTick = function () {\n    console.log(\"tick for\", id);\n  };\n  bus.addEventListener(\"tick\", onTick);\n  const timer = setInterval(() => console.log(\"heartbeat\"), 1000);\n\n  return function detach() {\n    bus.removeEventListener(\"tick\", onTick); // cùng tham chiếu onTick\n    clearInterval(timer);                    // dừng đúng interval đã tạo\n  };\n}\n\nconst detachA = attach(\"a\");\ndetachA(); // khi component unmount thì gọi hàm gỡ\nattach(\"b\");\nbus.dispatchEvent(new Event(\"tick\"));",
+  "expected": "In ra \"tick for b\" khi dispatch, vì listener của a đã được gỡ bằng detachA trước đó. Đồng thời dòng \"heartbeat\" lặp lại mỗi giây từ interval của b. Interval của a đã bị clearInterval nên không còn in ra. Nguyên nhân: hàm detach giữ đúng tham chiếu onTick để removeEventListener và đúng id timer để clearInterval, nên tài nguyên của a được trả lại. Nếu bỏ lời gọi detachA hoặc gỡ bằng một hàm ẩn danh mới, listener và interval cũ vẫn còn và các closure của chúng vẫn bị giữ trong bộ nhớ.",
+  "followups": [
+    {
+      "q": "Vì sao hàm gỡ listener phải là đúng hàm đã đăng ký, và sai ở đâu nếu viết hàm ẩn danh?",
+      "a": "Engine định danh listener bằng chính tham chiếu hàm cùng loại sự kiện, nên hàm gỡ truyền vào phải cùng tham chiếu với hàm đăng ký thì việc gỡ mới có tác dụng. Nếu bạn viết removeEventListener với một hàm ẩn danh mới, dù mã trông giống nhau thì hai tham chiếu khác nhau và listener cũ vẫn còn. Cách an toàn là định nghĩa hàm gắn và hàm gỡ dạng function thật, hoặc dùng một object để thu thập các hàm gỡ rồi chạy chúng trong hàm dọn dẹp."
+    },
+    {
+      "q": "Làm sao phân biệt rò bộ nhớ thật với chuyện heap chỉ lớn lên rồi được thu gom lại?",
+      "a": "Vì bộ thu gom rác không trả bộ nhớ về hệ điều hành ngay, heap có thể lớn lên rồi nhỏ lại mà không phải rò rỉ. Dấu hiệu rò rỉ thật là số object sống tăng đều sau mỗi vòng thao tác lặp lại: mở rồi đóng một màn hình nhiều lần và chụp heap ở hai thời điểm giống nhau. Trong devtools, dùng lựa chọn so sánh hai lần chụp sau khi ép thu gom, nếu các node bị giữ tăng tuyến tính theo số lần thao tác thì bạn đang giữ tham chiếu không cần thiết."
+    }
+  ],
+  "pitfalls": [
+    "Gỡ listener bằng một hàm ẩn danh mới trong khi lúc đăng ký dùng hàm khác, nên listener cũ vẫn còn.",
+    "Quên lưu id của interval rồi cố dừng bằng một giá trị null, khiến interval chạy vô thời hạn.",
+    "Tin rằng đặt biến tham chiếu bằng null đã đủ để giải phóng bộ nhớ, trong khi listener và timer vẫn giữ closure đó."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa biết cách đếm chính xác số listener và timer đang sống trong một trang đang chạy.",
+    "Tôi giải thích được vì sao gọi detach trước khi attach lại thì mỗi tick chỉ còn một callback, dựa vào việc listener onTick của a đã bị gỡ đúng tham chiếu.",
+    "Tôi có thể thêm cặp thêm và gỡ cho một màn hình thật và xác nhận bằng devtools rằng số listener không còn tăng."
+  ],
+  "refs": [
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "B13",
+  "group": "B",
+  "topic": "structuredClone so với vòng JSON để deep copy",
+  "prio": "P2",
+  "level": "L2",
+  "type": "predict",
+  "incident": "<p>Một dev cần sao chép sâu một object cấu hình trước khi sửa. Họ dùng <code>JSON.parse(JSON.stringify(cfg))</code> theo thói quen. Bản sao trông đúng cho tới khi một trường kiểu <code>Date</code> trở thành chuỗi, một trường <code>undefined</code> biến mất hoàn toàn, và một giá trị <code>NaN</code> biến thành <code>null</code>. Một so sánh sau đó sai, và bug chỉ xuất hiện ở môi trường có trường ngày tháng được đặt.</p>",
+  "askFirst": [
+    "JSON.stringify làm gì với undefined, Date, NaN và Infinity? → Giải mã: undefined trong object bị bỏ key; Date thành string ISO; NaN và Infinity thành null — không phải preserve, là mất thông tin dữ liệu khi qua vòng JSON",
+    "Có cách sao chép sâu nào đúng hơn trong môi trường hiện đại? → Giải mã: có — structuredClone (trình duyệt hiện đại và Node 17+): giữ Date, Map, Set, circular; không được: function, DOM object — ném DataCloneError; với dữ liệu thuần (object, array, Date) thì structuredClone đúng hơn hẳn vòng JSON",
+    "Sao chép sâu có luôn là điều bạn muốn không? → Giải mã: không — deep copy chỉ khi cần snapshot độc lập (undo, diff, trả object an toàn ra ngoài); state dùng chung tham chiếu có chủ đích thì copy sâu làm mất đồng bộ; chọn theo mục đích, không theo thói quen"
+  ],
+  "predict": {
+    "q": "Cho <code>const o = { a: undefined, b: new Date(0), c: NaN, d: Infinity, e: [1,2] }</code>, bản sao qua vòng JSON có những trường nào và giá trị gì?",
+    "a": "<p>Bản sao có <code>b</code> là chuỗi ISO chứ không còn là <code>Date</code>, <code>c</code> và <code>d</code> đều thành <code>null</code> vì JSON không có cách biểu diễn chúng, và <code>a</code> biến mất hoàn toàn vì <code>undefined</code> bị bỏ qua trong object. <code>e</code> được sao chép đúng vì mảng và số là kiểu JSON biểu diễn được. Ngoài ra cách này còn ném lỗi với cấu trúc vòng, và mất mọi prototype nên kết quả không còn là thực thể của lớp ban đầu.</p>"
   },
-  {
-    id: 'B14',
-    group: 'B',
-    topic: 'Xử lý lỗi trong async: try catch quanh await và unhandled rejection',
-    prio: 'P2',
-    level: 'L3',
-    type: 'debug',
-    incident: "<p>Một job chạy nền trong trình duyệt gọi ba API song song. Một API lỗi, và vì lời gọi nằm trong một hàm <code>async</code> không có <code>try/catch</code>, promise bị reject mà không ai bắt. Trình duyệt chỉ ghi một dòng cảnh báo vào console; job coi như đã hoàn tất và hiển thị trạng thái thành công cho người dùng. Ba ngày sau mới có người phát hiện dữ liệu chưa bao giờ được đồng bộ.</p>",
-    askFirst: ["Điều gì xảy ra với một promise bị reject mà không có ai bắt?","Vì sao lỗi này im lặng hơn nhiều so với một exception đồng bộ?","Chỗ đúng để bắt lỗi trong một hàm async là ở đâu?"],
-    predict: {"q":"Trong một hàm <code>async</code>, <code>await</code> một promise bị reject bên trong khối <code>try</code> — <code>catch</code> có bắt được không?","a":"<p>Có. <code>await</code> chuyển một rejection thành một exception được ném tại chính dòng đó, nên <code>catch</code> bắt được và bạn có thể chạy nhánh xử lý hoặc trả về giá trị dự phòng. Đây là khác biệt quan trọng so với việc không dùng <code>await</code>: nếu bạn chỉ gọi hàm async mà không await và không gắn <code>catch</code>, rejection trở thành một sự kiện toàn cục không ai xử lý, và trong trình duyệt nó chỉ là một cảnh báo dễ bị bỏ qua giữa hàng trăm dòng log khác.</p>"},
-    anchor: "await biến rejection thành exception tại chỗ nên try/catch bắt được; bỏ await thì rejection rơi ra ngoài và chỉ còn là một cảnh báo im lặng.",
-    attacks: [{"q":"Vì sao lỗi trong code async lại khó phát hiện hơn lỗi đồng bộ?","a":"Vì nó mất ngữ cảnh. Một exception đồng bộ làm dừng luồng thực thi ngay và thường làm hỏng cả thao tác, nên lộ ra lập tức. Một rejection không được xử lý chỉ phát một sự kiện, không dừng gì cả; phần code sau đó vẫn chạy như thể mọi thứ thành công. Hệ quả là trạng thái ứng dụng lệch khỏi thực tế mà không có tín hiệu rõ ràng. Cách chống là bắt ở ranh giới — mọi hàm async được gọi từ sự kiện UI đều nên có xử lý lỗi — và theo dõi sự kiện rejection toàn cục để ghi log tập trung."},{"q":"Bắt lỗi ở mọi hàm async có phải là cách đúng?","a":"Không. Bắt ở mọi nơi dẫn tới nuốt lỗi và che mất nguyên nhân gốc, đúng như vấn đề của except: pass trong Python. Nguyên tắc là bắt ở ranh giới nơi bạn có đủ ngữ cảnh để quyết định: hiển thị lỗi cho người dùng, thử lại, hay chuyển sang trạng thái dự phòng. Ở các tầng bên trong, hãy để lỗi nổi lên kèm ngữ cảnh bổ sung, và chỉ bắt khi bạn thực sự xử lý được. Một hàm tiện ích trả về promise nên để người gọi quyết định."}],
-    q: 'Hàm run bên dưới không bắt được lỗi gì cả, và sửa thế nào để try catch thật sự bắt được lỗi của một lời gọi bất đồng bộ?',
-    oral: 'Hai hàm trong ví dụ tạo ra hai kết quả khác nhau và nguyên nhân nằm ở chỗ có await hay không. Trong run, loadData được gọi mà kết quả promise bị bỏ qua, nên lệnh gọi trả về ngay và dòng A in ra; lỗi chỉ xảy ra sau đó, ở microtask của timer, lúc đó khối try đã thoát và không còn ai giữ promise đó nên nó trở thành unhandled rejection và làm Node dừng tiến trình. Trong runFixed, có await ngay trong khối try nên hàm bị treo tại đó cho tới khi promise hoàn tất, lỗi được ném vào đúng khối try và in ra caught boom. Nguyên tắc là khối try chỉ bắt được lỗi ném đồng bộ và lỗi của promise mà bạn chờ ngay bên trong nó. Với mọi nhánh không await, hãy bọc thủ công bằng then và catch, hoặc dùng await để giữ ngữ nghĩa đồng bộ. Ở cấp ứng dụng, nên bắt unhandled rejection toàn cục để ghi log và báo cáo, nhưng đó là lưới an toàn cuối cùng chứ không phải cách xử lý đúng.',
-    deep: '<p>Job gọi ba API song song, một API lỗi và promise reject mà không ai bắt, trình duyệt chỉ cảnh báo một dòng. Ba ngày sau người ta mới biết dữ liệu chưa bao giờ đồng bộ. Bạn thấy catch không chạy vì khối try đã thoát trước khi lỗi xảy ra.</p><p>Khối try chỉ bắt lỗi ném đồng bộ bên trong nó, và lỗi của promise mà bạn await ngay trong đó. await biến rejection thành exception tại đúng dòng await nên catch bắt được. Không await nghĩa là bạn ném bỏ promise, lỗi xảy ra sau ở microtask khác, không ai giữ nên thành unhandled rejection.</p><ul><li><strong>Await giữ lỗi trong khối, còn gọi trần thả lỗi ra ngoài:</strong> cái đầu cho try/catch hoạt động như đồng bộ, cái sau biến lỗi thành cảnh báo toàn cục rồi Node dừng tiến trình.</li><li><strong>Dùng khi:</strong> mọi nhánh bất đồng bộ thì await trong try, hàm không thể await thì then/catch thủ công, vòng lặp thì for...of với await cho một lỗi dừng cả vòng. <strong>Không dùng khi:</strong> không viết forEach kèm try/catch bên ngoài vì callback của forEach nằm ngoài khối try.</li><li><strong>Lỗi hay gặp:</strong> gọi async trong try mà quên await, và nuốt lỗi bằng catch rỗng rồi tưởng đã xong.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> muốn lỗi con được try ở bên ngoài bắt thì phải return await, và trong trình duyệt bạn nên luôn nghe unhandledrejection để log tập trung thay vì để im lặng.</li></ul>',
-    code: '// [OK] Cách làm chuẩn: đặt await trong khối try để lỗi của promise được ném vào catch đúng chỗ\nfunction loadData() {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => reject(new Error("boom")), 10);\n  });\n}\n\nasync function run() {\n  try {\n    loadData();\n    console.log("A");\n  } catch (err) {\n    console.log("caught", err.message);\n  }\n}\n\nasync function runFixed() {\n  try {\n    await loadData();\n    console.log("B");\n  } catch (err) {\n    console.log("caught", err.message);\n  }\n}\n\nrun();\nrunFixed();',
-    expected: 'In ra dòng A, sau đó Node dừng tiến trình với unhandled rejection là Error boom, và dòng caught boom của runFixed không kịp in ra. Nguyên nhân: trong run không có await nên lời gọi loadData trả về ngay và bị bỏ qua, lỗi chỉ phát sinh sau đó ở microtask của timer khi khối try đã thoát, nên không ai giữ promise đó và trở thành unhandled rejection làm tiến trình dừng. Trong runFixed có await ngay trong khối try nên hàm bị treo tại đó cho tới khi promise từ chối, lỗi được ném vào khối catch và in ra caught boom, nhưng Node đã dừng tiến trình trước đó nên dòng đó không xuất hiện.',
-    followups: [
-      { q: 'Vì sao return await lại cần thiết khi bạn muốn khối try bên ngoài bắt lỗi?', a: 'Khi bạn return một promise mà không await, hàm async sẽ trả về chính promise đó và lỗi của nó nổi lên ở nơi người gọi xử lý, tức là khối try bao quanh lời gọi hàm của bạn không còn tác dụng vì lỗi chưa xảy ra tại thời điểm hàm kết thúc khối try. Nếu bạn viết return await, hàm bị treo tại chỗ đó, lỗi được ném vào khối try ngay trong thân hàm, và bạn có thể chuyển nó thành một giá trị trả về hoặc một lỗi có kiểu rõ ràng.' },
-      { q: 'Trong vòng lặp, khác biệt giữa forEach và for...of với await về xử lý lỗi thế nào?', a: 'forEach gọi một callback cho mỗi phần tử và không chờ kết quả của callback, nên mỗi callback là một hàm riêng và khối try bên ngoài không bọc được phần thân của callback. Hệ quả là bạn phải viết try catch riêng trong từng callback, hoặc dùng allSettled rồi kiểm tra từng kết quả. Ngược lại, for...of kèm await giữ hàm treo tại từng lần lặp nên một lỗi sẽ ném ra khối try bao quanh cả vòng lặp và vòng lặp dừng tại chỗ lỗi phát sinh.' }
-    ],
-    pitfalls: [
-      'Gọi một hàm async bên trong try mà không await, nên khối catch không bao giờ chạy và lỗi thành unhandled rejection.',
-      'Viết return promise thay vì return await rồi ngạc nhiên khi khối try ở lời gọi không bắt được lỗi.',
-      'Dùng forEach kèm try catch bên ngoài và tưởng mọi lỗi của các callback đã được bắt.',
-      'Nuốt lỗi bằng catch rỗng rồi tưởng là đã xử lý xong, khiến dữ liệu sai âm thầm lan xuống dưới.'
-    ],
-    selfcheck: [
-      'Tôi vẫn chưa phân biệt được khi nào lỗi trong một hàm async sẽ thành unhandled rejection và khi nào được bắt bởi khối try.',
-      'Tôi giải thích được vì sao khối try trong hàm không có await không bắt được lỗi của lời gọi bất đồng bộ.',
-      'Tôi có thể rà một lớp gọi API và thêm await hoặc handler unhandledRejection để không còn lỗi bị bỏ qua.'
-    ],
-    refs: ['mdn-promise']
-  }
+  "anchor": "Vòng JSON chỉ sao chép được đúng tập giá trị mà JSON biểu diễn được — mọi thứ khác bị đổi kiểu, bị bỏ, hoặc thành null trong im lặng.",
+  "attacks": [
+    {
+      "q": "structuredClone có thay thế được vòng JSON trong mọi trường hợp không?",
+      "a": "Không. structuredClone xử lý được Date, Map, Set, mảng có kiểu, và cả cấu trúc vòng — tốt hơn hẳn vòng JSON. Nhưng nó vẫn không sao chép được hàm, không giữ prototype tuỳ chỉnh, và ném lỗi với các đối tượng không clone được như handle của DOM hay WeakMap. Nếu object của bạn chứa phương thức hoặc thực thể của lớp, cả hai cách đều không đủ và bạn cần một hàm khởi tạo tường minh."
+    },
+    {
+      "q": "Khi nào sao chép sâu lại là lựa chọn sai?",
+      "a": "Khi chi phí lớn hơn lợi ích, hoặc khi nó che đi vấn đề thiết kế. Với một cấu trúc lớn được sao chép trong mỗi lần render, bạn vừa tốn thời gian vừa tốn bộ nhớ. Trong nhiều trường hợp, cách đúng là không sửa dữ liệu dùng chung ngay từ đầu: tạo object mới bằng toán tử trải ở đúng cấp cần đổi, hoặc giữ state bất biến để việc so sánh tham chiếu trở nên rẻ và đáng tin. Sao chép sâu thường là dấu hiệu ai đó đang sửa dữ liệu mà không sở hữu nó."
+    }
+  ],
+  "q": "Hai cách deep copy dưới đây cho kết quả khác nhau ở những điểm nào, và vì sao vòng JSON làm mất dữ liệu?",
+  "oral": "Vòng JSON serialize rồi deserialize, nên nó chỉ giữ được những gì JSON biểu diễn được. Date thành chuỗi vì JSON không có kiểu ngày, Infinity và NaN thành null vì JSON không có số vô hạn và số không phải số, và thuộc tính có giá trị undefined bị mất hẳn vì JSON không có undefined. Ngoài ra hàm, class instance và Map hay Set đều không sống sót. Ngược lại, structuredClone là API của runtime, nó đi qua thuật toán clone có cấu trúc nên giữ nguyên Date, giữ Infinity, NaN và thuộc tính undefined, và tạo mảng mới hoàn toàn tách biệt. Nhưng structuredClone không copy được hàm, không copy được node DOM, và ném lỗi khi gặp các giá trị không clone được. Vì vậy chọn theo hình dạng dữ liệu: dữ liệu thuần JSON thì cả hai đều được, có Date, Map, Set hay cần giữ undefined thì dùng structuredClone, còn dữ liệu có hàm hoặc class instance thì phải clone tay từng nhánh.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>JSON.stringify/parse vòng</strong>: Deep copy qua chuỗi: mọi value không JSON hóa được (undefined, function, symbol, Date) bị drop hoặc đổi dạng; vòng tham chiếu ném TypeError; chi phí serialize + parse đầy đủ.</li><li><strong>structuredClone</strong>: API chuẩn, dùng serializer V8: giữ Date, Map, Set, ArrayBuffer, circular reference; không copy được function, DOM, WeakMap — ném DataCloneError.</li><li><strong>shallow vs deep</strong>: Shallow copy tách tầng ngoài, object con dùng chung tham chiếu; deep copy tái tạo toàn bộ đồ thị — chọn theo nhu cầu, không phải deep luôn là đúng.</li><li><strong>circular reference</strong>: object trỏ lại chính nó (a.self = a) — JSON.stringify ném TypeError; structuredClone giữ được (clone cả vòng); clone tay phải có WeakSet theo vết đã clone.</li></ul><p>Deep copy cấu hình bằng JSON.parse(JSON.stringify(cfg)) rồi một so sánh ngày sau đó sai im lặng. Bản sao giữ đúng số và chuỗi, nhưng Date thành chuỗi ISO, NaN và Infinity thành null, và trường undefined biến mất khỏi key. Bạn chỉ phát hiện ở môi trường đặt ngày tháng.</p><p>Vòng JSON đi qua chuỗi trung gian nên chỉ giữ được những gì JSON biểu diễn được, mọi thứ khác bị đổi kiểu hay vứt bỏ. structuredClone là thuật toán clone có cấu trúc của runtime nên giữ Date, Map, Set, BigInt, Infinity, NaN và cả thuộc tính undefined, đồng thời tạo object mới không dùng chung tham chiếu.</p><ul><li><strong>Vòng JSON đổi kiểu, còn structuredClone giữ nguyên kiểu:</strong> cái đầu rẻ và chạy được nơi cũ, cái sau đúng hơn nhưng ném lỗi DataCloneError khi gặp hàm hoặc object không clone được.</li><li><strong>Dùng khi:</strong> dữ liệu thuần JSON để gửi postMessage hay localStorage thì vòng JSON, form có Date và Map thì structuredClone. <strong>Không dùng khi:</strong> không copy sâu ở mỗi render cho cấu trúc lớn, và không dùng structuredClone cho object có phương thức.</li><li><strong>Lỗi hay gặp:</strong> tưởng Date sống qua JSON, và không bắt lỗi khi structuredClone gặp callback trong đồ thị.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> dữ liệu thêm bản ghi có vòng tham chiếu thì vòng JSON ném lỗi, còn có class instance hay DOM handle thì cả hai cách đều không đủ và phải khởi tạo tường minh.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Deep copy và structuredClone ở Bài L14, circular reference ở Bài L17, và pattern snapshot trước sửa trong state ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: structuredClone giữ được Date, Infinity, NaN và undefined; vòng JSON thì không\nconst original = {\n  when: new Date(\"2024-01-02T03:04:05Z\"),\n  items: [1, 2],\n  skip: undefined,\n  inf: Infinity,\n  nan: NaN\n};\n\nconst viaJson = JSON.parse(JSON.stringify(original));\nconst viaClone = structuredClone(original);\n\nconsole.log(viaJson.when instanceof Date, viaJson.items === original.items);\nconsole.log(viaJson.inf, viaJson.nan, Object.keys(viaJson).join(\",\"));\nconsole.log(viaClone.when instanceof Date, viaClone.items === original.items);\nconsole.log(viaClone.inf, viaClone.nan, \"skip\" in viaClone);",
+  "expected": "Bốn dòng lần lượt là false false, rồi null null when,items,inf,nan, rồi true false, rồi Infinity NaN true. Nguyên nhân: vòng JSON biến Date thành chuỗi nên instanceof Date cho false, Infinity và NaN thành null, và thuộc tính skip có giá trị undefined bị loại khỏi danh sách key. structuredClone giữ nguyên kiểu Date, giữ Infinity và NaN, giữ cả thuộc tính có giá trị undefined, và tạo một mảng items mới nên items không cùng tham chiếu với bản gốc.",
+  "followups": [
+    {
+      "q": "Khi nào vòng JSON vẫn là lựa chọn đúng dù nó mất dữ liệu?",
+      "a": "Khi dữ liệu của bạn là JSON thuần theo đúng nghĩa, tức chỉ gồm chuỗi, số, boolean, null, object và array, và bạn cần một bản sao đơn giản để gửi qua postMessage, lưu vào localStorage hoặc so sánh. Vòng JSON rẻ, không cần thư viện và hoạt động giống nhau trên mọi môi trường cũ. Ngược lại, nếu có bất kỳ Date, Map, Set, BigInt hay thuộc tính undefined nào trong đồ thị thì nó đã ngầm đánh đổi dữ liệu lấy sự tiện lợi."
+    },
+    {
+      "q": "Vì sao structuredClone ném lỗi khi dữ liệu có hàm, và lúc đó bạn làm gì?",
+      "a": "Thuật toán clone có cấu trúc chỉ biết sao chép các cấu trúc dữ liệu mà runtime hiểu, còn hàm là hành vi gắn với scope nên không thể tái tạo độc lập. Vì vậy gặp hàm ở bất kỳ đâu trong đồ thị thì API ném lỗi DataCloneError chứ không âm thầm bỏ qua, và đó là hành vi có chủ ý để bạn không mất dữ liệu mà không hay biết. Cách xử lý là tách phần có hàm ra khỏi đồ thị cần copy, hoặc clone thủ công: copy object thuần bằng structuredClone rồi gán lại các thuộc tính chứa hàm, hoặc thay hàm bằng một tham chiếu tới nó."
+    }
+  ],
+  "pitfalls": [
+    "Deep copy bằng vòng JSON rồi tưởng Date vẫn là Date, trong khi nó đã thành chuỗi và mọi phép tính ngày sau đó sẽ hỏng.",
+    "Dùng structuredClone trên object có hàm và không bắt lỗi, khiến cả luồng dữ liệu dừng lại với lỗi DataCloneError.",
+    "Tưởng thuộc tính undefined được giữ lại, trong khi vòng JSON loại bỏ nó khỏi danh sách key."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa nhớ đủ danh sách các kiểu dữ liệu mà mỗi cách deep copy giữ hoặc làm mất.",
+    "Tôi giải thích được vì sao vòng JSON biến Infinity thành null bằng ví dụ một object cấu hình có giá trị số vô hạn.",
+    "Tôi có thể chọn đúng cách deep copy cho một object form có Date, mảng con và một hàm callback."
+  ],
+  "refs": [
+    "mdn-execution-model"
+  ]
+},
+{
+  "id": "B14",
+  "group": "B",
+  "topic": "Xử lý lỗi trong async: try catch quanh await và unhandled rejection",
+  "prio": "P2",
+  "level": "L3",
+  "type": "debug",
+  "incident": "<p>Một job chạy nền trong trình duyệt gọi ba API song song. Một API lỗi, và vì lời gọi nằm trong một hàm <code>async</code> không có <code>try/catch</code>, promise bị reject mà không ai bắt. Trình duyệt chỉ ghi một dòng cảnh báo vào console; job coi như đã hoàn tất và hiển thị trạng thái thành công cho người dùng. Ba ngày sau mới có người phát hiện dữ liệu chưa bao giờ được đồng bộ.</p>",
+  "askFirst": [
+    "Điều gì xảy ra với một promise bị reject mà không có ai bắt? → Giải mã: engine ném unhandledrejection ra event loop; trình duyệt chỉ log warning, không crash, không alert — silent failure, production khó phát hiện hơn exception đồng bộ rất nhiều lần",
+    "Vì sao lỗi này im lặng hơn nhiều so với một exception đồng bộ? → Giải mã: vì rejection không được catch thì không có stack tới user code; console chỉ hiện một dòng unhandled rejection, không có điểm bắt đầu nào trong code application; debug rất khó so với exception đồng bộ có stack đầy đủ",
+    "Chỗ đúng để bắt lỗi trong một hàm async là ở đâu? → Giải mã: tại điểm await thực sự trong hàm async; try bắt error từ await bên trong; nếu hàm con là async thì phải return await để error propagate ra try cha; gọi không await trong try thì catch vô dụng"
+  ],
+  "predict": {
+    "q": "Trong một hàm <code>async</code>, <code>await</code> một promise bị reject bên trong khối <code>try</code> — <code>catch</code> có bắt được không?",
+    "a": "<p>Có. <code>await</code> chuyển một rejection thành một exception được ném tại chính dòng đó, nên <code>catch</code> bắt được và bạn có thể chạy nhánh xử lý hoặc trả về giá trị dự phòng. Đây là khác biệt quan trọng so với việc không dùng <code>await</code>: nếu bạn chỉ gọi hàm async mà không await và không gắn <code>catch</code>, rejection trở thành một sự kiện toàn cục không ai xử lý, và trong trình duyệt nó chỉ là một cảnh báo dễ bị bỏ qua giữa hàng trăm dòng log khác.</p>"
+  },
+  "anchor": "await biến rejection thành exception tại chỗ nên try/catch bắt được; bỏ await thì rejection rơi ra ngoài và chỉ còn là một cảnh báo im lặng.",
+  "attacks": [
+    {
+      "q": "Vì sao lỗi trong code async lại khó phát hiện hơn lỗi đồng bộ?",
+      "a": "Vì nó mất ngữ cảnh. Một exception đồng bộ làm dừng luồng thực thi ngay và thường làm hỏng cả thao tác, nên lộ ra lập tức. Một rejection không được xử lý chỉ phát một sự kiện, không dừng gì cả; phần code sau đó vẫn chạy như thể mọi thứ thành công. Hệ quả là trạng thái ứng dụng lệch khỏi thực tế mà không có tín hiệu rõ ràng. Cách chống là bắt ở ranh giới — mọi hàm async được gọi từ sự kiện UI đều nên có xử lý lỗi — và theo dõi sự kiện rejection toàn cục để ghi log tập trung."
+    },
+    {
+      "q": "Bắt lỗi ở mọi hàm async có phải là cách đúng?",
+      "a": "Không. Bắt ở mọi nơi dẫn tới nuốt lỗi và che mất nguyên nhân gốc, đúng như vấn đề của except: pass trong Python. Nguyên tắc là bắt ở ranh giới nơi bạn có đủ ngữ cảnh để quyết định: hiển thị lỗi cho người dùng, thử lại, hay chuyển sang trạng thái dự phòng. Ở các tầng bên trong, hãy để lỗi nổi lên kèm ngữ cảnh bổ sung, và chỉ bắt khi bạn thực sự xử lý được. Một hàm tiện ích trả về promise nên để người gọi quyết định."
+    }
+  ],
+  "q": "Hàm run bên dưới không bắt được lỗi gì cả, và sửa thế nào để try catch thật sự bắt được lỗi của một lời gọi bất đồng bộ?",
+  "oral": "Hai hàm trong ví dụ tạo ra hai kết quả khác nhau và nguyên nhân nằm ở chỗ có await hay không. Trong run, loadData được gọi mà kết quả promise bị bỏ qua, nên lệnh gọi trả về ngay và dòng A in ra; lỗi chỉ xảy ra sau đó, ở microtask của timer, lúc đó khối try đã thoát và không còn ai giữ promise đó nên nó trở thành unhandled rejection và làm Node dừng tiến trình. Trong runFixed, có await ngay trong khối try nên hàm bị treo tại đó cho tới khi promise hoàn tất, lỗi được ném vào đúng khối try và in ra caught boom. Nguyên tắc là khối try chỉ bắt được lỗi ném đồng bộ và lỗi của promise mà bạn chờ ngay bên trong nó. Với mọi nhánh không await, hãy bọc thủ công bằng then và catch, hoặc dùng await để giữ ngữ nghĩa đồng bộ. Ở cấp ứng dụng, nên bắt unhandled rejection toàn cục để ghi log và báo cáo, nhưng đó là lưới an toàn cuối cùng chứ không phải cách xử lý đúng.",
+  "deep": "<p><strong>Thuật ngữ cần biết</strong></p><ul><li><strong>unhandled rejection</strong>: Promise reject không ai .catch, không ai await trong try — engine ném lỗi ra event loop; trình duyệt báo unhandledrejection (im lặng hơn exception đồng bộ rất nhiều, dễ bỏ qua).</li><li><strong>return await</strong>: Truyền exception của promise con ra try/catch ở hàm cha; chỉ await không return thì error của promise con không được catch bên ngoài bắt.</li><li><strong>try/catch quanh await</strong>: Catches chỉ bắt được error từ await bên trong nó; gọi async không await trong try thì catch không bắt được; bắt đúng phải await rồi mới catch được.</li><li><strong>event unhandledrejection</strong>: Event toàn cục nơi trình duyệt báo promise reject không ai bắt; nên log tập trung đây thay vì để im lặng — production mất khả năng biết có lỗi xảy ra.</li></ul><p>Job gọi ba API song song, một API lỗi và promise reject mà không ai bắt, trình duyệt chỉ cảnh báo một dòng. Ba ngày sau người ta mới biết dữ liệu chưa bao giờ đồng bộ. Bạn thấy catch không chạy vì khối try đã thoát trước khi lỗi xảy ra.</p><p>Khối try chỉ bắt lỗi ném đồng bộ bên trong nó, và lỗi của promise mà bạn await ngay trong đó. await biến rejection thành exception tại đúng dòng await nên catch bắt được. Không await nghĩa là bạn ném bỏ promise, lỗi xảy ra sau ở microtask khác, không ai giữ nên thành unhandled rejection.</p><ul><li><strong>Await giữ lỗi trong khối, còn gọi trần thả lỗi ra ngoài:</strong> cái đầu cho try/catch hoạt động như đồng bộ, cái sau biến lỗi thành cảnh báo toàn cục rồi Node dừng tiến trình.</li><li><strong>Dùng khi:</strong> mọi nhánh bất đồng bộ thì await trong try, hàm không thể await thì then/catch thủ công, vòng lặp thì for...of với await cho một lỗi dừng cả vòng. <strong>Không dùng khi:</strong> không viết forEach kèm try/catch bên ngoài vì callback của forEach nằm ngoài khối try.</li><li><strong>Lỗi hay gặp:</strong> gọi async trong try mà quên await, và nuốt lỗi bằng catch rỗng rồi tưởng đã xong.</li><li><strong>Khi điều kiện đổi thì đáp án đổi:</strong> muốn lỗi con được try ở bên ngoài bắt thì phải return await, và trong trình duyệt bạn nên luôn nghe unhandledrejection để log tập trung thay vì để im lặng.</li></ul><p><strong>Bài học nền tảng liên quan:</strong> Async error ở Bài L16, unhandledrejection và global handler ở Bài L15, và pattern return await trong pipeline ở Bài L17.</p>",
+  "code": "// [OK] Cách làm chuẩn: đặt await trong khối try để lỗi của promise được ném vào catch đúng chỗ\nfunction loadData() {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => reject(new Error(\"boom\")), 10);\n  });\n}\n\nasync function run() {\n  try {\n    loadData();\n    console.log(\"A\");\n  } catch (err) {\n    console.log(\"caught\", err.message);\n  }\n}\n\nasync function runFixed() {\n  try {\n    await loadData();\n    console.log(\"B\");\n  } catch (err) {\n    console.log(\"caught\", err.message);\n  }\n}\n\nrun();\nrunFixed();",
+  "expected": "In ra dòng A, sau đó Node dừng tiến trình với unhandled rejection là Error boom, và dòng caught boom của runFixed không kịp in ra. Nguyên nhân: trong run không có await nên lời gọi loadData trả về ngay và bị bỏ qua, lỗi chỉ phát sinh sau đó ở microtask của timer khi khối try đã thoát, nên không ai giữ promise đó và trở thành unhandled rejection làm tiến trình dừng. Trong runFixed có await ngay trong khối try nên hàm bị treo tại đó cho tới khi promise từ chối, lỗi được ném vào khối catch và in ra caught boom, nhưng Node đã dừng tiến trình trước đó nên dòng đó không xuất hiện.",
+  "followups": [
+    {
+      "q": "Vì sao return await lại cần thiết khi bạn muốn khối try bên ngoài bắt lỗi?",
+      "a": "Khi bạn return một promise mà không await, hàm async sẽ trả về chính promise đó và lỗi của nó nổi lên ở nơi người gọi xử lý, tức là khối try bao quanh lời gọi hàm của bạn không còn tác dụng vì lỗi chưa xảy ra tại thời điểm hàm kết thúc khối try. Nếu bạn viết return await, hàm bị treo tại chỗ đó, lỗi được ném vào khối try ngay trong thân hàm, và bạn có thể chuyển nó thành một giá trị trả về hoặc một lỗi có kiểu rõ ràng."
+    },
+    {
+      "q": "Trong vòng lặp, khác biệt giữa forEach và for...of với await về xử lý lỗi thế nào?",
+      "a": "forEach gọi một callback cho mỗi phần tử và không chờ kết quả của callback, nên mỗi callback là một hàm riêng và khối try bên ngoài không bọc được phần thân của callback. Hệ quả là bạn phải viết try catch riêng trong từng callback, hoặc dùng allSettled rồi kiểm tra từng kết quả. Ngược lại, for...of kèm await giữ hàm treo tại từng lần lặp nên một lỗi sẽ ném ra khối try bao quanh cả vòng lặp và vòng lặp dừng tại chỗ lỗi phát sinh."
+    }
+  ],
+  "pitfalls": [
+    "Gọi một hàm async bên trong try mà không await, nên khối catch không bao giờ chạy và lỗi thành unhandled rejection.",
+    "Viết return promise thay vì return await rồi ngạc nhiên khi khối try ở lời gọi không bắt được lỗi.",
+    "Dùng forEach kèm try catch bên ngoài và tưởng mọi lỗi của các callback đã được bắt.",
+    "Nuốt lỗi bằng catch rỗng rồi tưởng là đã xử lý xong, khiến dữ liệu sai âm thầm lan xuống dưới."
+  ],
+  "selfcheck": [
+    "Tôi vẫn chưa phân biệt được khi nào lỗi trong một hàm async sẽ thành unhandled rejection và khi nào được bắt bởi khối try.",
+    "Tôi giải thích được vì sao khối try trong hàm không có await không bắt được lỗi của lời gọi bất đồng bộ.",
+    "Tôi có thể rà một lớp gọi API và thêm await hoặc handler unhandledRejection để không còn lỗi bị bỏ qua."
+  ],
+  "refs": [
+    "mdn-promise"
+  ]
+},
 );

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, inject, ref, watch } from 'vue';
-import { esc, sanitize, sanitizeSvg } from '../utils.js';
+import { esc, sanitize, renderLinkedHtml, sanitizeSvg } from '../utils.js';
 import store from '../store.js';
 
 const props = defineProps({ lesson: { type: Object, required: true } });
@@ -73,14 +73,7 @@ function primaryAction() {
 
 // ---------- helper: sanitize + auto-link "Bài L01..L23" to clickable lesson links ----------
 function renderHtml(raw) {
-  const clean = sanitize(raw);
-  const allLessons = Array.isArray(data?.LESSONS) ? data.LESSONS : [];
-  return clean.replace(/(?:Bài\s+|bài\s+)?\b(L(?:0[1-9]|1[0-9]|2[0-3]))\b/g, (match, lid) => {
-    if (lid === lessonId.value) return '<strong>' + match + '</strong>';
-    const target = allLessons.find((x) => x && x.id === lid);
-    const tip = target ? esc(target.id + ' — ' + target.title) : lid;
-    return '<a class="hcp-lesson-link" href="#/lesson/' + lid + '" title="' + tip + '">' + match + (target ? ' (' + esc(target.title) + ')' : '') + '</a>';
-  });
+  return renderLinkedHtml(raw, data?.LESSONS, lessonId.value);
 }
 
 // ---------- phase render helpers ----------
@@ -94,7 +87,23 @@ function phaseContent(ph) {
       const html = [];
       if (l.bridge) {
         const depLabel = Array.isArray(l.buildsOn) && l.buildsOn.length ? ' (' + esc(l.buildsOn.join(', ')) + ')' : '';
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Bức tranh kết nối từ kiến thức cũ' + depLabel + '</h4><p class="hcp-body hcp-bridge">' + renderHtml(esc(l.bridge)) + '</p></div>');
+        const bridgeParas = String(l.bridge).split('\n\n');
+        let bridgeHtml;
+        if (bridgeParas.length > 1) {
+          bridgeHtml = '<ul class="hcp-bridge-list hcp-body hcp-bridge">';
+          for (const para of bridgeParas) {
+            const m = para.match(/^\[([^\]]+)\]:\s*/);
+            if (m) {
+              bridgeHtml += '<li><strong>[' + esc(m[1]) + ']:</strong> ' + renderHtml(esc(para.slice(m[0].length))) + '</li>';
+            } else {
+              bridgeHtml += '<li>' + renderHtml(esc(para)) + '</li>';
+            }
+          }
+          bridgeHtml += '</ul>';
+        } else {
+          bridgeHtml = '<p class="hcp-body hcp-bridge">' + renderHtml(esc(l.bridge)) + '</p>';
+        }
+        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Bức tranh kết nối từ kiến thức cũ' + depLabel + '</h4>' + bridgeHtml + '</div>');
       }
       if (l.concept) {
         html.push('<div class="hcp-section"><h4 class="hcp-section-h">Bản chất từ gốc: Cái này là gì & Sinh ra để giải quyết nỗi đau nào?</h4><div class="hcp-body">' + renderHtml(l.concept) + '</div></div>');
@@ -470,6 +479,8 @@ const refDocs = computed(() => {
 .hcp-phase-body :deep(.hcp-body p:last-child) { margin-bottom: 0; }
 .hcp-phase-body :deep(.hcp-body ul), .hcp-phase-body :deep(.hcp-body ol) { margin: 6px 0 10px 0; padding-left: 20px; display: grid; gap: 6px; }
 .hcp-phase-body :deep(.hcp-bridge) { color: var(--fg-2); background: var(--sunken); padding: 12px 14px; border-radius: var(--r); }
+.hcp-phase-body :deep(.hcp-bridge-list) { margin: 0; padding: 12px 14px; background: var(--sunken); color: var(--fg-2); border-radius: var(--r); list-style: none; display: grid; gap: 10px; }
+.hcp-phase-body :deep(.hcp-bridge-list li) { margin: 0; }
 .hcp-phase-body :deep(.hcp-code) { margin: 10px 0; padding: 14px 16px; border-radius: var(--r); background: var(--code-bg); color: var(--code-fg); font-family: var(--mono); font-size: 13.5px; line-height: 1.55; overflow-x: auto; }
 .hcp-phase-body :deep(.hcp-code-note) { margin-top: 8px; color: var(--fg-2); }
 .hcp-phase-body :deep(.hcp-callout-warn) { margin-top: 10px; padding: 12px 16px; border-radius: var(--r); background: var(--warn-soft, var(--sunken)); border: 1px solid var(--line); }

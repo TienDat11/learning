@@ -103,7 +103,7 @@ LESSONS.push(
     "C01",
     "C02",
     "C03"
-  ],
+  ,"B01", "B02", "B03", "B04", "B05", "B06", "B07", "B09", "C08", "C14"],
   "refs": [
     "vue-reactivity"
   ],
@@ -136,7 +136,7 @@ LESSONS.push(
     [
       "0 ms",
       "Người dùng gõ ký tự đầu tiên; deep watcher chạy và bắn request q=a."
-    ],
+    ,"B01","B02","B03","B04","B05","B06","B07","B09","C14","C08"],
     [
       "180 ms",
       "Response về; callback gán filters.rows; watcher tự kích hoạt lại."
@@ -216,7 +216,7 @@ LESSONS.push(
     "C04",
     "C05",
     "B08"
-  ],
+  ,"B10"],
   "refs": [
     "vue-computed",
     "vue-watchers",
@@ -250,7 +250,7 @@ LESSONS.push(
     [
       "09:10",
       "Bảng duyệt đơn được tách thành hai component: OrderPanel và OrderRow."
-    ],
+    ,"B10"],
     [
       "09:40",
       "Ghi chú được đặt ở cha dưới dạng một ref, bind vào mọi dòng cho gọn."
@@ -332,7 +332,7 @@ LESSONS.push(
     "C06",
     "C07",
     "C08"
-  ],
+  ,"B11", "B12", "B13", "C13", "H13"],
   "refs": [
     "vue-components",
     "vue-sfc",
@@ -367,7 +367,7 @@ LESSONS.push(
     [
       "Ngày 1, 10:02",
       "Kéo ba tệp vào DropZone; huy hiệu thanh menu ghi 0, panel rỗng, log không có lỗi"
-    ],
+    ,"H13","B11","B12","B13","C13"],
     [
       "Ngày 1, 10:03",
       "Người dùng kéo lại ba tệp; DropZone có sáu tệp, hai chỗ kia vẫn ghi 0"
@@ -446,7 +446,7 @@ LESSONS.push(
   "qids": [
     "C03",
     "C09"
-  ],
+  ,"B14", "C15"],
   "refs": [
     "vue-composables",
     "vue-pinia"
@@ -480,7 +480,7 @@ LESSONS.push(
     [
       "Ngày 1, 09:12",
       "Trang duyệt đơn được deploy; đi từ 4821 sang 4822, chi tiết vẫn là 4821"
-    ],
+    ,"B14","C15"],
     [
       "Ngày 1, 09:12",
       "Network panel không có request mới cho /orders/4822"
@@ -565,7 +565,7 @@ LESSONS.push(
     "C10",
     "C08",
     "E05"
-  ],
+  ,"C12", "H01", "H03"],
   "refs": [
     "vue-router",
     "fastapi-dependencies"
@@ -599,7 +599,7 @@ LESSONS.push(
     [
       "9:00:04",
       "Nhân viên bấm Tạo đơn với mã A-01; server tạo đơn A và lưu response theo khoá"
-    ],
+    ,"H01","H03","C12"],
     [
       "9:04:11",
       "Đổi mã sang B-02 rồi bấm Tạo đơn; khoá cũ được gửi lại"
@@ -680,7 +680,7 @@ LESSONS.push(
     "C11",
     "C12",
     "B08"
-  ],
+  ,"H11", "H12"],
   "refs": [
     "vue-components",
     "vue-sfc",
