@@ -50,6 +50,15 @@ let timer = null;
 const cur = computed(() => session.value[idx.value] || null);
 const total = computed(() => session.value.length);
 const fus = computed(() => (Array.isArray(cur.value && cur.value.followups) ? cur.value.followups : []).filter((f) => f && typeof f === 'object'));
+const hasSay30 = computed(() => !!cur.value?.say30);
+const hasSay90 = computed(() => !!cur.value?.say90);
+const spokenTab = ref('say90');
+watch(() => cur.value?.id, () => { spokenTab.value = hasSay90.value ? 'say90' : 'say30'; });
+const say90Parts = computed(() => String(cur.value?.say90 || '').split('\n\n').map((p) => {
+  const m = p.match(/^(\[Nhịp[^\]]*\]:\s*)/);
+  return m ? { label: m[1].trim(), text: p.slice(m[1].length) } : { label: '', text: p };
+}));
+const activeTab = computed(() => hasSay90.value ? spokenTab.value : 'say30');
 const mmss = computed(() => Math.floor(left.value / 60) + ':' + String(left.value % 60).padStart(2, '0'));
 const ringPct = computed(() => Math.max(0, Math.min(100, (left.value / LIMIT) * 100)));
 const ringStyle = computed(() => ({
@@ -155,7 +164,17 @@ function grade(g) {
           <template v-if="revealed">
             <section class="block">
               <h3 class="label">Trả lời miệng</h3>
-              <p class="pre">{{ cur.oral }}</p>
+              <div v-if="hasSay30 || hasSay90" class="tabs" role="tablist">
+                <button v-if="hasSay30" type="button" role="tab" class="tab" :class="{ on: activeTab === 'say30' }" :aria-selected="activeTab === 'say30'" @click="spokenTab = 'say30'">30 giây</button>
+                <button v-if="hasSay90" type="button" role="tab" class="tab" :class="{ on: activeTab === 'say90' }" :aria-selected="activeTab === 'say90'" @click="spokenTab = 'say90'">90 giây</button>
+              </div>
+              <p v-if="activeTab === 'say30' && hasSay30" class="pre">{{ cur.say30 }}</p>
+              <div v-else-if="activeTab === 'say90' && hasSay90" class="pre">
+                <template v-for="(p, i) in say90Parts" :key="i">
+                  <p><strong v-if="p.label">{{ p.label }}</strong> {{ p.text }}</p>
+                </template>
+              </div>
+              <p v-else class="pre">{{ cur.oral }}</p>
             </section>
             <section v-if="fus.length" class="block">
               <h3 class="label">Hỏi sâu</h3>
@@ -230,6 +249,11 @@ function grade(g) {
 .block { display: grid; gap: 8px; min-width: 0; }
 .label { margin: 0; font-size: 14px; font-weight: 700; color: var(--fg-2); }
 .pre { margin: 0; white-space: pre-line; font-size: 16px; line-height: 1.65; color: var(--fg); overflow-wrap: anywhere; }
+.pre p { margin: 0 0 10px; }
+.pre p:last-child { margin-bottom: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { min-height: 44px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--fg-2); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.tab.on { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
 .code { margin: 0; padding: 12px; background: var(--code-bg); color: var(--code-fg); font-family: var(--mono); font-size: 14px; line-height: 1.5; border-radius: var(--r); overflow-x: auto; max-width: 100%; }
 .fu { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
 .fu-item { display: grid; gap: 4px; min-width: 0; }
