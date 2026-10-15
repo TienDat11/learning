@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount } from 'vue';
-import { sanitize } from '../utils.js';
+import { renderLinkedHtml } from '../utils.js';
 import * as leitner from '../leitner.js';
 
 const data = inject('data');
@@ -32,7 +32,7 @@ const cur = computed(() => filtered.value[idx.value] || null);
 // say30 wins over oral when present.
 const oral = computed(() => (cur.value && (cur.value.say30 || cur.value.oral)) || '');
 const deep = computed(() =>
-  cur.value && typeof cur.value.deep === 'string' ? sanitize(cur.value.deep) : '',
+  cur.value && typeof cur.value.deep === 'string' ? renderLinkedHtml(cur.value.deep, data?.LESSONS) : '',
 );
 
 function statusOf(id) {

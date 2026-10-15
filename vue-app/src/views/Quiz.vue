@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, inject } from 'vue';
+import { esc, renderLinkedHtml } from '../utils.js';
 
 const data = inject('data');
 const LOGIC = data.LOGIC;
@@ -83,7 +84,7 @@ function optClass(i) {
 
         <div v-if="picked !== undefined" class="fb">
           <p class="verdict" :class="picked === cur.answer ? 'ok' : 'bad'">{{ picked === cur.answer ? 'Đúng.' : 'Chưa đúng. Đáp án là ' + LETTERS[cur.answer] + '.' }}</p>
-          <p class="explain"><strong>Giải thích:</strong> {{ cur.explain }}</p>
+          <p class="explain"><strong>Giải thích:</strong> <span v-html="renderLinkedHtml(esc(cur.explain), data?.LESSONS)"></span></p>
         </div>
 
         <div class="actbar">
@@ -112,6 +113,7 @@ function optClass(i) {
             <p class="wgroup">Nhóm {{ w.group }}</p>
             <p class="wq">{{ w.q }}</p>
             <p class="wa">Đáp án: {{ LETTERS[w.answer] }}. {{ w.options[w.answer] }}</p>
+            <p class="wexplain" v-html="renderLinkedHtml(esc(w.explain), data?.LESSONS)"></p>
           </li>
         </ol>
       </div>
@@ -175,6 +177,7 @@ function optClass(i) {
 .wgroup { margin: 0; font-size: 14px; color: var(--fg-2); }
 .wq { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; color: var(--fg); overflow-wrap: anywhere; }
 .wa { margin: 0; font-size: 16px; line-height: 1.5; color: var(--fg); overflow-wrap: anywhere; }
+.wexplain { margin: 0; font-size: 15px; line-height: 1.6; color: var(--fg-2); overflow-wrap: anywhere; }
 .ok-note { font-size: 14px; color: var(--ok); margin: 0; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; }
 .btn {

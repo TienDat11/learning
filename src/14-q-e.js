@@ -419,7 +419,12 @@ QUESTIONS.push(
   "refs": [
     "django-queries",
     "fastapi-tutorial"
-  ]
+  ],
+  "say30": "Ghi nhiều bảng phải nằm trong một transaction: thành công hết hoặc hủy hết, commit khi mọi bước đạt, rollback khi có ngoại lệ. Giữ transaction ngắn quanh phần ghi database, đẩy gọi mạng ra ngoài, dùng trạng thái pending để đối soát. Quy tắc: ràng buộc số lượng không âm ở database chặn race.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là trừ kho xong nhưng ghi thanh toán lỗi, hệ thống lệch đơn không khớp kho. Hai người cùng mua món cuối gây race, code không thấy nếu không có ràng buộc ở database.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Mở transaction, ghi đơn, trừ kho, ghi audit, commit khi mọi bước đạt, rollback khi có ngoại lệ. Ràng buộc không âm ở database chặn trừ kho xuống âm, trả lỗi xung đột để client thử lại. Giữ transaction ngắn, đẩy gọi mạng ra ngoài và dùng trạng thái pending_payment để đối soát. Retry chỉ lỗi tạm thời như deadlock, chạy lại từ đầu (xem Bài L09).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: transaction dài giữ lock, gây hiệu ứng phụ như chờ lock khác; gọi mạng trong transaction là sai. Giám sát: thời gian trung bình giao dịch, số deadlock và lock wait P95, tỉ lệ lệch kho do lỗi (xem Bài L09).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Dữ liệu nhất quán, không bao giờ có đơn không trừ kho; ràng buộc database chặn race mà code không thấy.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Transaction dài giữ lock làm hiệu suất giảm, gọi mạng trong transaction là sai thiết kế; phải thêm trạng thái pending để đối soát (xem Bài L09).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng outbox pattern: ghi sự kiện vào bảng cùng transaction, worker đọc và publish, đảm bảo nhất quán khi có nhiều hệ thống.</li><li><strong>Phương án B:</strong> Dùng saga cho nhiều transaction phân tán, hợp khi có nhiều dịch vụ và cần hủy ngược (xem Bài L09).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Thời gian trung bình giao dịch tăng, số deadlock tăng, lock wait P95, tỉ lệ lệch kho sau đối soát.</li><li><strong>Cách kiểm chứng nhanh:</strong> Sim hai request mua cùng lúc món cuối, kiểm tra ràng buộc chặn thứ hai và log rõ; đo thời gian transaction (xem Bài L09).</li></ul>"
 },
 {
   "id": "E08",
@@ -475,7 +480,12 @@ QUESTIONS.push(
   ],
   "refs": [
     "fastapi-tutorial"
-  ]
+  ],
+  "say30": "WSGI đồng bộ, mỗi request chiếm một luồng; ASGI bất đồng bộ, nhường luồng khi chờ IO. FastAPI chạy ASGI nên phục vụ nhiều kết nối đồng thời trên ít tài nguyên. Số worker theo CPU, không theo request; thêm worker không làm nhanh hơn nếu code chặn event loop. Quy tắc: một task CPU nặng 2 giây làm mọi request khác chờ.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là chạy ASGI một worker, một task CPU 2 giây làm mọi request khác chờ. Thêm worker không giúp khi task CPU nặng chặn event loop, chỉ giúp khi IO chờ.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: ASGI cho FastAPI chạy event loop, mỗi worker xử lý nhiều kết nối đồng thời khi chờ IO. Task CPU nặng phải push ra threadpool hoặc queue riêng. Django mặc định WSGI, hỗ trợ ASGI từ 3.0 nhưng ORM vẫn đồng bộ, nên async view chỉ có lợi khi gọi service ngoài. Số worker nên bằng số CPU nhân hai, kiểm tra bằng profiler xem worker đang chặn ở đâu (xem Bài L08).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: ASGI phức hợp hơn khi dùng library đồng bộ, threadpool thêm tài nguyên; thêm worker vượt CPU gây context switch. Giám sát: P95 thời gian request, số worker, CPU usage, số task CPU trong event loop (xem Bài L08).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> ASGI phục vụ nhiều kết nối đồng thời với ít worker hơn WSGI, hiệu quả hơn cho API chờ IO.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Code CPU nặng chặn event loop, threadpool thêm chi phí; Django ORM đồng bộ nên async view chỉ lợi khi gọi service (xem Bài L08).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Giữ WSGI với Gunicorn và thread cho Django, đơn giản và đủ cho API đồng bộ.</li><li><strong>Phương án B:</strong> Tách service CPU nặng ra worker riêng, chủ event loop chỉ điều phối, hợp hệ thống load cao (xem Bài L08).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> P95 thời gian request tăng khi có task CPU, CPU usage worker cao bất thường, số threadpool queue.</li><li><strong>Cách kiểm chứng nhanh:</strong> Chạy profiler trong worker, tìm task CPU nặng trong event loop; thêm worker tăng, kiểm tra P95 giảm không (xem Bài L08).</li></ul>"
 },
 {
   "id": "E09",
@@ -532,7 +542,12 @@ QUESTIONS.push(
   "refs": [
     "fastapi-background",
     "fastapi-tutorial"
-  ]
+  ],
+  "say30": "BackgroundTasks chạy cùng tiến trình sau khi response gửi, hợp với việc nhẹ mất cũng không sao. Khi việc bắt buộc tới tay, tính tiền hay gửi hóa đơn, phải dùng hàng đợi bền như Celery có ack, retry và giám sát. Quy tắc: không tưởng BackgroundTasks tự retry khi lỗi.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là 40 email welcome mất không dấu vết khi deploy, crash, không retry, không DLQ. BackgroundTasks hợp với việc nhẹ, không bắt buộc, không chạy lâu.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: BackgroundTasks chạy sau khi response gửi, cùng tiến trình, không có broker. Celery hay RQ ghi việc vào queue bền, worker riêng chạy, có ack để biết task đã nhận, retry khi lỗi, DLQ cho task thất bại vĩnh viễn. Chuyển khi việc bắt buộc tới tay, chạy trên vài giây, hoặc cần lịch chạy lại (xem Bài L09).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: hàng đợi bền thêm hạ tầng broker, phức hơn; BackgroundTasks dễ viết, không cần broker. Giám sát: số task trong queue, thời gian xử lý, task DLQ tăng (xem Bài L09).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> BackgroundTasks không cần hạ tầng thêm, viết đơn giản; hàng đợi bền cho retry, ack, giám sát và không mất việc khi restart.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Hàng đợi bền thêm broker và worker phải vận hành, BackgroundTasks không retry và mất việc khi crash (xem Bài L09).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng RQ thay Celery, nhẹ hơn, hợp với queue task đơn giản trên Redis.</li><li><strong>Phương án B:</strong> Dùng hàng đợi sự kiện như SNS, SQS khi cần phân tách và phát lại, hợp kiến trúc event-driven (xem Bài L09).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số task trong queue tăng dần không xử lý, task DLQ, mất việc khi deploy, số email welcome không gửi.</li><li><strong>Cách kiểm chứng nhanh:</strong> Restart server giữa khi có BackgroundTasks chạy, kiểm tra task mất; đẩy một task lỗi, kiểm tra retry và DLQ (xem Bài L09).</li></ul>"
 },
 {
   "id": "E10",
@@ -588,7 +603,12 @@ QUESTIONS.push(
   ],
   "refs": [
     "fastapi-testing"
-  ]
+  ],
+  "say30": "Test endpoint bằng TestClient, ghi đè dependency xác thực và database phiên bằng dependency_overrides, mỗi test mở transaction riêng rồi rollback. Fixture có yield rồi dọn override trong finally. Quy tắc: assert đúng một mã, không chấp nhận cả 200 và 201.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là quên xóa override nên test sau dùng nhầm user giả, hoặc dùng database chung làm test phụ thuộc nhau. Test phải tự tạo và tự dọn trạng thái.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: TestClient gọi endpoint như client thật. dependency_overrides thay get_user và session database bằng bản test. Mỗi test mở transaction, rollback sau khi xong, dữ liệu không rò sang test khác. Tạo user giả với vai trò rõ, kiểm tra cả cho phép lẫn từ chối. Assert đúng một mã, không chấp nhận cả 200 và 201 (xem Bài L10).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: rollback nhanh nhưng mock database quá sâu thì test không bắt lỗi thật; dùng database chung mất cô lập. Giám sát: thời gian chạy test, số test phụ thuộc nhau, độ bao phủ (xem Bài L10).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Rollback nhanh hơn create và drop database; ghi đè dependency cô lập xác thực, test chạy độc lập.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Mock database quá sâu thì test không bắt lỗi thật; quên xóa override làm test sau sai (xem Bài L10).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng database test riêng tạo và drop sau mỗi suite, hợp với test cần data thật.</li><li><strong>Phương án B:</strong> Dùng snapshot database, nhanh nhất, nhưng dễ lệch khi schema đổi (xem Bài L10).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Test phụ thuộc nhau, thời gian chạy test tăng, số test fail chỉ khi chạy tất cả nhưng pass khi chạy riêng.</li><li><strong>Cách kiểm chứng nhanh:</strong> Chạy một test riêng, sau đó chạy cả suite, kiểm tra fail do dependency; grep test tìm data rò (xem Bài L10).</li></ul>"
 },
 {
   "id": "E11",
@@ -644,7 +664,12 @@ QUESTIONS.push(
   ],
   "refs": [
     "django-serializers"
-  ]
+  ],
+  "say30": "DRF serializer gắn chặt model Django, có sẵn create, update, quan hệ lồng, hợp CRUD theo model. Pydantic tách khỏi tầng lưu trữ, ép kiểu nhanh ở biên, hợp FastAPI. Tách serializer đọc và ghi để password không lộ ở response. Quy tắc: liệt kê trường tường minh, không dùng fields là all.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là fields là all khiến client gửi được is_staff và đổi quyền admin. Serializer đọc chung với ghi thì password lộ trong response.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: DRF serializer chuyển model thành JSON và ngược lại, validate ở mức object, có sẵn quan hệ lồng. Tách serializer đọc trả id và total, serializer ghi chỉ nhận email và qty, password không bao giờ ở response. Pydantic ép kiểu nhanh, tách khỏi ORM, hợp FastAPI. Quan hệ lồng trong DRF đọc và ghi xử lý khác nhau (xem Bài L11).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: DRF phụ thuộc Django, khó tái dùng sang framework khác; Pydantic không có create update, phải viết thêm. Giám sát: số trường serializer không an toàn, N+1 trong serializer (xem Bài L11).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> DRF serializer có sẵn create, update, quan hệ, hợp CRUD Django; Pydantic tách khỏi ORM, test rõ.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Tách serializer đọc và ghi thêm code; N+1 nếu không cẩn thận với quan hệ lồng (xem Bài L11).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng Pydantic cho mọi endpoint, hợp FastAPI, tách hẳn khỏi ORM.</li><li><strong>Phương án B:</strong> Dùng fields tường minh và chỉ định permission cho trường, hợp DRF hiện tại (xem Bài L11).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số trường không an toàn trong response, N+1 khi mở trang có quan hệ, số request client gửi trường password hoặc is_staff.</li><li><strong>Cách kiểm chứng nhanh:</strong> Gửi is_staff true trong request create, kiểm tra không được set; so thời gian response có và không có quan hệ lồng (xem Bài L11).</li></ul>"
 },
 {
   "id": "E12",
@@ -691,6 +716,11 @@ QUESTIONS.push(
   "refs": [
     "django-permissions",
     "django-serializers"
-  ]
+  ],
+  "say30": "Viewset gom CRUD thành một lớp, router sinh URL chuẩn. Permission và throttle là hai trục: ai được làm gì, được làm bao nhiêu lần. Action riêng có thể ghi đè permission class của viewset. Throttle đếm theo user hoặc IP, trả 429. Quy tắc: đặt permission mặc định chặt, mở dần.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là action riêng khai báo AllowAny ghi đè permission viewset, tạo endpoint xoá công khai. Throttle theo user mà không theo IP thì một user có thể dùng nhiều IP vượt ngưỡng.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: ModelViewSet kế thừa, DefaultRouter đăng ký prefix, tự có list và detail theo pk. get_permissions trả IsAdminUser khi action là destroy, chỉ admin được xoá. Throttle AnonRateThrottle 2/phút, theo user khi đã đăng nhập, theo IP khi chưa. Đặt permission mặc định chặt trong cấu hình toàn cục, mở dần cho từng endpoint (xem Bài L11/L12).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: throttle theo user phải nhận diện user trước, chi phí hơn; permission action riêng dễ quên kiểm tra. Giám sát: số 429 theo endpoint, số request từ IP lạ, audit log xoá (xem Bài L12).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Viewset và router gom endpoint chuẩn, permission tập trung dễ audit; throttle bảo vệ API khỏi spam.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Action ghi đè permission dễ tạo endpoint công khai; throttle theo user phức hơn theo IP (xem Bài L12).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng view riêng cho từng action, không dùng viewset, hợp khi logic khác nhau lớn.</li><li><strong>Phương án B:</strong> Throttle theo gói trả phí, hợp với API công khai có quota (xem Bài L12).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số 429 theo endpoint tăng, số request xoá từ user không admin, audit log ghi ai xoá gì.</li><li><strong>Cách kiểm chứng nhanh:</strong> Tạo user thường, gọi endpoint destroy, xác nhận 403; spam request kiểm tra 429 và Retry-After (xem Bài L12).</li></ul>"
 }
 );

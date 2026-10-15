@@ -31,6 +31,21 @@ const p0ByGroup = computed(() => {
   }
   return m;
 });
+
+// Link tới bài học nền tảng của từng nhóm; tooltip lấy tiêu đề bài từ LESSONS.
+const LESSON_BY_GROUP = {
+  A: ['L07', 'L08', 'L09', 'L10', 'L11'],
+  B: ['L12', 'L13', 'L19'],
+  C: ['L12', 'L13', 'L14', 'L15', 'L16', 'L17'],
+  D: ['L04', 'L18', 'L19', 'L23'],
+  E: ['L07', 'L08', 'L09', 'L10', 'L11', 'L18'],
+  F: ['L05', 'L08', 'L21', 'L22'],
+  G: ['L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L20', 'L21', 'L22', 'L23'],
+  H: ['L10', 'L11', 'L22'],
+  I: ['L01', 'L06', 'L08', 'L21'],
+  J: ['L01', 'L03', 'L10', 'L22'],
+};
+const LESSON_TITLE = Object.fromEntries((Array.isArray(data.LESSONS) ? data.LESSONS : []).filter((l) => l && l.id).map((l) => [l.id, l.title]));
 </script>
 
 <template>
@@ -74,12 +89,13 @@ const p0ByGroup = computed(() => {
         <div class="table-wrap">
           <table class="hcp-table">
             <thead>
-              <tr><th>Nhóm</th><th>Vì sao phải biết</th><th class="num">P0</th><th class="num">Số câu</th></tr>
+              <tr><th>Nhóm</th><th>Vì sao phải biết</th><th>Bài học nền tảng</th><th class="num">P0</th><th class="num">Số câu</th></tr>
             </thead>
             <tbody>
               <tr v-for="g in groupKeys" :key="g">
                 <td><strong>{{ INTROS[g]?.title || g }}</strong></td>
                 <td class="why">{{ INTROS[g]?.why || '' }}</td>
+                <td><div class="lesson-links"><a v-for="lid in LESSON_BY_GROUP[g] || []" :key="lid" :href="'#/lesson/' + lid" :title="LESSON_TITLE[lid] || lid">{{ lid }}</a></div></td>
                 <td class="num">{{ p0ByGroup[g] || 0 }}</td>
                 <td class="num">{{ countByGroup[g] || 0 }}</td>
               </tr>
@@ -100,4 +116,5 @@ const p0ByGroup = computed(() => {
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; min-width: 0; max-width: 100%; }
 .hcp-table { min-width: 620px; }
 .hcp-table td.why { white-space: normal; }
+.lesson-links { display: flex; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
 </style>

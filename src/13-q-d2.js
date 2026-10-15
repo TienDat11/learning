@@ -57,7 +57,12 @@ QUESTIONS.push(
     "mdn-cookies",
     "mdn-http-headers",
     "owasp-api-security"
-  ]
+  ],
+  "say30": "Access token sống ngắn 10 đến 30 phút, refresh token sống dài vài ngày lưu ở cookie HttpOnly. Bản chất là tách hai để giới hạn thiệt hại: access bị đánh cắp chỉ dùng được vài phút. Logout phải thu hồi refresh token ở server vì xoá client không đủ. Quy tắc: refresh token xoay vòng khi nghi ngờ bị đánh cắp.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là JWT phát hành rồi xoá user khỏi database, token vẫn dùng được tới khi hết hạn vì không có cơ chế thu hồi. Kẻ đánh cắp access token sống ngắn bị giới hạn, nhưng đánh cắp refresh token là dùng vài ngày.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Access token ký bằng JWT, server kiểm tra chữ ký không cần database, hợp khi scale ngang. Refresh token lưu phía web ở cookie HttpOnly, Secure, SameSite, không cho JavaScript đọc; access token giữ trong bộ nhớ. Khi nghi ngờ refresh bị đánh cắp, so sánh nơi phát hành với nơi dùng lại, nếu khác thì thu hồi cả cây refresh token. Logout thu hồi refresh ở server, access token vẫn sống vài phút (xem Bài L18).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: JWT không thu hồi được nhanh, phải thêm denylist theo session id làm phức hợp; refresh token rotate thêm một lớp. Giám sát: đếm số lần refresh token bị dùng lại bất thường theo client id, theo dõi thời gian access token P95 (xem Bài L18).",
+  "tradeoff": "<p><strong>Đánh đổi thực thiết (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Access token JWT ký server không cần tra database cho mỗi request, mở rộng ngang tốt hơn so với session server.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Thu hồi token khó hơn session, phải thêm denylist hoặc làm tắt thời gian sống; refresh token rotate thêm chi phí (xem Bài L18).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng session server với cookie HttpOnly, thu hồi dễ dàng, hợp ứng dụng không cần scale ngang mạnh hay mobile app.</li><li><strong>Phương án B:</strong> Dùng OAuth2 provider như Cognito, thay mình bằng hệ thống đã có, hợp tổ chức cần SSO (xem Bài L18).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số lần refresh token bị dùng lại ở client khác hoặc IP khác tăng là dấu hiệu bị đánh cắp; denylist đầy bất thường; thời gian sống access token P95.</li><li><strong>Cách kiểm chứng nhanh:</strong> Xoá user trong database, gọi API với access token còn hạn để xác nhận vẫn hoạt động, kiểm tra refresh endpoint xem có bị thu hồi không (xem Bài L18).</li></ul>"
 },
 {
   "id": "D09",
@@ -116,7 +121,12 @@ QUESTIONS.push(
     "owasp-api-security",
     "owasp-top10",
     "mdn-http-headers"
-  ]
+  ],
+  "say30": "Validate ở biên trước khi chạm vào nghiệp vụ, dùng schema khai báo như Pydantic hoặc serializer DRF. Thân lỗi thống nhất: mã máy đọc được, message tiếng Việt, chi tiết theo từng trường và trace_id. Quy tắc: client chỉ cần một hàm đọc lỗi, không parse message tự do.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là lỗi trả về 500 thay vì 400 vì dữ liệu xấu chạm vào code nghiệp vụ, hoặc thân lỗi mỗi endpoint một kiểu khiến client phải viết logic parse riêng cho từng nơi.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Schema khai báo trong framework tự sinh validate, trả 400 hoặc 422 khi trường sai, không cần code riêng. Thân lỗi thống nhất: mã lỗi ổn định để client phân loại, message cho người đọc, danh sách chi tiết theo trường, trace_id để tra log. OpenAPI sinh từ schema giúp client TypeScript khớp, nhưng vẫn phải kiểm tra khi deploy (xem Bài L23).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: sinh client tự động tạo phụ thuộc lớn vào OpenAPI, thay đổi schema dễ vỡ code client; validate biên thêm một tầng phải bảo trì. Giám sát: theo dõi số lỗi 400/422 theo trường, phát hiện client đang parse sai khi số ticket lỗi tăng (xem Bài L23).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Lỗi trả về sớm, rẻ, mã trạng thái đúng; thân lỗi thống nhất giúp client một hàm đọc duy nhất, giảm bug parse.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Sinh client tự động tạo phụ thuộc lớn, thay đổi schema phải cập nhật OpenAPI, khó hơn khi có logic hợp lệ giữa các trường (xem Bài L23).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Validate thủ công trong từng view, hợp với vài trường đơn giản, nhanh viết nhưng khó mở rộng.</li><li><strong>Phương án B:</strong> Dùng thư viện schema động như Zod, tách OpenAPI bằng tay, hợp khi cần kiểm soát chặt từng thay đổi (xem Bài L23).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số lỗi 400/422 theo trường nhất định tăng bất thường khi có thay đổi client mới; số 500 liên quan validate là dấu hiệu schema không cập nhật.</li><li><strong>Cách kiểm chứng nhanh:</strong> Gõ một request với trường sai kiểu, xác nhận nhận đúng mã 400 kèm danh sách trường lỗi và trace_id, đối chiếu OpenAPI online (xem Bài L23).</li></ul>"
 },
 {
   "id": "D10",
@@ -175,7 +185,12 @@ QUESTIONS.push(
     "owasp-api-security",
     "mdn-http-overview",
     "mdn-http-headers"
-  ]
+  ],
+  "say30": "Gọi dịch vụ ngoài phải có timeout, retry với backoff và jitter, chỉ retry lỗi tạm thời như 503, và kèm idempotency key cho giao dịch. Bản chất là một đối tác chậm không được kéo cả hệ thống. Quy tắc: timeout nhỏ hơn thời gian user chịu được, jitter phá tán retry storm.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là 1000 client cùng gặp lỗi rồi cùng retry sau đúng 1 giây, tạo retry storm đâm vào dịch vụ hồi phục, làm nó chết lần nữa. Không timeout thì request treo giữ connection worker vô hạn cho tới hết pool.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Đặt timeout toàn bộ cuộc gọi, không để request treo. Retry chỉ cho lỗi 503, 504 hoặc timeout, không retry 400 hay 401 vì lỗi đó không tự sửa. Backoff theo cấp số nhân kèm jitter ngẫu nhiên để phá đồng bộ retry, kết hợp circuit breaker dừng gọi khi dịch vụ lỗi liên tục. Mỗi retry mang cùng idempotency key để không tạo giao dịch trùng (xem Bài L23).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: circuit breaker làm client thất bại nhanh khi service đang down; retry tăng tải phía sau khi hệ thống đã yếu. Giám sát: P95 thời gian gọi dịch vụ ngoài, số retry vượt ngưỡng, trạng thái circuit breaker (xem Bài L23).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Jitter và backoff giảm tải đột ngột khi hệ thống hồi phục, circuit breaker bảo vệ worker không bị treo bởi đối tác chậm.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Thêm timeout phải đặt đúng, đặt quá ngắn thì lỗi thật biến thành timeout giả; circuit breaker làm request thất bại nhanh khi service down (xem Bài L23).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng thư viện HTTP có sẵn retry và backoff, chỉ cấu hình số lần và ngưỡng, hợp với FastAPI dùng httpx hoặc requests.</li><li><strong>Phương án B:</strong> Đẩy retry vào hàng đợi bền, không gọi lại trong request, hợp với giao dịch quan trọng cần bảo đảm (xem Bài L23).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số retry vượt ngưỡng cùng lúc, P95 thời gian gọi service ngoài tăng, trạng thái circuit breaker chuyển từ open sang closed bất thường, số timeout tăng.</li><li><strong>Cách kiểm chứng nhanh:</strong> Chặn dịch vụ ngoài bằng tool mạng, kiểm tra worker không treo, retry có jitter không đều, circuit breaker đóng đúng sau ngưỡng lỗi (xem Bài L23).</li></ul>"
 },
 {
   "id": "D11",
@@ -233,7 +248,12 @@ QUESTIONS.push(
   "refs": [
     "owasp-api-security",
     "mdn-http-headers"
-  ]
+  ],
+  "say30": "Idempotency key sinh ngẫu nhiên mỗi lần bấm, server lưu key kèm kết quả, request trùng trả lại kết quả cũ chứ không tạo giao dịch mới. Webhook phải xác thực chữ ký HMAC để đảm bảo tin nhắn đúng nguồn. Quy tắc: kiểm tra và ghi cùng một giao dịch, không kiểm tra rồi mới ghi.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là khách bấm nút thanh toán hai lần, cả hai request cùng tới server, tạo hai giao dịch trừ tiền. Webhook không xác thực chữ ký thì ai cũng giả mạo được đối tác gửi đơn.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Client sinh UUID làm idempotency key, gửi kèm mỗi thao tác. Server lưu key cùng kết quả trong bảng có ràng buộc UNIQUE, khi key tồn tại thì trả đúng kết quả cũ, đồng thời so khớp nội dung request để phát hiện client dùng lại key cho dữ liệu khác. Webhook ký bằng HMAC, server so bằng hàm thời gian hằng để tránh timing attack (xem Bài L17/L19).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: thêm bảng lưu key, chi phí kiểm tra mỗi request; nếu không cấu hình idempotency ở dịch vụ thanh toán thì khóa API của bạn không đủ. Giám sát: đếm số key trùng trên cùng nội dung, theo dõi webhook từ chối vì chữ ký sai (xem Bài L17).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Không bao giờ tạo giao dịch trùng, an toàn cho thanh toán và mọi thao tác ghi; xác thực chữ ký webhook ngăn giả mạo tin nhắn đối tác.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Thêm bảng lưu key, chi phí kiểm tra mỗi request; cấu hình ở cả API và dịch vụ thanh toán, phức hợp hơn (xem Bài L17).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng khóa nghiệp vụ như số đơn hàng, tự sinh thay vì UUID, hợp khi đơn hàng đã có id duy nhất.</li><li><strong>Phương án B:</strong> Xác thực webhook bằng chứng thư TLS và IP whitelist, hợp với đối tác hỗ trợ, hoặc dùng chữ ký đối công khai (xem Bài L17).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số key idempotency trùng với nội dung khác, webhook từ chối vì chữ ký sai tăng, số giao dịch trùng phát hiện bởi đối soát.</li><li><strong>Cách kiểm chứng nhanh:</strong> Gửi cùng key với nội dung khác nhau, xác nhận server từ chối và log rõ; gửi webhook sai chữ ký, kiểm tra từ chối (xem Bài L17).</li></ul>"
 },
 {
   "id": "D12",
@@ -291,7 +311,12 @@ QUESTIONS.push(
   "refs": [
     "mdn-cache-control",
     "mdn-http-headers"
-  ]
+  ],
+  "say30": "ETag cho phép client hỏi xem dữ liệu có đổi chưa, server trả 304 nếu không đổi, tiết kiệm băng thông. Cache-Control quyết định CDN có được giữ response, dữ liệu riêng theo user thì không cache CDN. Rate limit đếm lượt gọi, không đếm byte. Quy tắc: riêng tư thì private, công khai thì public.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là dữ liệu riêng theo user bị CDN cache và lộ cho khách khác, hoặc rate limit không đặt thì API chết khi có spam. Lần gọi thứ hai có ETag khớp nhận 304, không có body, nhưng vẫn bị tính vào rate limit.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: ETag là hash phiên bản biểu diễn, client gửi If-None-Match, server so và trả 304 khi khớp. Cache-Control private nghĩa chỉ trình duyệt giữ, CDN không được lưu, hợp dữ liệu theo user. Public nghĩa CDN có thể cache, hợp nội dung công. Rate limit theo user và theo IP, trả 429 kèm header Retry-After, khác 503 là hệ thống bên trong lỗi (xem Bài L17).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: CDN cache tiết kiệm băng thông nhưng làm dữ liệu theo user bị phơi, phải dùng private; rate limit đặt quá chặt làm user thật bị chặn. Giám sát: số 304 trên tổng request, số 429 theo endpoint, thời gian trung bình response có CDN (xem Bài L17).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> ETag giúp client không tải lại dữ liệu không đổi, CDN giảm tải cho server gốc, rate limit bảo vệ API khỏi spam.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Dữ liệu riêng theo user phải đánh dấu private, CDN không cache được; rate limit đặt ngưỡng khó, cần theo dõi nhiều (xem Bài L17).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng TTL cache đơn giản với timestamp so sánh, hợp với dữ liệu đổi chậm, dễ hiểu hơn ETag.</li><li><strong>Phương án B:</strong> Rate limit theo gói API với quota theo user trả phí, hợp với service công khai (xem Bài L17).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Tỷ lệ 304 trên tổng request thấp bất thường là CDN không cache; số 429 theo endpoint tăng; dữ liệu user bị CDN trả về cho người khác qua log CDN.</li><li><strong>Cách kiểm chứng nhanh:</strong> So request với và không ETag, xác nhận 304 khi ETag đúng; kiểm tra CDN logs xem response private có bị cache không (xem Bài L17).</li></ul>"
 },
 {
   "id": "D13",
@@ -350,7 +375,12 @@ QUESTIONS.push(
     "owasp-top10",
     "owasp-api-security",
     "mdn-csp"
-  ]
+  ],
+  "say30": "Tấn công SQL injection, XSS, CSRF, SSRF, secret lộ trong log là năm nhóm lỗ hổng phổ biến. Dùng tham số hoá thay vì nối chuỗi, escape đầu ra thay vì đầu vào, secret vào biến môi trường. Quy tắc: kiểm tra cả đầu vào lẫn đầu ra.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là nối tham số thẳng vào truy vấn khiến kẻ gửi dấu nháy chèn dòng đơn giả, secret database ghi ra log rõ ai đọc cũng thấy, SSRF khi service tự gọi URL theo input để dò nội bộ.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Tham số hoá truy vấn với $1, $2 để driver tách dữ liệu khỏi lệnh, không chèn SQL được. XSS escape khi in ra HTML, không escape đầu vào vì nhiều trường hợp hợp lệ cần ký tự đặc biệt. Secret vào biến môi trường hoặc vault, không bao giờ nằm trong log. SSRF chặn URL nội bộ và IP riêng khi service nhận URL input (xem Bài L18/L19).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: tham số hoá đôi khi làm truy vấn đặc biệt khó viết, cần tách logic; SSRF block list IP nội bộ dễ bỏ sót. Giám sát: quét static analysis tìm chuỗi SQL nối, log audit secret, cảnh báo SSRF khi có request URL nội bộ (xem Bài L18).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Tham số hoá loại bỏ SQL injection hoàn toàn, escape đầu ra ngăn XSS, secret không trong code hay log.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Viết truy vấn động phức tạp hơn khi cần, SSRF block list IP nội bộ phải cập nhật thường xuyên (xem Bài L18).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng ORM với query builder thay vì SQL thô, tự động tham số hoá, hợp với Django hoặc SQLAlchemy.</li><li><strong>Phương án B:</strong> Chặn SSRF bằng network policy ở tầng cloud, không cho service gọi IP nội bộ, hợp với AWS (xem Bài L18).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Request chứa ký tự SQL đặc biệt trong tham số, log có chứa chuỗi secret, SSRF request IP nội bộ metadata, cảnh báo từ SAST.</li><li><strong>Cách kiểm chứng nhanh:</strong> Gửi uid chứa dấu nháy đơn vào endpoint, kiểm tra không tạo đơn giả; grep log tìm secret; gửi URL IP nội bộ metadata endpoint xem có bị chặn không (xem Bài L18).</li></ul>"
 },
 {
   "id": "D14",
@@ -409,6 +439,11 @@ QUESTIONS.push(
     "owasp-api-security",
     "owasp-top10",
     "mdn-cors"
-  ]
+  ],
+  "say30": "Ẩn nút trên giao diện không bảo vệ dữ liệu, vì API vẫn gọi được trực tiếp. Bảo vệ đúng là ở tầng API kiểm tra quyền, giao diện chỉ là lớp tiện ích. Quy tắc: mọi endpoint phải kiểm tra quyền server, giao diện chỉ quyết định hiển thị.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Nỗi đau là ẩn nút Xóa với user thường trên VueJS, tưởng API an toàn, nhưng user mở DevTools gọi thẳng API và xoá được tài nguyên không thuộc về họ.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Guard frontend chỉ đọc token và vai trò để điều hướng, không kiểm tra quyền thật. Mọi endpoint xoá, sửa, tạo phải kiểm tra quyền ở server: xác thực token hợp lệ, RBAC đúng vai trò, ownership đúng user. Giao diện ẩn nút là quyết định UX, không phải biên bảo mật (xem Bài L18/L19).\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Đánh đổi: kiểm tra quyền mỗi endpoint thêm chi phí, không có layer cache token cho mỗi request; phải rà soát khi thêm endpoint mới. Giám sát: số 403 theo endpoint tăng, audit log user gọi endpoint vượt quyền (xem Bài L18).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p><ul><li><strong>Được gì:</strong> Kiểm tra ở server là biên cuối, không bị bypass; audit trail rõ ai gọi endpoint vượt quyền.</li><li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> Mỗi endpoint phải rà soát khi thêm, không có layer cache token cho mỗi request, tăng chi phí bảo trì (xem Bài L18).</li></ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p><ul><li><strong>Phương án A:</strong> Dùng middleware kiểm tra quyền tập trung cho từng group route, hợp với Django REST Framework.</li><li><strong>Phương án B:</strong> Cho phép API đọc mở nhưng kiểm tra ownership trên từng action, hợp với API công khai với dữ liệu cá nhân (xem Bài L19).</li></ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p><ul><li><strong>Tín hiệu trong Log / Metric:</strong> Số 403 theo endpoint, audit log ghi rõ user không đúng vai trò gọi endpoint, cảnh báo khi số request vượt quyền tăng.</li><li><strong>Cách kiểm chứng nhanh:</strong> Tạo user test không vai trò, gọi thẳng API xoá qua Postman, xác nhận trả 403 và log audit (xem Bài L18).</li></ul>"
 }
 );

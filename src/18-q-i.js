@@ -19,9 +19,9 @@ QUESTIONS.push(
   ],
   "incident": "<p>Hôm qua, endpoint tra cứu mã giảm giá trả về chậm dần theo thời gian. Dev E đọc mã: vòng lặp <code>for code in all_codes</code> chạy trên danh sách 200.000 mã mỗi request, sau đó <code>for order in orders</code> tìm mã khớp. Với 1.000 request một phút, mỗi request O(n^2) với kích thước danh sách, dịch vụ 504 trong 45 phút. Customer service báo 200 khách đang chờ mã khuyến mãi.</p>",
   "askFirst": [
-  "Vì sao tra cứu trong bảng băm được O(1) khi vẫn có va chạm? → Giải mã: O(1) là độ phức tạp trung bình, không phải trường hợp xấu. Khi mọi khóa va chạm cùng ô (hệ số tải cao, khóa do user điều khiển), chi phí lùi về O(n). Kiểm soát hệ số tải và giãn nở bảng là giả định để O(1) đúng (xem Bài L04).",
-  "Bạn chọn ngăn xếp hay hàng đợi cho duyệt theo chiều rộng và chiều sâu? → Giải mã: Duyệt chiều sâu (DFS) dùng stack vì vào sau ra trước; duyệt chiều rộng (BFS) dùng queue vì vào trước ra trước, mọi nút cùng mức xử lý trước. Đệ quy DFS cũng dùng stack lời gọi hàm, dữ liệu sâu có thể tràn (xem Bài L09)."
-],
+    "Vì sao tra cứu trong bảng băm được O(1) khi vẫn có va chạm? → Giải mã: O(1) là độ phức tạp trung bình, không phải trường hợp xấu. Khi mọi khóa va chạm cùng ô (hệ số tải cao, khóa do user điều khiển), chi phí lùi về O(n). Kiểm soát hệ số tải và giãn nở bảng là giả định để O(1) đúng (xem Bài L04).",
+    "Bạn chọn ngăn xếp hay hàng đợi cho duyệt theo chiều rộng và chiều sâu? → Giải mã: Duyệt chiều sâu (DFS) dùng stack vì vào sau ra trước; duyệt chiều rộng (BFS) dùng queue vì vào trước ra trước, mọi nút cùng mức xử lý trước. Đệ quy DFS cũng dùng stack lời gọi hàm, dữ liệu sâu có thể tràn (xem Bài L09)."
+  ],
   "predict": {
     "q": "Bạn đoán thay vòng lặp tuyến tính bằng set sẽ giảm thời gian mỗi request từ O(n^2) xuống mức nào?",
     "a": "<p>Truy vấn set với <code>in</code> là O(1) trung bình nhờ băm, còn kiểm tra tồn tại trước đó là O(n) khi phải duyệt mảng. Chuyển danh sách mã sang set giảm chi phí mỗi request từ O(n) xuống O(1) trung bình, và nếu vòng ngoài vẫn duyệt orders thì tổng là O(n) thay vì O(n^2). Với 200.000 mã, đây là sự khác biệt giữa vài phút và vài giây.</p>"
@@ -79,9 +79,9 @@ QUESTIONS.push(
   ],
   "incident": "<p>Sáng nay, dev F báo API đếm lượt bình chọn chạy 40 giây cho 50.000 sự kiện vì dùng vòng lặp lồng nhau kiểm tra từng sự kiện mới. 10.000 user ở phiên sáng bị kẹt ở màn chờ, và sự kiện của 3.000 người dùng bị trùng không bị phát hiện nên số liệu ban điều hành sai. Log ghi <code>count() called 50.000 times</code>.</p>",
   "askFirst": [
-  "Cấu trúc dữ liệu nào cho phép đếm tần suất và khử trùng lặp trong một lần duyệt O(n)? → Giải mã: Hash map (dict) cho phép thêm và đếm trong O(1) mỗi phần tử, tổng O(n). Set cũng O(1) cho kiểm tra tồn tại nhưng không giữ thứ tự (xem Bài L09).",
-  "Vì sao dùng set để khử trùng lặp rồi mong giữ thứ tự là cách làm sai? → Giải mã: Set loại trùng nhưng không giữ thứ tự xuất hiện. Muốn khử trùng lặp mà giữ thứ tự phải dùng dict.fromkeys (dict giữ thứ tự chèn từ Python 3.7) (xem Bài L04)."
-],
+    "Cấu trúc dữ liệu nào cho phép đếm tần suất và khử trùng lặp trong một lần duyệt O(n)? → Giải mã: Hash map (dict) cho phép thêm và đếm trong O(1) mỗi phần tử, tổng O(n). Set cũng O(1) cho kiểm tra tồn tại nhưng không giữ thứ tự (xem Bài L09).",
+    "Vì sao dùng set để khử trùng lặp rồi mong giữ thứ tự là cách làm sai? → Giải mã: Set loại trùng nhưng không giữ thứ tự xuất hiện. Muốn khử trùng lặp mà giữ thứ tự phải dùng dict.fromkeys (dict giữ thứ tự chèn từ Python 3.7) (xem Bài L04)."
+  ],
   "predict": {
     "q": "Bạn đoán <code>list(dict.fromkeys(nums))</code> sẽ in ra gì và tại sao thứ tự giữ nguyên?",
     "a": "<p>In ra <code>[3, 1, 2, 4]</code>. Từ Python 3.7, dict giữ thứ tự chèn: lần đầu gặp 3, 1, 2, 4 được chèn lần lượt; lần lặp sau cùng một khóa chỉ ghi đè giá trị, không tạo vị trí mới. Chuyển dict về list giữ nguyên thứ tự xuất hiện đầu tiên. Đây là lý do <code>dict.fromkeys</code> là cách khử trùng lặp giữ thứ tự đúng, trong khi set không cam kết thứ tự.</p>"
@@ -130,10 +130,10 @@ QUESTIONS.push(
   "type": "code",
   "incident": "<p>Một endpoint tổng hợp số liệu theo phòng ban nhận danh sách 80.000 bản ghi. Code cũ duyệt từng bản ghi rồi, với mỗi bản ghi, duyệt lại toàn bộ danh sách kết quả để tìm nhóm tương ứng. Endpoint mất 34 giây và tiêu tốn 100% một nhân CPU. Khi số bản ghi tăng gấp đôi, thời gian tăng gần gấp bốn.</p>",
   "askFirst": [
-  "Vì sao thời gian tăng nhanh hơn số bản ghi? → Giải mã: Mỗi bản ghi duyệt lại danh sách kết quả thành O(n^2). Dữ liệu tăng gấp đôi, thời gian tăng gần gấp bốn (xem Bài L09).",
-  "Cấu trúc dữ liệu nào làm phép tra cứu theo khoá trở nên rẻ? → Giải mã: Hash map (dict) băm khóa thành chỉ số, tra cứu trung bình O(1). Danh sách yêu cầu duyệt tuyến tính O(n) (xem Bài L04).",
-  "Khi nào nên để database làm việc gộp nhóm thay vì làm trong ứng dụng? → Giải mã: Khi dữ liệu lớn hơn mức truyền qua mạng hoặc chỉ cần tổng hợp, để database GROUP BY dùng index. Làm trong app khi logic gộp phức tạp hoặc cần gọi dịch vụ ngoài (xem Bài L09)."
-],
+    "Vì sao thời gian tăng nhanh hơn số bản ghi? → Giải mã: Mỗi bản ghi duyệt lại danh sách kết quả thành O(n^2). Dữ liệu tăng gấp đôi, thời gian tăng gần gấp bốn (xem Bài L09).",
+    "Cấu trúc dữ liệu nào làm phép tra cứu theo khoá trở nên rẻ? → Giải mã: Hash map (dict) băm khóa thành chỉ số, tra cứu trung bình O(1). Danh sách yêu cầu duyệt tuyến tính O(n) (xem Bài L04).",
+    "Khi nào nên để database làm việc gộp nhóm thay vì làm trong ứng dụng? → Giải mã: Khi dữ liệu lớn hơn mức truyền qua mạng hoặc chỉ cần tổng hợp, để database GROUP BY dùng index. Làm trong app khi logic gộp phức tạp hoặc cần gọi dịch vụ ngoài (xem Bài L09)."
+  ],
   "predict": {
     "q": "Với <code>n</code> bản ghi, nếu mỗi bản ghi phải duyệt lại toàn bộ danh sách kết quả để tìm nhóm thì độ phức tạp là bao nhiêu?",
     "a": "<p>O(n²) trong trường hợp xấu nhất, vì với mỗi bản ghi bạn thực hiện một phép tìm kiếm tuyến tính trên danh sách kết quả — mà danh sách đó cũng có thể lớn tới <code>n</code> phần tử. Đó là lý do tăng gấp đôi dữ liệu làm thời gian tăng gần gấp bốn. Thay danh sách bằng một bảng băm khoá theo tên nhóm đưa phép tra cứu về trung bình O(1), nên toàn bộ vòng lặp còn O(n) và thời gian tăng tuyến tính theo dữ liệu.</p>"
@@ -181,7 +181,12 @@ QUESTIONS.push(
   "refs": [
     "py-expressions",
     "ts-handbook"
-  ]
+  ],
+  "say30": "Nhóm theo khóa bằng một lượt duyệt và một hash map: mỗi khóa là một xô, setdefault hoặc defaultdict tự tạo xô khi chưa có, nên không cần nhánh kiểm tra thủ công. Độ phức tạp là O(n) thay vì O(n^2) khi mỗi bản ghi lại quét danh sách nhóm. Lỗi thường gặp là dùng chung một list mặc định cho nhiều khóa hoặc quên khởi tạo xô mới.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Endpoint gom 80.000 bản ghi theo phòng ban mất 34 giây vì mỗi bản ghi lại quét danh sách nhóm để tìm xô. Đó là chữ ký của vòng lặp lồng O(n^2), không phải thiếu CPU.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Duyệt danh sách đúng một lần và gọi groups.setdefault(phong_ban, []).append(user), hoặc dùng defaultdict(list). Hash map tra khóa trung bình O(1), setdefault gộp kiểm tra tồn tại và khởi tạo trong một lệnh. Mỗi xô là một list riêng, nên không có chuyện các khóa chia sẻ chung một list.\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Toàn bộ dữ liệu phải nằm trong bộ nhớ, nên với tập rất lớn nên chia batch hoặc để database GROUP BY trả về kết quả đã gộp. Giám sát: thời gian endpoint theo kích thước đầu vào, và số vòng lặp lồng nhau được phát hiện trong review (xem Bài L07, L11).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p>\n<ul>\n  <li><strong>Được gì:</strong> một lượt duyệt O(n), không cần kiểm tra khóa thủ công, mỗi xô là list riêng nên không rò dữ liệu giữa các khóa.</li>\n  <li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> toàn bộ dữ liệu phải nằm trong bộ nhớ; với tập rất lớn phải chia batch hoặc đẩy việc gộp xuống database (xem Bài L07).</li>\n</ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p>\n<ul>\n  <li><strong>Phương án A:</strong> GROUP BY trong database khi dữ liệu lớn hơn bộ nhớ hoặc chỉ cần tổng hợp; database trả về kết quả đã gộp, đổi lại logic nằm ở câu SQL.</li>\n  <li><strong>Phương án B:</strong> itertools.groupby sau khi đã sắp xếp theo khóa, khi chỉ cần duyệt một lần và không giữ hash map; đổi lại sắp xếp tốn O(n log n) (xem Bài L09).</li>\n</ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p>\n<ul>\n  <li><strong>Tín hiệu trong Log / Metric:</strong> thời gian endpoint tăng gần bình phương theo số bản ghi; CPU của một worker kẹt 100% trong khi các worker khác rảnh.</li>\n  <li><strong>Cách kiểm chứng nhanh:</strong> chạy cProfile trên dữ liệu lớn nhất và xem hàm có cumulative time cao nhất; đo thời gian với 10.000 và 20.000 bản ghi để thấy hệ số tăng (xem Bài L10).</li>\n</ul>"
 },
 {
   "id": "I04",
@@ -192,10 +197,10 @@ QUESTIONS.push(
   "type": "debug",
   "incident": "<p>Một hàm phân trang nhận chỉ số trang từ tham số truy vấn. Với trang bằng 0, nó trả về mảng rỗng. Với trang vượt quá số trang, nó trả về mảng rỗng, và component hiển thị vòng lặp vô hạn vì hiểu mảng rỗng là \"còn dữ liệu\". Ngoài ra, backend đánh số trang từ 1 còn hàm dùng chỉ số từ 0, nên trang đầu tiên của người dùng thực chất là trang thứ hai của dữ liệu.</p>",
   "askFirst": [
-  "Quy ước đánh số trang khác nhau ở đâu? → Giải mã: Backend thường đánh số trang từ 1, chỉ số mảng từ 0; lệch một đơn vị nếu quên trừ. Chọn một quy ước và ghi rõ trong tài liệu, chuyển đổi ở đúng một chỗ (xem Bài L18).",
-  "Giá trị nào là biên cần kiểm tra? → Giải mã: trang nhỏ hơn 1, trang vượt tổng số trang, pageSize bằng hoặc nhỏ hơn 0, đầu vào không phải số nguyên. slice vượt biên trả về rỗng nên phải kẹp trước (xem Bài L18).",
-  "Làm sao để lỗi biên không lan ra giao diện? → Giải mã: Chuẩn hóa chỉ số ở một chỗ (lớp gọi API hoặc handler), trả về kèm thông tin còn dữ liệu hay không. Không để giao diện dùng mảng rỗng làm điều kiện dừng (xem Bài L22)."
-],
+    "Quy ước đánh số trang khác nhau ở đâu? → Giải mã: Backend thường đánh số trang từ 1, chỉ số mảng từ 0; lệch một đơn vị nếu quên trừ. Chọn một quy ước và ghi rõ trong tài liệu, chuyển đổi ở đúng một chỗ (xem Bài L18).",
+    "Giá trị nào là biên cần kiểm tra? → Giải mã: trang nhỏ hơn 1, trang vượt tổng số trang, pageSize bằng hoặc nhỏ hơn 0, đầu vào không phải số nguyên. slice vượt biên trả về rỗng nên phải kẹp trước (xem Bài L18).",
+    "Làm sao để lỗi biên không lan ra giao diện? → Giải mã: Chuẩn hóa chỉ số ở một chỗ (lớp gọi API hoặc handler), trả về kèm thông tin còn dữ liệu hay không. Không để giao diện dùng mảng rỗng làm điều kiện dừng (xem Bài L22)."
+  ],
   "predict": {
     "q": "Với mảng 10 phần tử, <code>items.slice(20, 30)</code> trả về gì?",
     "a": "<p>Nó trả về mảng rỗng, không ném lỗi. Đây là điểm quan trọng: chỉ số vượt độ dài không phải là lỗi ở JavaScript mà là một kết quả hợp lệ — mảng rỗng. Vì vậy code gọi hàm này phải phân biệt \"không có dữ liệu ở trang này\" với \"đã hết dữ liệu\", và đó là hai chuyện khác nhau. Nếu giao diện dùng mảng rỗng làm điều kiện dừng thì nó dừng quá sớm hoặc lặp mãi, tuỳ theo cách nó diễn giải. Cách chắc chắn là chuẩn hoá chỉ số ở một chỗ và trả về kèm thông tin còn dữ liệu hay không.</p>"
@@ -239,7 +244,12 @@ QUESTIONS.push(
   "refs": [
     "ts-handbook",
     "mdn-execution-model"
-  ]
+  ],
+  "say30": "Lỗi nằm ở công thức vị trí bắt đầu: nhân page với pageSize thay vì (page - 1) nhân pageSize, nên trang 1 bỏ mất ba bản ghi đầu và hiện trang 2. Sửa bằng cách ép page và pageSize về số nguyên dương, tính start bằng (page - 1) nhân pageSize rồi slice đúng hai đầu. Slice vượt biên không ném lỗi, nên phải kiểm tra tổng số trang một cách tường minh.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Người dùng mở trang đầu và thấy ba bản ghi đầu biến mất khỏi mọi trang, không có lỗi nào được ném ra. Nguyên nhân là người dùng đếm trang từ 1 còn mảng đếm từ 0, và công thức start bằng page nhân pageSize đã bỏ qua phép trừ một.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Chuẩn hóa đầu vào ở một chỗ duy nhất: ép page và pageSize thành số nguyên, kẹp page tối thiểu bằng 1 và pageSize tối thiểu bằng 1. Tính start bằng (page - 1) nhân pageSize, end bằng start cộng pageSize, rồi slice(start, end). Slice vượt biên trả về mảng rỗng chứ không ném lỗi, nên việc kiểm tra tổng số trang phải làm tường minh và trả về trang cuối hoặc rỗng có chủ đích.\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Offset dễ hiểu nhưng lệch khi dữ liệu thêm hoặc xóa giữa hai lần lật trang; keyset ổn định hơn nhưng khó hơn khi sắp xếp đa cột. Giám sát: tỉ lệ request có page vượt tổng số trang, số bản ghi trùng giữa hai trang liền kề, và test đủ trang đầu, trang cuối, trang vượt quá (xem Bài L09, L18).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p>\n<ul>\n  <li><strong>Được gì:</strong> offset và limit dễ hiểu, dễ gọi từ giao diện, và khi chuẩn hóa đầu vào ở một chỗ thì lỗi biên không lan ra màn hình.</li>\n  <li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> offset lớn khiến database quét qua nhiều dòng hơn, và dữ liệu thay đổi giữa các trang có thể làm bản ghi bị lặp hoặc bỏ sót (xem Bài L18).</li>\n</ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p>\n<ul>\n  <li><strong>Phương án A:</strong> cursor keyset khi danh sách lớn, sắp xếp theo id hoặc timestamp và dữ liệu thay đổi liên tục; đổi lại client phải giữ con trỏ và không nhảy tới trang bất kỳ.</li>\n  <li><strong>Phương án B:</strong> để backend kẹp page và trả về trang thực tế kèm total khi giao diện không tin được đầu vào; đổi lại API phải trả thêm metadata (xem Bài L09).</li>\n</ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p>\n<ul>\n  <li><strong>Tín hiệu trong Log / Metric:</strong> tỉ lệ request có page nhỏ hơn 1 hoặc vượt tổng số trang; số lần người dùng báo danh sách thiếu dòng đầu; số bản ghi trùng giữa hai trang liên tiếp.</li>\n  <li><strong>Cách kiểm chứng nhanh:</strong> gọi hàm với page 1, page cuối và page vượt tổng, so kết quả với danh sách đầy đủ; log page và pageSize sau chuẩn hóa để thấy giá trị thật được xử lý (xem Bài L09, L18).</li>\n</ul>"
 },
 {
   "id": "I05",
@@ -250,10 +260,10 @@ QUESTIONS.push(
   "type": "predict",
   "incident": "<p>Một tính năng tìm kiếm so khớp tên khách hàng bằng phép so sánh chuỗi trực tiếp. Khách hàng tên có dấu khác nhau tuỳ theo thiết bị nhập, chữ hoa chữ thường không khớp, và khoảng trắng thừa ở đầu cuối làm phép so sánh thất bại. Kết quả là cùng một người có ba bản ghi khác nhau, và tìm kiếm bỏ sót.</p>",
   "askFirst": [
-  "Chuẩn hoá chuỗi nên làm ở đâu và khi nào? → Giải mã: Chuẩn hóa nên làm ở một chỗ dùng chung (hàm validate hoặc hook) trước khi lưu và trước khi so khớp; hiển thị dạng gốc, so sánh dạng chuẩn (xem Bài L09).",
-  "Vì sao so sánh trực tiếp chuỗi lại mong manh? → Giải mã: Chuỗi thô có khoảng trắng thừa, hoa thường lẫn lộn, Unicode nhiều dạng biểu diễn. So sánh trực tiếp thất bại với dữ liệu nhập từ thiết bị khác nhau (xem Bài L18).",
-  "Nên lưu dạng gốc hay dạng đã chuẩn hoá? → Giải mã: Lưu cả hai: dạng gốc để hiển thị, dạng chuẩn hóa (lower, strip) để so khớp và đặt ràng buộc UNIQUE. Cột chuẩn hóa cần index (xem Bài L09)."
-],
+    "Chuẩn hoá chuỗi nên làm ở đâu và khi nào? → Giải mã: Chuẩn hóa nên làm ở một chỗ dùng chung (hàm validate hoặc hook) trước khi lưu và trước khi so khớp; hiển thị dạng gốc, so sánh dạng chuẩn (xem Bài L09).",
+    "Vì sao so sánh trực tiếp chuỗi lại mong manh? → Giải mã: Chuỗi thô có khoảng trắng thừa, hoa thường lẫn lộn, Unicode nhiều dạng biểu diễn. So sánh trực tiếp thất bại với dữ liệu nhập từ thiết bị khác nhau (xem Bài L18).",
+    "Nên lưu dạng gốc hay dạng đã chuẩn hoá? → Giải mã: Lưu cả hai: dạng gốc để hiển thị, dạng chuẩn hóa (lower, strip) để so khớp và đặt ràng buộc UNIQUE. Cột chuẩn hóa cần index (xem Bài L09)."
+  ],
   "predict": {
     "q": "Hai chuỗi <code>\"Nguyễn An\"</code> và <code>\"Nguyen An\"</code> so sánh bằng có bằng nhau không?",
     "a": "<p>Không, chúng là hai chuỗi khác nhau ở mức mã điểm. Vấn đề sâu hơn là cùng một chữ cái có thể được biểu diễn bằng nhiều cách trong Unicode: một ký tự có dấu sẵn, hoặc một ký tự cơ bản cộng dấu tổ hợp. Hai cách này trông giống hệt nhau nhưng so sánh bằng lại khác nhau. Cách xử lý là chuẩn hoá Unicode về một dạng thống nhất trước khi so sánh, và với tìm kiếm không phân biệt dấu thì cần thêm một dạng đã bỏ dấu để tra cứu.</p>"
@@ -301,7 +311,12 @@ QUESTIONS.push(
   "refs": [
     "py-expressions",
     "py-datamodel"
-  ]
+  ],
+  "say30": "Chuỗi trong Python bất biến, nên strip, lower, replace và split mỗi lần trả về giá trị mới chứ không sửa tại chỗ. Thứ tự các bước quyết định kết quả: cắt khoảng trắng rồi hạ chữ rồi mới tách, và nếu quên gán lại thì biến vẫn giữ giá trị cũ. Muốn so khớp thì dùng cùng một quy trình chuẩn hóa ở mọi chỗ nhập liệu.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Ô tìm kiếm bỏ sót khách hàng dù tên gõ đúng từng chữ, vì bản ghi lưu thừa khoảng trắng hai đầu và chữ hoa lẫn lộn. Nỗi đau là so sánh chuỗi thô, và mỗi chỗ tự chuẩn hóa theo một kiểu khác nhau.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Chuỗi là bất biến, nên strip trả về chuỗi mới và không đụng biến gốc; lower hạ chữ, replace thay chuỗi con, split trả về danh sách các phần. Với so khớp đa ngôn ngữ, casefold mạnh hơn lower; với Unicode, chuẩn hóa về một dạng trước khi so. Quy trình chuẩn là một hàm duy nhất, gọi khi nhận dữ liệu vào và khi tìm kiếm.\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Chuẩn hóa làm mất thông tin hiển thị, nên phải lưu cả dạng gốc lẫn dạng chuẩn; casefold và chuẩn hóa Unicode thêm chi phí mỗi lần so. Giám sát: số lần tìm kiếm trả về rỗng với truy vấn có chữ hoa hoặc khoảng trắng, và test các ca có dấu tiếng Việt ở dạng tổ hợp (xem Bài L09, L11).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p>\n<ul>\n  <li><strong>Được gì:</strong> chuỗi bất biến nên không có tác dụng phụ bất ngờ; một pipeline strip, lower, split đọc rõ và kiểm thử được bằng đầu vào mẫu.</li>\n  <li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> mỗi bước tạo chuỗi mới nên tốn bộ nhớ với dữ liệu lớn; lưu dạng chuẩn song song với dạng gốc làm schema phức tạp hơn (xem Bài L09).</li>\n</ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p>\n<ul>\n  <li><strong>Phương án A:</strong> regex một lần khi quy tắc tách và thay phức tạp, một pattern thay được nhiều bước; đổi lại khó đọc với người mới.</li>\n  <li><strong>Phương án B:</strong> collation hoặc chuẩn hóa của database khi so khớp phải đúng theo ngôn ngữ và dữ liệu nằm sẵn trong database; đổi lại logic phụ thuộc vào cấu hình database (xem Bài L09).</li>\n</ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p>\n<ul>\n  <li><strong>Tín hiệu trong Log / Metric:</strong> tìm kiếm trả về rỗng với khách hàng có tên tồn tại; dữ liệu chứa khoảng trắng đầu cuối hoặc ký tự không chuẩn; cùng một thực thể xuất hiện hai lần chỉ khác chữ hoa.</li>\n  <li><strong>Cách kiểm chứng nhanh:</strong> đưa vào hàm chuẩn hóa các chuỗi có khoảng trắng, chữ hoa và dấu tổ hợp rồi so với kỳ vọng; đếm bản ghi có dạng gốc khác dạng chuẩn trong database (xem Bài L09).</li>\n</ul>"
 },
 {
   "id": "I06",
@@ -312,10 +327,10 @@ QUESTIONS.push(
   "type": "concept",
   "incident": "<p>Một đội xây dựng lớp trừu tượng cho tầng lưu trữ với mục tiêu \"sau này có thể đổi database\". Sau sáu tháng, có 14 interface và 31 lớp cài đặt cho ba thực thể. Việc thêm một trường vào một bảng cần sửa bảy tệp. Chưa lần nào đội đổi database. Thời gian cho một tính năng nhỏ tăng từ nửa ngày lên ba ngày.</p>",
   "askFirst": [
-  "Lớp trừu tượng này đang giải quyết vấn đề có thật hay vấn đề tưởng tượng? → Giải mã: Trừu tượng chỉ có giá trị khi có ít nhất hai cài đặt thật. Interface một lớp duy nhất là chi phí không có lợi ích; kiểm tra bằng cách hỏi lần nào bạn đổi implementation (xem Bài L18).",
-  "Nguyên tắc nào bị áp dụng quá mức? → Giải mã: SOLID áp dụng quá mức thành 14 interface cho ba thực thể. DRY gộp nhầm hai logic chỉ tình cờ giống nhau. KISS bị bỏ qua vì \"kiến trúc đẹp\" (xem Bài L18).",
-  "Làm sao đơn giản hoá mà không mất khả năng thay đổi sau này? → Giải mã: Gộp lại thành module rõ ràng cho đến khi có biến thể thứ hai thật sự. Quy tắc: cần thay đổi lần thứ ba ở cùng chỗ thì trừu tượng hóa (xem Bài L18)."
-],
+    "Lớp trừu tượng này đang giải quyết vấn đề có thật hay vấn đề tưởng tượng? → Giải mã: Trừu tượng chỉ có giá trị khi có ít nhất hai cài đặt thật. Interface một lớp duy nhất là chi phí không có lợi ích; kiểm tra bằng cách hỏi lần nào bạn đổi implementation (xem Bài L18).",
+    "Nguyên tắc nào bị áp dụng quá mức? → Giải mã: SOLID áp dụng quá mức thành 14 interface cho ba thực thể. DRY gộp nhầm hai logic chỉ tình cờ giống nhau. KISS bị bỏ qua vì \"kiến trúc đẹp\" (xem Bài L18).",
+    "Làm sao đơn giản hoá mà không mất khả năng thay đổi sau này? → Giải mã: Gộp lại thành module rõ ràng cho đến khi có biến thể thứ hai thật sự. Quy tắc: cần thay đổi lần thứ ba ở cùng chỗ thì trừu tượng hóa (xem Bài L18)."
+  ],
   "predict": {
     "q": "Một interface chỉ có đúng một lớp cài đặt, không có kế hoạch cụ thể cho lớp thứ hai. Nó mang lại lợi ích gì?",
     "a": "<p>Rất ít, và nó có chi phí thật. Lợi ích duy nhất là cho phép thay thế bằng bản giả khi test, nhưng việc đó thường làm được bằng cách rẻ hơn.</p><p>Chi phí là một tầng gián tiếp phải đọc qua mỗi lần tìm hiểu code, thêm một chỗ để định nghĩa kiểu, và thêm một chỗ phải sửa khi yêu cầu đổi. Quy tắc thực dụng: chỉ trừu tượng hoá khi có ít nhất hai cài đặt thật, hoặc khi thay đổi sắp tới đã rõ ràng.</p>"
@@ -359,7 +374,12 @@ QUESTIONS.push(
   "refs": [
     "py-datamodel",
     "ts-handbook"
-  ]
+  ],
+  "say30": "SOLID là năm nguyên tắc giữ lớp dễ thay đổi, trong đó Single Responsibility quan trọng nhất: mỗi lớp chỉ có một lý do để đổi. DRY chỉ nên gộp code khi các đoạn cùng đổi vì một lý do. Over-engineering bắt đầu khi bạn tạo interface và tầng trung gian cho một trường hợp dùng duy nhất, khiến sửa một dòng phải chạm nhiều file.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Thêm một trường vào bảng mà phải sửa bảy tệp, và đội xây 14 interface cùng 31 lớp cho ba thực thể chỉ để đón một ngày đổi database chưa bao giờ đến. Đó là over-engineering, và nó thường đến từ việc áp dụng nguyên tắc như giáo điều.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Ví dụ SRP: tách việc tính tiền đơn hàng khỏi việc gửi email, để mỗi lớp chỉ đổi khi một yêu cầu nghiệp vụ đổi. DRY đúng nghĩa là gộp hai đoạn đổi cùng lý do; gộp hai đoạn chỉ tình cờ giống hình dạng là gộp nhầm. KISS là chọn lời giải đơn giản nhất đạt yêu cầu. Quy tắc thực chiến: chỉ thêm abstraction khi đã có biến thể thứ hai thật sự.\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Tách lớp làm code dễ thay đổi nhưng tăng số file phải đọc; gộp sớm làm code khó tách về sau. Giám sát: số file đổi trung bình cho một yêu cầu nhỏ, số interface chỉ có một cài đặt, và thời gian review một thay đổi (xem Bài L07, L09).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p>\n<ul>\n  <li><strong>Được gì:</strong> ranh giới rõ, thay đổi được khoanh vùng trong một lớp, và mỗi lớp test được độc lập.</li>\n  <li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> nhiều file và tầng gián tiếp hơn; đoán sai biến thể thì trả giá gấp đôi, vừa dựng abstraction vừa phải tháo ra (xem Bài L07).</li>\n</ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p>\n<ul>\n  <li><strong>Phương án A:</strong> module phẳng với hàm thuần khi nghiệp vụ còn nhỏ; một module rõ ràng là đủ, đổi lại khó thay thế một phần khi biến thể thật xuất hiện.</li>\n  <li><strong>Phương án B:</strong> thêm interface khi biến thể thứ hai xuất hiện, giữ đơn giản đến lúc cần rồi mới tách; đổi lại phải refactor có kiểm thử đi kèm (xem Bài L09).</li>\n</ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p>\n<ul>\n  <li><strong>Tín hiệu trong Log / Metric:</strong> một yêu cầu nhỏ phải đổi bảy file; có interface chỉ một cài đặt; lớp tên Manager hoặc Service không chứa logic nào; thời gian onboarding tăng vì phải lần theo tầng trung gian.</li>\n  <li><strong>Cách kiểm chứng nhanh:</strong> đếm số file đổi trong năm PR gần nhất; kiểm tra mỗi interface có ít nhất hai cài đặt thật; thử thêm một trường mới và đo số file phải sửa (xem Bài L07, L09).</li>\n</ul>"
 },
 {
   "id": "I07",
@@ -370,10 +390,10 @@ QUESTIONS.push(
   "type": "situation",
   "incident": "<p>Một endpoint xử lý đơn hàng trực tiếp gọi database, gọi dịch vụ thanh toán, gửi email và ghi log. Khi cần viết test cho quy tắc tính phí, đội phải dựng cả bốn phụ thuộc. Khi cần đổi nhà cung cấp thanh toán, họ phải sửa chính hàm xử lý. Và khi một trong bốn phụ thuộc chậm, toàn bộ endpoint chậm theo.</p>",
   "askFirst": [
-  "Hàm này đang có mấy lý do để thay đổi? → Giải mã: Đếm số lý do thay đổi độc lập: database, thanh toán, email, log là bốn. Mỗi phụ thuộc là một lý do; tách để mỗi lớp chỉ lo một việc (xem Bài L18).",
-  "Ranh giới nào nên được tách ra trước? → Giải mã: Tách I/O (database, email, thanh toán) khỏi logic nghiệp vụ trước. Logic thuần tuý kiểm tra được không cần hạ tầng (xem Bài L09).",
-  "Tách ra có làm code phức tạp hơn không? → Giải mã: Có, thêm tệp và bước lần theo khi đọc. Chỉ đáng trả khi mua được: test không cần hạ tầng, hoặc thay phụ thuộc mà không sửa nghiệp vụ (xem Bài L18)."
-],
+    "Hàm này đang có mấy lý do để thay đổi? → Giải mã: Đếm số lý do thay đổi độc lập: database, thanh toán, email, log là bốn. Mỗi phụ thuộc là một lý do; tách để mỗi lớp chỉ lo một việc (xem Bài L18).",
+    "Ranh giới nào nên được tách ra trước? → Giải mã: Tách I/O (database, email, thanh toán) khỏi logic nghiệp vụ trước. Logic thuần tuý kiểm tra được không cần hạ tầng (xem Bài L09).",
+    "Tách ra có làm code phức tạp hơn không? → Giải mã: Có, thêm tệp và bước lần theo khi đọc. Chỉ đáng trả khi mua được: test không cần hạ tầng, hoặc thay phụ thuộc mà không sửa nghiệp vụ (xem Bài L18)."
+  ],
   "predict": {
     "q": "Một hàm vừa tính toán nghiệp vụ vừa gọi dịch vụ bên ngoài. Việc kiểm thử nó khó ở đâu?",
     "a": "<p>Khó ở chỗ bạn không thể kiểm tra logic mà không kéo theo hệ thống bên ngoài. Muốn test nhanh và ổn định thì phải thay dịch vụ ngoài bằng một đối tượng giả.</p><p>Muốn làm được điều đó, hàm phải nhận phụ thuộc từ bên ngoài thay vì tự tạo. Đây là giá trị thực dụng của việc tách ranh giới: không phải kiến trúc cho đẹp, mà là điều kiện để logic thuần tuý kiểm thử được mà không cần hạ tầng.</p>"
@@ -421,7 +441,12 @@ QUESTIONS.push(
   "refs": [
     "ts-handbook",
     "py-datamodel"
-  ]
+  ],
+  "say30": "Tách I/O như database và email khỏi logic tính toán, để hàm nghiệp vụ không tự tạo kết nối mà nhận dependency qua constructor. Khi test, truyền bản giả nhẹ thay cho database và dịch vụ thật nên test chạy nhanh và ổn định. Đổi nhà cung cấp email chỉ cần thay thành phần được tiêm, không phải mổ logic điều phối.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Hàm vừa gọi database vừa gửi email nghĩa là mỗi lần test phải dựng cả hai. Test quy tắc tính phí mất năm phút, và đổi nhà cung cấp thanh toán phải mổ đúng hàm đang chạy trên production.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Đếm các lý do thay đổi độc lập: database, email, thanh toán, log. Tách I/O thành repository và cổng gửi thư, còn logic nghiệp vụ thuần chỉ nhận dữ liệu và trả kết quả. Dependency injection nghĩa là service nhận các thành phần này qua constructor thay vì tự tạo bên trong. Trong test truyền bản giả; trong production, ứng dụng lắp ráp bản thật đúng một chỗ khi khởi tạo.\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Tách làm thêm file và thêm bước phải lần theo; tiêm quá nhiều dependency làm constructor dài và khó đọc. Giám sát: thời gian chạy bộ test đơn vị, số test cần hạ tầng thật, và số chỗ gọi trực tiếp client bên ngoài trong lớp nghiệp vụ (xem Bài L11).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p>\n<ul>\n  <li><strong>Được gì:</strong> test không cần hạ tầng, đổi nhà cung cấp được khoanh vùng ở một chỗ, và logic nghiệp vụ đọc được độc lập.</li>\n  <li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> thêm repository và cổng gửi thư, cần một chỗ lắp ráp dependency; bản giả có thể lệch hành vi thật nếu không có kiểm thử hợp đồng (xem Bài L11).</li>\n</ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p>\n<ul>\n  <li><strong>Phương án A:</strong> mock.patch trong test khi chỉ có vài chỗ gọi; đổi lại test gắn với đường dẫn import và dễ vỡ khi refactor.</li>\n  <li><strong>Phương án B:</strong> Depends của FastAPI kết hợp dependency_overrides khi việc tiêm nằm ở biên HTTP; đổi lại phải hiểu cơ chế override của framework (xem Bài L11).</li>\n</ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p>\n<ul>\n  <li><strong>Tín hiệu trong Log / Metric:</strong> bộ test chậm dần vì chạm database; log báo gửi email trong lúc chạy test; lỗi thanh toán xuất hiện ở hàm không liên quan.</li>\n  <li><strong>Cách kiểm chứng nhanh:</strong> chạy test đơn vị khi tắt mạng, nếu còn lỗi kết nối thì logic vẫn dính I/O; đếm chỗ import client bên ngoài trong thư mục nghiệp vụ (xem Bài L11).</li>\n</ul>"
 },
 {
   "id": "I08",
@@ -432,10 +457,10 @@ QUESTIONS.push(
   "type": "concept",
   "incident": "<p>Một endpoint kiểm tra xem một mã giảm giá có hợp lệ không, và được gọi 4.000 lần mỗi phút. Code cũ đọc toàn bộ danh sách mã từ database rồi duyệt tuyến tính qua 60.000 phần tử cho mỗi lần kiểm tra. CPU của database ở mức 95% và endpoint mất 400 ms mỗi lần gọi, dù chỉ cần trả về đúng hoặc sai.</p>",
   "askFirst": [
-  "Thao tác thực sự cần làm là gì? → Giải mã: Xác định thao tác làm nhiều nhất: kiểm tra tồn tại, đếm, hay lấy đoạn mới nhất. Chọn cấu trúc theo thao tác, không theo thứ tự dữ liệu được tạo ra (xem Bài L04).",
-  "Cấu trúc dữ liệu nào phù hợp với thao tác đó? → Giải mã: Set cho kiểm tra tồn tại; hash map cho đếm và ánh xạ; array hoặc deque cho lấy đoạn có thứ tự (xem Bài L09).",
-  "Nên giữ cấu trúc đó ở đâu? → Giải mã: Dữ liệu ít đổi: giữ trong bộ nhớ app với thời hạn làm mới. Dữ liệu cần nhất quán: kiểm tra ở database. Multi-instance: dịch vụ lưu trữ dùng chung (xem Bài L04)."
-],
+    "Thao tác thực sự cần làm là gì? → Giải mã: Xác định thao tác làm nhiều nhất: kiểm tra tồn tại, đếm, hay lấy đoạn mới nhất. Chọn cấu trúc theo thao tác, không theo thứ tự dữ liệu được tạo ra (xem Bài L04).",
+    "Cấu trúc dữ liệu nào phù hợp với thao tác đó? → Giải mã: Set cho kiểm tra tồn tại; hash map cho đếm và ánh xạ; array hoặc deque cho lấy đoạn có thứ tự (xem Bài L09).",
+    "Nên giữ cấu trúc đó ở đâu? → Giải mã: Dữ liệu ít đổi: giữ trong bộ nhớ app với thời hạn làm mới. Dữ liệu cần nhất quán: kiểm tra ở database. Multi-instance: dịch vụ lưu trữ dùng chung (xem Bài L04)."
+  ],
   "predict": {
     "q": "Bạn cần kiểm tra sự tồn tại của một phần tử trong tập 60.000 phần tử, 4.000 lần mỗi phút. Bạn chọn cấu trúc nào?",
     "a": "<p>Một bảng băm hoặc một tập hợp, vì thao tác cần làm là kiểm tra thành viên và cấu trúc đó cho phép tra cứu trung bình O(1). Một danh sách buộc phải duyệt tuần tự nên là O(n) cho mỗi lần kiểm tra, và với 60.000 phần tử nhân 4.000 lần mỗi phút thì đó là hàng trăm triệu phép so sánh mỗi phút cho một câu hỏi đúng-sai. Điểm cần cân nhắc thêm là cấu trúc đó nằm ở đâu: trong database với chỉ mục duy nhất, hay trong bộ nhớ của ứng dụng với thời hạn làm mới.</p>"
@@ -479,6 +504,11 @@ QUESTIONS.push(
   "refs": [
     "py-datamodel",
     "mdn-execution-model"
-  ]
+  ],
+  "say30": "Chọn cấu trúc theo thao tác nhiều nhất của từng nhu cầu: set cho kiểm tra username tồn tại với O(1) trung bình, hash map cho bộ đếm lượt xem theo bài viết, và mảng hoặc deque giữ thứ tự thời gian để lấy 20 thông báo mới nhất. Dữ liệu ít đổi thì giữ trong bộ nhớ có thời hạn, còn dữ liệu cần nhất quán thì kiểm tra ở database.",
+  "say90": "[Nhịp 1 — Chốt bản chất & Nỗi đau (20s)]: Endpoint kiểm tra mã giảm giá quét tuyến tính 60.000 mã mỗi lần gọi, 4.000 lần mỗi phút, làm CPU database kẹt 95% chỉ để trả lời đúng hoặc sai. Nỗi đau là dùng một cấu trúc cho mọi việc rồi duyệt tuyến tính khắp nơi.\n\n[Nhịp 2 — Cơ chế bên dưới & Giải pháp chuẩn (45s)]: Kiểm tra username là phép thành viên nên dùng set, trung bình O(1). Đếm lượt xem theo bài viết là ánh xạ từ khóa sang số, dùng hash map với cập nhật O(1). Lấy 20 thông báo mới nhất là lấy đoạn cuối của dãy có thứ tự: giữ mảng theo thời gian rồi cắt đoạn cuối, hoặc deque khi cần thêm và lấy ở đầu liên tục. Mỗi cấu trúc khớp với một thao tác đo được.\n\n[Nhịp 3 — Đánh đổi thực tế & Chỉ số giám sát (25s)]: Set và hash map tốn bộ nhớ và không giữ thứ tự; khi chạy nhiều máy, bộ nhớ cục bộ không đồng bộ giữa các máy. Giám sát: thời gian endpoint theo từng thao tác, tỉ lệ cache hit nếu có, và số câu truy vấn quét toàn bảng trong slow log (xem Bài L05, L08).",
+  "tradeoff": "<p><strong>Đánh đổi thực tế (Trade-offs):</strong></p>\n<ul>\n  <li><strong>Được gì:</strong> mỗi thao tác đạt độ phức tạp đúng với nhu cầu, và CPU database giảm vì kiểm tra xảy ra trong bộ nhớ ứng dụng.</li>\n  <li><strong>Mất gì (Chi phí / Độ phức tạp):</strong> dữ liệu trong bộ nhớ dễ lệch giữa các máy và mất khi restart; đồng bộ với database đòi quy tắc làm mới rõ ràng (xem Bài L08).</li>\n</ul>",
+  "alternatives": "<p><strong>Khi nào chọn phương án thay thế?</strong></p>\n<ul>\n  <li><strong>Phương án A:</strong> ràng buộc unique và đếm trong database khi dữ liệu cần nhất quán tuyệt đối; đổi lại mỗi lần gọi tốn một truy vấn.</li>\n  <li><strong>Phương án B:</strong> lưu danh sách thông báo trong key-value theo người dùng khi cần đọc nhanh theo khóa; đổi lại truy vấn theo khoảng thời gian phải tự thiết kế (xem Bài L05).</li>\n</ul>",
+  "observe": "<p><strong>Cách quan sát &amp; Bắt lỗi trên Production:</strong></p>\n<ul>\n  <li><strong>Tín hiệu trong Log / Metric:</strong> CPU database cao khi endpoint kiểm tra được gọi; độ trễ endpoint tăng theo số bản ghi chứ không theo số request; bộ đếm lệch giữa hai máy.</li>\n  <li><strong>Cách kiểm chứng nhanh:</strong> đo thời gian từng thao tác với dữ liệu lớn nhất; so bộ đếm giữa các máy sau khi gọi cùng một bài viết; kiểm tra slow log có câu truy vấn quét toàn bảng (xem Bài L05, L08).</li>\n</ul>"
 }
 );

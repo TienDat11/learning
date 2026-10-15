@@ -43,6 +43,10 @@ const labels = computed(() => [0, 1, 2].map((i) => {
 
 const predict = computed(() => (props.q.predict && typeof props.q.predict === 'object' ? props.q.predict : null));
 const sanitized = (html) => renderLinkedHtml(typeof html === 'string' ? html : '', data?.LESSONS);
+const say90Parts = computed(() => String(props.q.say90 || '').split('\n\n').map((p) => {
+  const m = p.match(/^(\[Nhịp[^\]]*\]:)\s*([\s\S]*)$/);
+  return m ? { label: m[1], html: sanitized(esc(m[2])) } : { label: '', html: sanitized(esc(p)) };
+}));
 const relatedLessons = computed(() => {
   const all = Array.isArray(data?.LESSONS) ? data.LESSONS : [];
   return all.filter((l) => Array.isArray(l.qids) && l.qids.includes(props.q.id));
@@ -140,7 +144,9 @@ const refDocs = computed(() => {
           <button v-if="hasSay90" type="button" role="tab" class="tab" :class="{ on: tab === 'say90' }" :aria-selected="tab === 'say90'" @click="tab = 'say90'">90 giây</button>
         </div>
         <p v-if="tab === 'say30' && hasSay30" class="plain-text oral-box">{{ q.say30 }}</p>
-        <p v-else-if="tab === 'say90' && hasSay90" class="plain-text oral-box">{{ q.say90 }}</p>
+        <div v-else-if="tab === 'say90' && hasSay90" class="plain-text oral-box">
+          <p v-for="(p, i) in say90Parts" :key="i"><strong>{{ p.label }}</strong> <span v-html="p.html"></span></p>
+        </div>
         <p v-else class="plain-text oral-box">{{ q.oral }}</p>
       </section>
 
@@ -271,6 +277,8 @@ const refDocs = computed(() => {
 .lesson-ref-chip { padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 13px; font-weight: 600; text-decoration: none; }
 .lesson-ref-chip:hover { background: var(--accent); }
 .oral-box { padding: 14px 16px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); }
+.oral-box p { margin: 0 0 10px; }
+.oral-box p:last-child { margin-bottom: 0; }
 .glossary-box { padding: 14px 16px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); }
 .glossary-list { display: grid; gap: 8px; }
 .glossary-item { display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }

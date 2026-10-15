@@ -10,7 +10,7 @@ options: [
 'Vì list rỗng là một singleton dùng chung trong toàn bộ interpreter, sửa bằng cách khởi tạo bằng list() thay vì bằng ngoặc vuông'
 ],
 answer: 1,
-explain: 'Python đánh giá toàn bộ tham số mặc định đúng một lần khi định nghĩa hàm, nên list mặc định là một object duy nhất bị chia sẻ giữa mọi lần gọi. Cách sửa chuẩn là dùng None làm mặc định rồi tạo list mới bên trong thân hàm.',
+explain: 'Đáp án B đúng vì Python đánh giá giá trị mặc định đúng một lần khi câu lệnh def chạy, rồi gắn object đó vào thuộc tính __defaults__ của hàm, nên mọi lần gọi dùng chung một list và dữ liệu rò từ lần này sang lần khác. Sửa bằng None rồi tạo list mới trong thân hàm đúng với cơ chế đó. Bẫy A: nạp lại module không tạo lại mặc định, vì mặc định đã nằm trong hàm từ lúc def chạy. Bẫy C: list là truyền tham chiếu, và deepcopy tham số không giải thích nguồn gốc việc gom dữ liệu qua các lần gọi. Bẫy D: list rỗng viết bằng ngoặc vuông không phải singleton toàn interpreter; lỗi nằm ở việc cùng một object được gắn vào hàm. (Đọc sâu cơ chế tại Bài L07)',
 situational: false
 },
 {
@@ -23,7 +23,7 @@ options: [
 'GIL khoá bytecode của một tiến trình nên threading chỉ hữu ích khi thư viện C phát thành GIL, còn asyncio phù hợp hơn cho I/O nhiều kết nối chờ'
 ],
 answer: 3,
-explain: 'GIL chỉ cho một luồng Python chạy bytecode tại một thời điểm trong mỗi tiến trình. I/O-bound vẫn chạy song song được khi thư viện C như socket hay driver database phát thành GIL, còn asyncio nhẹ hơn và quản lý hàng nghìn kết nối chờ dễ dàng hơn.',
+explain: 'Đáp án D đúng vì GIL chỉ cho một luồng chạy bytecode Python tại một thời điểm trong mỗi tiến trình, còn các thư viện C như socket hay driver database nhả GIL khi chờ I/O, nên threading vẫn có ích cho I/O. Asyncio phù hợp hơn khi số kết nối chờ lớn, vì một luồng quản lý được hàng nghìn coroutine với chi phí thấp hơn nhiều so với hàng nghìn luồng. Bẫy A: GIL không khóa từng phép toán riêng lẻ, và threading không chạy song song code Python thuần. Bẫy B: nhả GIL khi I/O là đúng, nhưng kết luận chi phí tương đương và cách nào cũng được là sai khi số kết nối tăng. Bẫy C: GIL không biến mất khi có nhiều luồng, nên khẳng định threading luôn nhanh hơn là sai. (Đọc sâu cơ chế tại Bài L07)',
 situational: false
 },
 {
@@ -36,7 +36,7 @@ options: [
 'Tăng giới hạn threadpool của Starlette lên 200 để các tác vụ xử lý ảnh không phải xếp hàng chờ nhau trước khi chạy'
 ],
 answer: 0,
-explain: 'Xử lý ảnh là CPU-bound nên nhiều thread trong cùng tiến trình không tăng tốc do GIL. ProcessPoolExecutor hoặc worker queue tách việc ra tiến trình khác, tận dụng được nhiều nhân và giữ event loop của API không bị nghẽn.',
+explain: 'Đáp án A đúng vì xử lý ảnh là CPU-bound: GIL khiến nhiều thread trong một tiến trình không chạy song song phần tính toán, nên cần tiến trình riêng như ProcessPoolExecutor hoặc worker queue như Celery để dùng nhiều nhân và giữ event loop của API không bị nghẽn. Bẫy B: uvicorn worker là tiến trình phục vụ HTTP, không tự nhận việc từ hàng đợi ảnh; tăng worker chỉ nhân thêm RAM và kết nối. Bẫy C: async def với await không biến phần tính toán thành I/O, nên CPU vẫn chặn event loop. Bẫy D: tăng threadpool không gỡ GIL, các thread vẫn tranh nhau một GIL. (Đọc sâu cơ chế tại Bài L07)',
 situational: true
 },
 {
@@ -49,7 +49,7 @@ options: [
 'Cả hai vào microtask queue nhưng setTimeout được ưu tiên vì có độ trễ xác định do timer của runtime quyết định'
 ],
 answer: 2,
-explain: 'Promise callback là microtask và được dọn hết sau mỗi lần call stack rỗng, còn setTimeout là macrotask nằm sau các microtask trong cùng một vòng lặp event loop. Vì vậy code đồng bộ chạy trước, microtask chạy sau, macrotask chạy cuối.',
+explain: 'Đáp án C đúng vì Promise callback vào microtask queue, còn setTimeout vào macrotask queue. Sau khi call stack rỗng, event loop dọn hết microtask trước rồi mới lấy một macrotask tiếp theo. Bẫy A: hai loại không chung hàng đợi, nên thứ tự đăng ký không quyết định thứ tự giữa Promise và setTimeout. Bẫy B: đảo ngược hai hàng đợi, đây là lỗi nhớ nhầm phổ biến. Bẫy D: setTimeout không vào microtask, và delay chỉ là mức tối thiểu trước khi callback được xếp hàng, không phải độ ưu tiên. (Đọc sâu cơ chế tại Bài L13)',
 situational: false
 },
 {
@@ -62,7 +62,7 @@ options: [
 'Cả hai đều giữ đúng giá trị ở mỗi vòng, khác biệt chỉ là let tạo biến bất biến nên không thể bị gán lại sau khi khai báo'
 ],
 answer: 2,
-explain: 'Khai báo let trong for tạo binding mới cho mọi lần lặp nên mỗi closure giữ ô nhớ riêng. var chỉ tạo một biến duy nhất trong scope hàm, mọi closure cùng trỏ tới đó và khi vòng lặp kết thúc thì cả ba cùng thấy giá trị cuối cùng.',
+explain: 'Đáp án C đúng vì let trong vòng for tạo một binding mới cho mỗi lần lặp, nên mỗi closure giữ ô nhớ riêng với đúng giá trị của vòng đó. var chỉ có một binding ở scope hàm, nên mọi closure cùng đọc giá trị cuối khi được gọi. Bẫy A: closure không sao chép giá trị lúc khai báo; nó giữ tham chiếu tới binding, và với var binding đó dùng chung. Bẫy B: closure của var không trả undefined; nó trả giá trị cuối của biến dùng chung. Bẫy D: let không bất biến và vẫn gán lại được; khác biệt nằm ở phạm vi binding theo vòng lặp. (Đọc sâu cơ chế tại Bài L13)',
 situational: false
 },
 {
@@ -75,7 +75,7 @@ options: [
 'Giữ nguyên các request đang bay và chỉ gán state khi tất cả đã hoàn tất, để request treo không ghi đè dữ liệu mới hơn'
 ],
 answer: 0,
-explain: 'Đây là race condition: response cũ có thể tới sau và ghi đè dữ liệu mới, còn request treo giữ tài nguyên. AbortController trong onCleanup của watch hoặc onBeforeUnmount cắt request cũ và bỏ qua kết quả đã huỷ, giữ state luôn khớp với lựa chọn hiện tại.',
+explain: 'Đáp án A đúng vì đây là race condition: response của request cũ có thể tới sau và ghi đè lựa chọn hiện tại, còn request treo vẫn giữ tài nguyên. AbortController cắt request cũ trong onCleanup của watch hoặc onBeforeUnmount, và hàm bỏ qua kết quả đã bị hủy nên state luôn khớp lựa chọn mới nhất. Bẫy B: Promise.all chờ tất cả xong rồi vẫn ghi kết quả của lựa chọn cũ, và chậm hơn. Bẫy C: XHR đồng bộ chặn luồng chính, làm giao diện đứng và không bảo đảm thứ tự khi có nhiều request. Bẫy D: giữ request đang bay và chỉ gán khi tất cả xong vẫn ghi kết quả cũ, vì request treo không bị hủy. (Đọc sâu cơ chế tại Bài L13)',
 situational: true
 },
 {
@@ -88,7 +88,7 @@ options: [
 'ref bọc giá trị trong object có .value nên truyền ref đi vẫn giữ reactivity; reactive dùng Proxy và destructure làm mất reactivity, cần toRefs để giữ liên kết'
 ],
 answer: 3,
-explain: 'Destructure một object reactive() làm mất reactivity vì const { a } = state chỉ copy giá trị nguyên thuỷ ra ngoài. Dùng toRefs(state) để có ref liên kết ngược với từng thuộc tính gốc. ref giữ giá trị trong .value nên truyền ref đi vẫn còn liên kết, nhưng const v = r.value chỉ copy primitive và mất liên kết. Trong template, ref ở cấp cao nhất được tự unwrap nên không cần .value.',
+explain: 'Đáp án D đúng vì destructure một object reactive() copy giá trị nguyên thủy ra ngoài và cắt liên kết với Proxy, nên dùng toRefs(state) để giữ liên kết từng thuộc tính. ref giữ giá trị trong .value nên truyền ref đi vẫn còn liên kết; còn const v = r.value chỉ lấy primitive ra ngoài. Bẫy A: ref và reactive khác nhau về cách theo dõi và cách mất reactivity, không chỉ khác cú pháp. Bẫy B: đảo ngược cơ chế, vì reactive dùng Proxy còn ref dùng getter và setter trên thuộc tính value. Bẫy C: ref không dùng Proxy, và khẳng định cả hai đều mất reactivity khi destructure là sai với ref. (Đọc sâu cơ chế tại Bài L12)',
 situational: false
 },
 {
@@ -101,7 +101,7 @@ options: [
 'Cả hai nên là hàm gọi trực tiếp trong template để Vue tự theo dõi phụ thuộc và tự quyết định khi nào cần tính lại'
 ],
 answer: 1,
-explain: 'computed dành cho giá trị thuần khiết suy ra từ state, có cache và chỉ tính lại khi dependency đổi nên không tốn công. watch dành cho side effect như gọi API, ghi log hay điều hướng, và cần onCleanup để hủy tác dụng phụ cũ khi dependency đổi nhanh.',
+explain: 'Đáp án B đúng vì tổng tiền là giá trị thuần khiết suy ra từ state, computed cache và chỉ tính lại khi dependency đổi. Gọi API lưu đơn là tác dụng phụ, nên đặt trong watch, nơi khai báo rõ nguồn và dùng onCleanup. Bẫy A: đặt side effect trong computed làm mất ý nghĩa của cache, vì nó không còn là giá trị suy ra thuần. Bẫy C: đảo ngược vai trò, watch không cache giá trị tính ra và không dành cho giá trị suy ra. Bẫy D: hàm gọi trong template không được cache và chạy lại theo mỗi lần render, không có chỗ kiểm soát cho side effect. (Đọc sâu cơ chế tại Bài L13)',
 situational: false
 },
 {
@@ -114,7 +114,7 @@ options: [
 'Response của request cũ tới sau request mới, cần abort request trước trong onCleanup hoặc so sánh id của request mới nhất trước khi gán state'
 ],
 answer: 3,
-explain: 'Debounce chỉ giảm số lần gọi, không bảo đảm thứ tự trả về khi các request đều đã phát ra. Cần hủy request cũ bằng AbortController trong onCleanup hoặc giữ token tăng dần và bỏ qua response không còn khớp với request mới nhất.',
+explain: 'Đáp án D đúng vì debounce chỉ giảm số lần bắt đầu request; các request đã phát ra vẫn có thể về sau request mới, và response cũ ghi đè kết quả mới. Cách sửa là abort request trước trong onCleanup, hoặc giữ một token tăng dần và bỏ qua response không khớp request mới nhất. Bẫy A: watchEffect không chờ lần chạy trước kết thúc và không giải quyết thứ tự response. Bẫy B: debounce đặt ngoài watch vẫn có thể bắn nhiều request chồng nhau; vấn đề là thứ tự trả về, không phải số lần gọi. Bẫy C: sắp xếp theo created_at sửa thứ tự hiển thị, không ngăn kết quả của từ khóa cũ được gán vào state. (Đọc sâu cơ chế tại Bài L13)',
 situational: true
 },
 {
@@ -127,7 +127,7 @@ options: [
 'type guard chỉ dùng được với union của primitive còn as là cách duy nhất thu hẹp unknown, nên với object phải dùng as'
 ],
 answer: 1,
-explain: 'typeof và in là type guard thật sự ở runtime nên TypeScript thu hẹp kiểu sau đó và an toàn với dữ liệu thật. Toán tử as chỉ xóa thông tin kiểu cho compiler, không kiểm tra gì lúc chạy nên dữ liệu lệch kiểu sẽ sinh lỗi khó truy ở nơi khác.',
+explain: 'Đáp án B đúng vì typeof và in là kiểm tra thật ở runtime, TypeScript thu hẹp kiểu sau đó, nên an toàn khi dữ liệu đến từ bên ngoài. as chỉ là chỉ thị cho compiler, không kiểm tra gì lúc chạy, nên dữ liệu lệch kiểu sinh lỗi ở chỗ khác và rất khó truy. Bẫy A: đảo ngược, type guard chạy ở runtime còn as chỉ có tác dụng lúc biên dịch. Bẫy C: hai cách không cho cùng kết quả, vì guard có kiểm tra còn as bỏ qua kiểm tra; guard cũng không cần khai báo trong interface. Bẫy D: type guard không giới hạn ở union của primitive; object được kiểm tra bằng in hoặc hàm guard tự viết. (Đọc sâu cơ chế tại Bài L18)',
 situational: false
 },
 {
@@ -140,7 +140,7 @@ options: [
 'Chỉ có try/catch mới chạy được trong async function, còn await bên ngoài try/catch sẽ bị treo cho tới khi có timeout'
 ],
 answer: 2,
-explain: 'Trong async function, await làm lỗi của Promise được ném như exception đồng bộ nên try/catch bắt được và bạn có thể trả fallback hoặc báo lỗi có ngữ cảnh. Nếu không bắt, rejection chạy tới unhandledrejection: trình duyệt chỉ in lỗi ra console nên dễ bị bỏ qua, còn Node từ bản 15 mặc định làm tiến trình thoát.',
+explain: 'Đáp án C đúng vì await làm lỗi của Promise được ném như exception trong async function, nên try/catch bắt được và có thể trả fallback hoặc báo lỗi có ngữ cảnh. Rejection không được xử lý đi tới unhandledrejection: trình duyệt chỉ ghi console, còn Node từ phiên bản 15 mặc định thoát tiến trình. Bẫy A: await không biến rejection thành undefined; nó ném lỗi và làm nhánh catch có tác dụng. Bẫy B: try/catch bắt được lỗi từ await, kể cả lỗi mạng; .catch là cách khác chứ không phải cách duy nhất. Bẫy D: await ngoài try/catch không treo; rejection vẫn bị ném và nếu không bắt sẽ thành unhandled. (Đọc sâu cơ chế tại Bài L18)',
 situational: false
 },
 {
@@ -153,7 +153,7 @@ options: [
 'Dùng any cho field đó để linh hoạt rồi ép kiểu tại chỗ dùng, vì any không gây lỗi biên dịch và dễ đổi khi API thay đổi'
 ],
 answer: 0,
-explain: 'Dữ liệu từ network là ranh giới không tin được, nên khai báo unknown và kiểm tra ở một chỗ bằng type guard hoặc thư viện validation như zod, rồi mới đưa vào component. Lùi về any hoặc non-null assertion chỉ che lỗi và biến lỗi runtime thành lỗi khó truy.',
+explain: 'Đáp án A đúng vì dữ liệu từ network là ranh giới không đáng tin: khai báo unknown, kiểm tra một lần ở biên bằng type guard hoặc schema validation như zod, rồi mới đưa vào component. Khi không khớp, trả trạng thái lỗi có kiểm soát thay vì để lỗi nổ ở chỗ dùng. Bẫy B: non-null assertion tin rằng backend luôn đúng schema, nên lỗi chỉ lộ ra lúc runtime. Bẫy C: optional chaining chỉ tránh crash khi truy cập, không kiểm tra kiểu, và rải logic ra mọi chỗ dùng. Bẫy D: any tắt kiểm tra kiểu, và ép kiểu tại chỗ dùng chỉ che lỗi. (Đọc sâu cơ chế tại Bài L18)',
 situational: true
 },
 {
@@ -166,7 +166,7 @@ options: [
 'Chỉ dependency dạng return mới được Depends cache lại, còn dạng yield luôn chạy lại mỗi lần được yêu cầu trong request'
 ],
 answer: 0,
-explain: 'FastAPI dùng contextmanager cho dependency yield: phần trước yield chạy trước handler, phần sau yield chạy sau khi response gửi xong, nên đây là chỗ đúng để đóng session DB hoặc HTTP client. Dạng return chỉ chạy một lần trước handler và không có điểm đóng.',
+explain: 'Đáp án A đúng vì FastAPI dựng dependency yield như context manager: phần trước yield chạy trước handler, phần sau yield chạy sau khi response đã gửi, nên đó là chỗ đóng session hoặc client. Dependency return chỉ có phần khởi tạo và không có điểm dọn dẹp. Bẫy B: hai dạng có vòng đời khác nhau, yield chính là dạng có thêm phần dọn. Bẫy C: phần sau yield chạy sau khi response gửi, và đó chính là lý do dùng nó để đóng tài nguyên. Bẫy D: Depends cache theo request ở cả hai dạng, không phải chỉ dạng return. (Đọc sâu cơ chế tại Bài L07)',
 situational: false
 },
 {
@@ -179,7 +179,7 @@ options: [
 'Hai cách đều an toàn vì FastAPI cấp một thread riêng cho từng request nên blocking ở đâu cũng không ảnh hưởng nhau'
 ],
 answer: 2,
-explain: 'FastAPI chỉ đẩy hàm def sang threadpool, hàm def không được await nên code await bên trong sẽ hỏng. Ngược lại async def chạy trực tiếp trên event loop, mọi SDK blocking gọi trong đó sẽ giữ chu trình sự kiện và làm mọi request khác phải chờ.',
+explain: 'Đáp án C đúng vì FastAPI chạy hàm def trong threadpool nên lệnh await bên trong def không hợp lệ, còn async def chạy trực tiếp trên event loop; SDK đồng bộ trong async def sẽ chặn cả tiến trình. Bẫy A: FastAPI không tự chuyển đổi hai kiểu; trộn sai gây lỗi hoặc nghẽn. Bẫy B: nửa đầu đúng, chỉ async def gọi SDK sync mới chặn event loop; nhưng def gọi await là lỗi thật chứ không chỉ cảnh báo. Bẫy D: không có thread riêng cho từng request; các request dùng chung threadpool có giới hạn nên blocking vẫn ảnh hưởng nhau. (Đọc sâu cơ chế tại Bài L07)',
 situational: false
 },
 {
@@ -192,7 +192,7 @@ options: [
 'Cache toàn bộ endpoint bằng Redis ở lần gọi đầu để các lần sau không phải chạy lại chuỗi truy vấn giống nhau'
 ],
 answer: 1,
-explain: 'Truy vấn mồ côi theo quan hệ tạo N+1: một câu cho danh sách rồi mỗi dòng lại một câu cho chi tiết. selectinload hoặc joinedload gộp chúng thành một hoặc hai câu cố định, giảm thời gian từ hàng trăm round-trip xuống vài mili giây.',
+explain: 'Đáp án B đúng vì hàng trăm câu SELECT giống nhau, một câu cho danh sách rồi một câu cho mỗi quan hệ, là dấu hiệu N+1. selectinload hoặc joinedload gộp chúng thành một hoặc hai truy vấn cố định, giảm số round-trip từ hàng trăm xuống vài. Bẫy A: tăng pool và timeout chỉ che chỗ nghẽn, số truy vấn vẫn tăng theo dữ liệu. Bẫy C: index cho mọi cột tốn chi phí ghi và không giảm số câu truy vấn; mỗi câu nhanh hơn một chút vẫn còn hàng trăm câu. Bẫy D: cache chỉ che lỗi ở lần gọi đầu, và chuỗi truy vấn vẫn chậm khi cache trượt. (Đọc sâu cơ chế tại Bài L08)',
 situational: true
 },
 {
@@ -205,7 +205,7 @@ options: [
 'Index chỉ dùng được khi có cột đứng đầu trong điều kiện lọc, nên lọc chỉ theo created_at không dùng được index đó và thường phải quét tuần tự'
 ],
 answer: 3,
-explain: 'Composite index B-tree được sắp theo cột đầu rồi tới cột sau, nên chỉ khi điều kiện có ràng buộc trên cột đứng đầu thì các cột sau mới có giá trị để thu hẹp. Lọc chỉ theo created_at sẽ phải quét tuần tự, cần index riêng trên created_at nếu truy vấn đó là phổ biến.',
+explain: 'Đáp án D đúng vì B-tree composite được sắp theo cột đầu rồi tới cột sau; chỉ khi điều kiện có ràng buộc trên cột đứng đầu, các cột sau mới giúp thu hẹp. Lọc chỉ theo created_at không dùng được index đó và thường phải quét tuần tự; nếu truy vấn này phổ biến thì cần index riêng trên created_at. Bẫy A: không phải cột nào trong index cũng dùng được; thứ tự cột quyết định, không chỉ ảnh hưởng dung lượng. Bẫy B: PostgreSQL không tự sinh index riêng cho từng cột của composite. Bẫy C: index không chỉ phục vụ phép bằng hay IN; điều kiện khoảng vẫn dùng được khi cột đầu đã có ràng buộc. (Đọc sâu cơ chế tại Bài L05)',
 situational: false
 },
 {
@@ -218,7 +218,7 @@ options: [
 'Vì so sánh với NULL luôn trả về FALSE nên dòng bị loại, muốn lấy phải đổi điều kiện thành = ANY hoặc dùng IN'
 ],
 answer: 1,
-explain: 'SQL dùng logic ba giá trị: NULL so sánh với bất kỳ giá trị nào cũng cho UNKNOWN, mà WHERE chỉ giữ dòng có kết quả TRUE nên dòng đó bị loại. Muốn xử lý cả hai trường hợp thì viết discount_rate IS NULL, hoặc COALESCE(discount_rate, 0) = 0.',
+explain: 'Đáp án B đúng vì SQL dùng logic ba giá trị: so sánh với NULL cho UNKNOWN, và WHERE chỉ giữ dòng có TRUE, nên dòng NULL bị loại. Viết discount_rate IS NULL hoặc COALESCE(discount_rate, 0) = 0 là hai cách xử lý đúng. Bẫy A: PostgreSQL không ép NULL thành 0; NULL vẫn là giá trị thiếu. Bẫy C: việc chọn kế hoạch hay có index không quyết định NULL có khớp hay không; ANALYZE không sửa ngữ nghĩa so sánh. Bẫy D: so sánh với NULL cho UNKNOWN chứ không phải FALSE, và đổi sang = ANY hay IN cũng không đưa NULL vào kết quả. (Đọc sâu cơ chế tại Bài L08)',
 situational: false
 },
 {
@@ -231,7 +231,7 @@ options: [
 'Chạy EXPLAIN ANALYZE để so sánh estimate với actual, tìm dòng ước tính sai và kiểm tra chỉ mục hoặc thống kê đang lệch'
 ],
 answer: 3,
-explain: 'EXPLAIN ANALYZE cho biết kế hoạch thực sự kèm thời gian từng node, còn EXPLAIN chỉ là kế hoạch ước tính. Nếu estimate lệch mạnh với actual thì statistics lỗi thời cần ANALYZE, hoặc thiếu index phù hợp như index một phần hay index phủ.',
+explain: 'Đáp án D đúng vì EXPLAIN ANALYZE chạy thật và cho thời gian từng node cùng số dòng actual, còn EXPLAIN chỉ là ước tính. Khi estimate lệch mạnh với actual, statistics lỗi thời cần ANALYZE, hoặc thiếu index phù hợp như index một phần hay index phủ. Bẫy A: viết lại bằng raw SQL trước khi biết nút nghẽn là đoán mò, và raw SQL không tự động nhanh hơn. Bẫy B: tăng work_mem chỉ giúp khi sort hoặc hash tràn ra đĩa, và phải được xác nhận bằng kế hoạch trước. Bẫy C: DISTINCT thêm một bước sort hoặc hash, không sửa lý do truy vấn chậm, và có thể làm chậm hơn. (Đọc sâu cơ chế tại Bài L08)',
 situational: true
 },
 {
@@ -244,7 +244,7 @@ options: [
 'Tắt block public access rồi cấp quyền đọc cho role của mọi tài khoản trong tổ chức để không phải cấu hình từng hàm'
 ],
 answer: 0,
-explain: 'Khi Lambda tự gọi dịch vụ AWS, quyền đến từ execution role gắn vào chính Lambda, không phải principal gọi vào Lambda. Nên chỉ cần policy allow đúng action trên đúng ARN trong role: ARN bucket arn:aws:s3:::tên-bucket cho s3:ListBucket, ARN object arn:aws:s3:::tên-bucket/* cho s3:GetObject, giữ bucket private. Mở public hay dùng user cá nhân là lỗ hổng không cần thiết.',
+explain: 'Đáp án A đúng vì khi Lambda tự gọi dịch vụ AWS, quyền đến từ execution role gắn vào chính Lambda. Chỉ cần policy cho đúng action trên đúng ARN: arn:aws:s3:::tên-bucket cho ListBucket, arn:aws:s3:::tên-bucket/* cho GetObject, và giữ bucket private. Bẫy B: Lambda không mượn credential của người deploy, nên quyền của user cá nhân không tới được Lambda lúc chạy. Bẫy C: public-read mở dữ liệu cho cả Internet, không cần thiết để sửa một lỗi quyền. Bẫy D: tắt block public access và cấp quyền cho mọi tài khoản là lỗ hổng lớn hơn lỗi ban đầu. (Đọc sâu cơ chế tại Bài L02)',
 situational: false
 },
 {
@@ -257,7 +257,7 @@ options: [
 'Payload không được nén nên thời gian truyền tăng khi mạng chậm, xử lý bằng cách bật gzip cho mọi response mà handler trả về'
 ],
 answer: 2,
-explain: 'Traffic thấp đều nên môi trường Lambda bị AWS thu hồi, request sau phải khởi tạo lại runtime và module. Provisioned concurrency giữ sẵn môi trường ấy, tăng memory cũng rút ngắn thời gian init, còn dependency nặng nên nạp ở biến module scope thay vì trong handler. Phương án timeout là bẫy: nâng integration timeout không rút ngắn cold start. Trần mặc định của integration timeout là 29 giây; chỉ Regional và private API nâng được qua Service Quotas, edge-optimized thì không.',
+explain: 'Đáp án C đúng vì traffic thấp và đều nghĩa là môi trường Lambda bị thu hồi, request sau phải khởi tạo lại runtime và module, nên p99 cao vào những lúc vắng. Provisioned concurrency giữ sẵn môi trường, tăng memory rút ngắn thời gian init, còn dependency nặng nên nạp ở module scope thay vì trong handler. Bẫy A: throttling của DynamoDB xuất hiện khi tải tăng, không khớp với triệu chứng xảy ra lúc vắng. Bẫy B: nâng timeout của integration không rút ngắn cold start, và timeout của integration có trần cứng nên không phải lối thoát. Bẫy D: nén payload không liên quan tới thời gian khởi tạo môi trường. (Đọc sâu cơ chế tại Bài L03)',
 situational: false
 },
 {
@@ -270,7 +270,7 @@ options: [
 'Backend đọc file từ S3 rồi ghi xuống máy chủ riêng và serve lại qua chính backend, cách này kiểm soát được mọi request'
 ],
 answer: 2,
-explain: 'Presigned URL gắn chữ ký và điều kiện thời gian vào chính request nên chỉ dùng được trong cửa sổ đó, backend không phải nhận dữ liệu và không cần lưu secret của AWS trong trình duyệt. Sau khi upload cần kiểm tra kích thước, MIME và có virus scan trước khi dùng.',
+explain: 'Đáp án C đúng vì presigned URL gắn chữ ký và thời hạn vào đúng request, nên client upload thẳng lên S3 trong cửa sổ đó; backend không nhận dữ liệu và không cần đưa secret vào trình duyệt. Sau upload vẫn phải kiểm tra kích thước, MIME và quét virus. Bẫy A: đặt access key ở client là lộ thông tin xác thực, và hạn chế quyền không làm nó an toàn. Bẫy B: public-read biến bucket thành công khai, còn tên ngẫu nhiên không phải cơ chế kiểm soát truy cập. Bẫy D: backend đọc rồi serve lại tốn băng thông và tải qua backend, trái với mục tiêu giảm tải. (Đọc sâu cơ chế tại Bài L05)',
 situational: true
 },
 {
@@ -283,7 +283,7 @@ options: [
 'Đọc message theo receive group và chỉ xử lý message có body khác nhau, cách này loại được phần lớn trường hợp trùng'
 ],
 answer: 0,
-explain: 'SQS bảo đảm at-least-once nên message có thể được giao lại khi Lambda chưa xoá message trước khi hết visibility timeout, và việc tăng timeout chỉ giảm tần suất chứ không loại bỏ khả năng trùng. Cách đúng là coi handler là idempotent, lấy khóa duy nhất từ business id hoặc SQS MessageId, vì MessageId ổn định qua các lần giao lại; không lấy từ receipt handle vì nó đổi mỗi lần nhận.',
+explain: 'Đáp án A đúng vì SQS standard là at-least-once: message có thể được giao lại trước khi xóa, nên handler phải idempotent, ví dụ upsert theo khóa nghiệp vụ hoặc theo SQS MessageId. MessageId ổn định qua các lần giao lại, còn receipt handle đổi mỗi lần nhận. Bẫy B: tăng visibility timeout chỉ giảm tần suất giao lại, không loại được khả năng trùng. Bẫy C: deduplication là tính năng của FIFO với cửa sổ giới hạn, không phải cơ chế tự loại mọi trùng lặp của queue standard, và handler vẫn phải đúng. Bẫy D: SQS không có receive group để lọc trùng theo nội dung; so sánh body không xác định được trùng nghiệp vụ. (Đọc sâu cơ chế tại Bài L06)',
 situational: true
 },
 {
@@ -296,7 +296,7 @@ options: [
 'Stage build chứa compiler và dependency build chỉ tồn tại trong image trung gian, image cuối chỉ copy artifact hoặc cài đặt production dependencies'
 ],
 answer: 3,
-explain: 'Trong một stage duy nhất, mọi layer như gcc, header build hay cache pip đều nằm lại trong image dù không dùng lúc chạy. Multi-stage build giữ chúng ở stage builder rồi COPY duy nhất kết quả sang stage cuối nhẹ, nên image nhỏ hơn, pull nhanh hơn và ít bề mặt tấn công hơn.',
+explain: 'Đáp án D đúng vì trong một stage, compiler, header và cache pip đều nằm lại trong layer của image dù lúc chạy không cần. Multi-stage giữ chúng ở stage builder rồi chỉ COPY artifact hoặc cài production dependencies sang stage cuối. Bẫy A: không có cơ chế nén layer theo tỉ lệ cố định; kích thước nằm ở nội dung các layer. Bẫy B: Docker không xóa layer chỉ vì không được tham chiếu; layer vẫn là một phần của image. Bẫy C: multi-stage không tự xóa thư viện hệ thống; lợi ích đến từ việc không copy các thứ dùng để build sang image cuối. (Đọc sâu cơ chế tại Bài L10)',
 situational: false
 },
 {
@@ -309,7 +309,7 @@ options: [
 'Image mới được roll ra trước khi container cũ kịp thoát nên hai phiên bản cùng phục vụ một lúc, cần đặt replicas về 0 rồi mới deploy để tránh chồng chéo phiên bản'
 ],
 answer: 1,
-explain: 'Khi container bị dừng, Docker gửi SIGTERM và chỉ chờ stopGracePeriod rồi mới SIGKILL. Nếu process chưa cài handler để dừng nhận request, đóng connection và flush buffer, nó chết ngay lập tức nên request dở dang thành 502; exec form trong Compose tránh việc shell ăn mất tín hiệu.',
+explain: 'Đáp án B đúng vì khi dừng container, Docker gửi SIGTERM rồi chờ stopGracePeriod trước khi SIGKILL. Nếu process không bắt tín hiệu để ngừng nhận request, đóng connection và flush, các request đang bay sẽ bị cắt thành 502. Exec form tránh việc shell nuốt tín hiệu. Bẫy A: OOM kill để lại dấu hiệu khác như exit code 137 và OOMKilled, không phải mẫu lỗi này. Bẫy C: healthcheck chỉ đánh dấu trạng thái, không cắt các request đang chạy trong lúc tắt. Bẫy D: đưa replicas về 0 rồi deploy gây downtime có chủ đích, không sửa việc process không dừng êm. (Đọc sâu cơ chế tại Bài L03)',
 situational: true
 },
 {
@@ -322,7 +322,7 @@ options: [
 'Kiểm tra exit code và OOMKilled, đo heap qua metrics, tìm rò rỉ hay cache không giới hạn, rồi chỉ tăng --max-old-space-size nếu workload thực sự cần'
 ],
 answer: 3,
-explain: 'Restart lặp là triệu chứng, cần tìm lý do: exit code 137 thường là OOMKilled từ memory limit container chứ không phải heap mặc định của Node. Tăng --max-old-space-size chỉ hợp khi workload hợp lệ vốn lớn, còn rò rỉ hay cache không giới hạn phải sửa ở code.',
+explain: 'Đáp án D đúng vì restart lặp chỉ là triệu chứng. Kiểm tra exit code và OOMKilled cho biết ai đã giết tiến trình; đo heap qua metrics cho thấy xu hướng tăng; sau đó tìm rò rỉ hoặc cache không giới hạn. Chỉ tăng --max-old-space-size khi workload hợp lệ thật sự cần nhiều bộ nhớ hơn. Bẫy A: tăng limit mà không đo chỉ che dấu rò rỉ, bộ nhớ vẫn tiếp tục tăng. Bẫy B: restart always giữ container sống nhưng che lỗi và làm mất bằng chứng. Bẫy C: alpine giảm kích thước image, không sửa heap của ứng dụng đang rò rỉ. (Đọc sâu cơ chế tại Bài L01)',
 situational: true
 },
 {
@@ -335,7 +335,7 @@ options: [
 'Đếm tần suất bằng cách duyệt tuần tự và so sánh với phần tử kề trước, tổng O(n) thời gian và O(1) bộ nhớ phụ'
 ],
 answer: 1,
-explain: 'Hash map cho phép tra cứu trung bình O(1), nên duyệt một lần theo thứ tự và đánh dấu phần tử đã thấy sẽ phát hiện phần tử trùng đầu tiên sau O(n) phép toán. Hai vòng lặp lồng nhau cho O(n^2) nên với 200 nghìn phần tử sẽ chậm hẳn.',
+explain: 'Đáp án B đúng vì hash set có tra cứu trung bình O(1). Duyệt một lần theo thứ tự, mỗi phần tử kiểm tra đã thấy chưa rồi thêm vào set, nên phần tử trùng đầu tiên được phát hiện sau O(n) phép toán. Bẫy A: hai vòng lồng nhau là O(n^2), chậm hẳn với 200 nghìn phần tử, dù ít bộ nhớ hơn. Bẫy C: sắp xếp làm mất thứ tự xuất hiện nên không tìm đúng trùng đầu tiên theo vị trí gốc, và tốn O(n log n) cùng thường cần bản sao. Bẫy D: so sánh với phần tử kề chỉ bắt trùng đứng cạnh nhau, không bắt được trùng nằm xa. (Đọc sâu cơ chế tại Bài L13)',
 situational: false
 },
 {
@@ -348,7 +348,7 @@ options: [
 'Bỏ kiểm tra biên vì backend luôn gửi page hợp lệ, nên logic phía client chỉ làm chậm thêm và dễ sinh lỗi'
 ],
 answer: 2,
-explain: 'Hai bên dễ lệch quy ước: backend thường đánh số trang từ 1 còn slice trong JavaScript chạy từ 0, và chỉ số lớn hơn độ dài trả về mảng rỗng chứ không lỗi. Chuẩn hoá và clamp giá trị ở một chỗ duy nhất rồi trả về mảng rỗng khi ngoài phạm vi để vòng lặp hiển thị dừng.',
+explain: 'Đáp án C đúng vì hai bên dễ lệch quy ước: backend đánh số trang từ 1, còn slice trong JavaScript dùng chỉ số từ 0. Chuẩn hóa về một quy ước và clamp page vào khoảng hợp lệ ở một chỗ, trả về mảng rỗng khi ngoài phạm vi để vòng lặp hiển thị dừng. Bẫy A: giữ 1-based rồi chuyển đổi ở từng màn hình lặp logic và dễ lệch. Bẫy B: tăng size chỉ che lỗi ở trường hợp hiếm, không sửa biên. Bẫy D: bỏ kiểm tra biên khiến trang vượt số trang lặp vô hạn, và không có gì bảo đảm backend luôn gửi giá trị hợp lệ. (Đọc sâu cơ chế tại Bài L13)',
 situational: true
 },
 {
@@ -361,7 +361,7 @@ options: [
 'Chỉ cần unit test vì integration test chạy chậm và hay lỗi do môi trường, chi phí bảo trì cao hơn nhiều so với giá trị nó mang lại'
 ],
 answer: 0,
-explain: 'Unit test chạy nhanh, không chạm I/O và bắt được lỗi logic cục bộ trong khi hàng nghìn test chạy mỗi lần commit. Integration test dựng app thật với TestClient và database test để bắt lỗi wiring, dependency injection và validation mà mock không thể thấy, nên cần cả hai.',
+explain: 'Đáp án A đúng vì unit test chạy nhanh, không chạm I/O, và bắt lỗi logic cục bộ; integration test dựng app thật qua TestClient với database test để bắt lỗi wiring, dependency và validation mà mock không thấy. Ranh giới nằm ở chỗ có I/O thật hay không, và cần cả hai. Bẫy B: staging dùng chung chậm, không cô lập và không tái lập được. Bẫy C: chỉ integration thì phản hồi chậm và khó khoanh vùng lỗi logic. Bẫy D: chỉ unit bỏ sót lỗi ghép nối giữa route, dependency và schema. (Đọc sâu cơ chế tại Bài L11)',
 situational: false
 }
 );
