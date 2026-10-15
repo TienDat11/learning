@@ -72,7 +72,7 @@ const nextLesson = computed(() => {
   return inStage[0] || unfinished[0];
 });
 const askFirst = computed(() => (nextLesson.value && Array.isArray(nextLesson.value.askFirst)
-  ? nextLesson.value.askFirst.slice(0, 3)
+  ? nextLesson.value.askFirst.slice(0, 3).map((q) => String(q).split(' → ')[0])
   : []));
 
 // Lộ trình: toàn bộ bài, đánh dấu đã học và bài kế tiếp.

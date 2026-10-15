@@ -123,7 +123,15 @@ function phaseContent(ph) {
       if (cues.length) {
         html += '<div class="hcp-section"><h4 class="hcp-section-h">Tự hỏi trước khi trả lời</h4><ol class="hcp-checklist">';
         for (let i = 0; i < cues.length; i++) {
-          html += '<li class="hcp-checklist-item"><span class="hcp-prompt">' + esc(cues[i]) + '</span></li>';
+          const cue = cues[i];
+          const sepIdx = cue.indexOf(' → Giải mã: ');
+          if (sepIdx >= 0) {
+            const q = cue.slice(0, sepIdx);
+            const ans = cue.slice(sepIdx + 13);
+            html += '<li class="hcp-checklist-item"><span class="hcp-prompt">' + esc(q) + '</span><div class="hcp-cue-answer">' + renderHtml(esc(ans)) + '</div></li>';
+          } else {
+            html += '<li class="hcp-checklist-item"><span class="hcp-prompt">' + esc(cue) + '</span></li>';
+          }
         }
         html += '</ol></div>';
       }
@@ -162,7 +170,19 @@ function phaseContent(ph) {
     case 4: {
       const html = [];
       if (l.say30) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Trả lời 30 giây</h4><div class="hcp-say-box"><p class="hcp-body hcp-voice">' + esc(l.say30) + '</p></div></div>');
-      if (l.say90) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Trả lời 90 giây</h4><div class="hcp-say-box"><p class="hcp-body hcp-voice">' + esc(l.say90) + '</p></div></div>');
+      if (l.say90) {
+        const parts = l.say90.split('\n\n');
+        let say90Html = '';
+        for (const part of parts) {
+          const m = part.match(/^(\[Nhịp [^\]]+\]:)\s*/);
+          if (m) {
+            say90Html += '<p class="hcp-body hcp-voice"><strong>' + esc(m[1]) + '</strong> ' + renderHtml(esc(part.slice(m[0].length))) + '</p>';
+          } else {
+            say90Html += '<p class="hcp-body hcp-voice">' + renderHtml(esc(part)) + '</p>';
+          }
+        }
+        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Trả lời 90 giây</h4><div class="hcp-say-box">' + say90Html + '</div></div>');
+      }
       if (Array.isArray(l.sayIt) && l.sayIt.length) {
         html.push('<div class="hcp-section"><h4 class="hcp-section-h">Những điểm phải nói được</h4><ol class="hcp-tight">');
         for (const s of l.sayIt) html.push('<li>' + esc(s) + '</li>');
@@ -456,7 +476,10 @@ const refDocs = computed(() => {
 .hcp-phase-body :deep(.hcp-callout-label) { margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: var(--warn, var(--accent-ink)); }
 .hcp-phase-body :deep(.hcp-callout-body) { margin: 0; font-size: 14px; line-height: 1.6; color: var(--fg); }
 .hcp-phase-body :deep(.hcp-say-box) { padding: 14px 16px; border-radius: var(--r); background: var(--sunken); border: 1px solid var(--line); }
-.hcp-phase-body :deep(.hcp-voice) { margin: 0; color: var(--fg); }
+.hcp-phase-body :deep(.hcp-voice) { margin: 0 0 12px 0; color: var(--fg); }
+.hcp-phase-body :deep(.hcp-voice:last-child) { margin-bottom: 0; }
+.hcp-phase-body :deep(.hcp-cue-answer) { margin-top: 6px; padding: 8px 12px; border-radius: var(--r); background: var(--sunken); font-size: 14px; line-height: 1.6; color: var(--fg-2); }
+.hcp-phase-body :deep(.hcp-cue-answer strong) { color: var(--fg); }
 .hcp-phase-body :deep(.hcp-timeline) { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .hcp-phase-body :deep(.hcp-timeline) li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; line-height: 1.55; }
 .hcp-phase-body :deep(.hcp-timeline) li:last-child { border-bottom: none; }
