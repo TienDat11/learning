@@ -2,6 +2,8 @@ var QUESTIONS = QUESTIONS || [];
 QUESTIONS.push(
 {
   "id": "G01",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Bật hai instance EC2 \"cho dự phòng\" cùng một Availability Zone, tin rằng hai máy là đủ chống sự cố. Không ai kiểm tra hai máy \"dự phòng\" này có nằm chung một trung tâm dữ liệu không.</p><p><strong>Vì sao hỏng:</strong> AZ mất điện, cháy hay lỗi mạng thường chỉ ảnh hưởng một AZ. Hai instance cùng AZ tắt cùng lúc, ALB không còn target khỏe nào để chuyển lưu lượng, và web sập 40 phút dù kiến trúc được cho là đã dự phòng.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> AZ là đơn vị cô lập vật lý: điện, mạng, làm mát riêng; sự cố hạ tầng thường nằm trọn trong một AZ trong khi Region mới là đơn vị cô lập địa lý.</p><ul><li><strong>Chung một AZ:</strong> Hai instance cùng AZ chia chung nguồn điện và mạng; sự cố ở tầng đó làm tắt cả hai cùng lúc, và \"hai máy\" thực chất là một điểm hỏng duy nhất.</li><li><strong>Mô hình trách nhiệm chung:</strong> AWS bảo vệ hạ tầng vật lý, còn bạn lo dữ liệu, quyền truy cập và cấu hình; rải target qua nhiều AZ là việc của bạn, không phải của nền tảng.</li></ul>",
   "group": "G",
   "topic": "Region và Availability Zone, mô hình trách nhiệm chung",
   "prio": "P0",
@@ -62,6 +64,8 @@ QUESTIONS.push(
 },
 {
   "id": "G02",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Cấp execution role quyền <code>s3:*</code> cho mọi bucket \"để chạy cho kịp demo\", rồi giữ nguyên khi lên production. Mọi thứ vẫn chạy nên không ai nhận ra phạm vi quyền rộng hơn nhu cầu thật.</p><p><strong>Vì sao hỏng:</strong> Một lỗi ghép prefix khiến job dọn dữ liệu gọi DeleteObject trên sai bucket, và role đủ quyền làm việc đó, nên 3.000 file biến mất mà không có lỗi AccessDenied nào để cảnh báo. Khôi phục mất bốn tiếng.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Execution role là danh tính của chính Lambda, nên mọi lệnh trong hàm đều chạy với quyền đó; rộng bao nhiêu thì một lỗi ghép khóa nhỏ cũng làm được bấy nhiêu.</p><ul><li><strong>Least privilege:</strong> Policy mô tả action cụ thể trên resource cụ thể, và mọi action không có Allow rõ ràng bị từ chối ngầm theo mặc định deny; s3:* trên mọi bucket biến lỗi ghép prefix thành DeleteObject trên bucket báo cáo.</li><li><strong>Role không có secret cố định:</strong> Dịch vụ AssumeRole nhận chứng chỉ STS tạm thời tự hết hạn, nên không có khóa nào để lộ trong repo hay file cấu hình như access key của IAM user.</li></ul>",
   "group": "G",
   "topic": "IAM user, role, policy và execution role",
   "prio": "P0",
@@ -121,6 +125,8 @@ QUESTIONS.push(
 },
 {
   "id": "G03",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Khai báo client database và nạp cấu hình ngay trong thân handler để khỏi nghĩ, vì \"mỗi request cần kết nối mới là an toàn nhất\". Chiến dịch 100 user cùng lúc làm p99 nhảy từ 300 mili giây lên 4,2 giây.</p><p><strong>Vì sao hỏng:</strong> Mã trong handler chạy lại ở mọi lần gọi, còn mã ngoài handler chỉ chạy khi môi trường dựng. Mỗi môi trường lạnh trả giá 2,5 giây khởi tạo cộng, và client cũ chưa kịp được tái dùng. Timeout 900 giây còn giữ các môi trường treo chiếm suất concurrency của cả tài khoản.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Mỗi environment Lambda phải tải mã, khởi runtime và dựng kết nối; mọi thứ đặt trong handler chạy lại ở từng lần gọi, còn mã ngoài handler chỉ chạy một lần khi môi trường dựng.</p><ul><li><strong>Cold start:</strong> Môi trường mới trả giá toàn bộ bước chuẩn bị cộng thêm độ trễ; chiến dịch 100 user cùng lúc làm từng môi trường lạnh mất 2,5 giây khởi tạo nặng.</li><li><strong>Concurrency hạn mức:</strong> Mọi Lambda trong Region chia chung hạn mức của tài khoản; timeout 900 giây khiến môi trường treo vẫn giữ suất concurrency, nên các Lambda khác bị tiết chế.</li></ul>",
   "group": "G",
   "topic": "Lambda handler, event, context, cold start và giới hạn",
   "prio": "P0",
@@ -181,6 +187,8 @@ QUESTIONS.push(
 },
 {
   "id": "G04",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Cấp execution role mạnh rồi tưởng quyền gọi tự có, hoặc ngược lại, cấp đúng principal được gọi mà quên role của chính Lambda. Endpoint mới trả 500 và bạn mở CloudWatch Logs không thấy một dòng thực thi nào.</p><p><strong>Vì sao hỏng:</strong> Quyền gọi nằm trong resource-based policy của Lambda, quyết định \"ai được kích hoạt\" trước khi runtime khởi tạo. Thiếu lớp đó, request bị chặn ngoài cửa, Lambda chưa chạy và không sinh log. Sửa lớp kia không đủ.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Có hai lớp kiểm tra quyền ngược chiều, mỗi lớp trả lời một câu hỏi khác nhau về một chủ thể khác nhau, và thiếu một trong hai thì request không bao giờ tới được code.</p><ul><li><strong>Quyền gọi trước runtime:</strong> Resource-based policy gắn trên Lambda quyết định ai được InvokeFunction; thiếu lớp này, request bị từ chối trước khi môi trường Lambda khởi tạo nên không có log thực thi nào.</li><li><strong>Quyền của Lambda sau runtime:</strong> Execution role quyết định Lambda được làm gì với dịch vụ khác; thiếu lớp này, Lambda chạy được nhưng sập đúng thao tác chạm tài nguyên, log ghi rõ hành động và tài nguyên bị từ chối.</li></ul>",
   "group": "G",
   "topic": "Phân biệt quyền gọi Lambda và quyền của Lambda",
   "prio": "P0",
@@ -241,6 +249,8 @@ QUESTIONS.push(
 },
 {
   "id": "G05",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Thấy trình duyệt báo lỗi CORS thì mở handler ra sửa code, vì cho rằng \"lỗi CORS là lỗi phía application\". Curl vẫn trả 200 nên bạn kiên quyết đi tìm lỗi trong mã.</p><p><strong>Vì sao hỏng:</strong> CORS là chính sách của trình duyệt, request thật không bao giờ rời trình duyệt. Gateway trả 403 cho OPTIONS vì tên miền mới chưa có trong cấu hình CORS của route, nên mọi chỉnh sửa trong Lambda đều vô ích. Sửa đúng phải ở cấu hình CORS của route.</p>",
+  "rootCause": "<p><strong>Cơ chế:</strong> Trình duyệt gửi request OPTIONS tiền điều kiện tới gateway trước request thật; gateway tự trả theo cấu hình CORS của route mà không gọi Lambda, và nếu không khớp thì request thật không bao giờ được gửi.</p><ul><li><strong>Chiều riêng của CORS:</strong> CORS là chính sách của trình duyệt, không phải của máy chủ, nên curl bỏ qua hoàn toàn; server trả 200 vẫn không cứu được trình duyệt thiếu header cho phép.</li><li><strong>Gateway là nơi xử lý preflight:</strong> Sửa CORS ở handler là sửa sai chỗ vì OPTIONS không bao giờ chạm code; cấu hình route thiếu tên miền là root của 403.</li></ul>",
   "group": "G",
   "topic": "API Gateway: route, CORS, xác thực và throttling",
   "prio": "P0",
@@ -300,6 +310,8 @@ QUESTIONS.push(
 },
 {
   "id": "G06",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Tin rằng presigned URL kiểm tra được nội dung, nên chỉ ký URL rồi cho client tải thẳng lên, không thêm bước kiểm tra file sau khi tải. Với file 1,8 GB vào ô ảnh đại diện, pipeline phía sau hỏng mà bucket vẫn nhận.</p><p><strong>Vì sao hỏng:</strong> Presigned URL chỉ ký hành động, đường dẫn và thời hạn; S3 chưa có byte nào lúc ký nên không thể kiểm tra nội dung. Presigned PUT còn không có điều kiện content-length-range, nên không có giới hạn kích thước nào được thực thi ở tầng S3.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Presigned URL ký một hành động cụ thể trên một key cụ thể trong một khoảng thời gian, và không có byte nào được kiểm tra tại thời điểm ký.</p><ul><li><strong>Chữ ký bao hàm header:</strong> ContentType trong Params là một phần của chữ ký, nên client phải gửi đúng header khớp giá trị đã dùng lúc ký; khác giá trị là S3 trả 403 SignatureDoesNotMatch dù URL còn hạn.</li><li><strong>Presigned PUT không có giới hạn kích thước:</strong> Không có điều kiện content-length-range nào được ký vào URL, nên kiểm tra kích thước chỉ làm được sau khi tải lên bằng HEAD hoặc metadata.</li></ul>",
   "group": "G",
   "topic": "S3, private bucket, presigned URL và kiểm tra upload",
   "prio": "P0",
@@ -360,6 +372,8 @@ QUESTIONS.push(
 },
 {
   "id": "G07",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Đặt client kết nối database ở cấp module trong mỗi môi trường Lambda, tin rằng \"module chạy một lần là đủ\". Lưu lượng gấp ba, số môi trường chạy tăng và API bắt đầu trả 500 hàng loạt với <code>too many clients already</code>.</p><p><strong>Vì sao hỏng:</strong> Mỗi execution environment giữ đúng một kết nối riêng, nên tổng kết nối tăng theo độ song song chứ không theo số request. CPU của RDS vẫn thấp, nên việc tăng kích cỡ máy không giải quyết được nút thắt là số kết nối chạm trần max_connections.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Số kết nối Lambda tới RDS tăng theo độ song song chứ không theo số request, vì mỗi execution environment là một container riêng giữ một kết nối riêng.</p><ul><li><strong>Mô hình một environment một kết nối:</strong> Khác với Gunicorn số worker cố định, Lambda thêm environment theo tải, nên lưu lượng gấp ba làm số kết nối tăng cùng đường và chạm max_connections; khi tụt, environment ấm vẫn giữ kết nối thêm một lúc.</li><li><strong>RDS Proxy:</strong> Đặt một lớp pool giữa Lambda và RDS để hàng trăm environment chia sẻ một pool kết nối nhỏ; CPU của instance vẫn thấp vì nút thắt là số kết nối, không phải năng lực tính toán.</li></ul>",
   "group": "G",
   "topic": "RDS PostgreSQL: kết nối, sao lưu và mạng",
   "prio": "P0",
@@ -420,6 +434,8 @@ QUESTIONS.push(
 },
 {
   "id": "G08",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Dịch \"câu hỏi nghiệp vụ\" thành scan toàn bảng rồi lọc theo customer_id ở phía ứng dụng, vì chưa thiết kế key theo truy vấn. Mỗi lần xem lịch sử đơn phải đọc hết hàng trăm nghìn item.</p><p><strong>Vì sao hỏng:</strong> Chi phí đọc tính trên toàn bộ dữ liệu đã quét, không phải số dòng trả về. Scan còn chiếm read capacity của cả bảng nên Query đúng thiết kế cũng chậm theo. Trong đường người dùng, đây là dấu hiệu key chưa được thiết kế theo truy vấn.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> DynamoDB là bộ key-value phân tán, chi phí đọc tính trên dữ liệu đã quét, và không có index thứ cấp mặc định cứu Scan.</p><ul><li><strong>Scan toàn bảng:</strong> Scan phải duyệt mọi phân vùng rồi mới lọc; chi phí và read capacity tính trên lượng dữ liệu đã đọc, không phải kết quả sau lọc, nên Scan kèm bộ lọc vẫn tốn như Scan thường.</li><li><strong>Query theo key:</strong> Query đi thẳng vào phân vùng đích theo partition key và đọc dải sort key cần thiết, chi phí tỉ lệ với số item trả về; thiết kế key vì vậy phải bắt đầu từ danh sách truy vấn thật.</li></ul>",
   "group": "G",
   "topic": "DynamoDB key, access pattern, Query và Scan",
   "prio": "P0",
@@ -480,6 +496,8 @@ QUESTIONS.push(
 },
 {
   "id": "G09",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Đọc tồn kho, trừ trong bộ nhớ, rồi ghi đè bản mới lên DynamoDB bằng update_item không kèm điều kiện, vì \"kiểm tra ở code là đủ\". Đợt flash sale bán được 63 chiếc trên kho chỉ còn 40.</p><p><strong>Vì sao hỏng:</strong> Đọc rồi ghi là hai lời gọi riêng, giữa chúng luôn có khe cho request khác thay đổi item. Hai Lambda cùng đọc số tồn cũ, cùng ghi, và bản ghi sau xóa mất bản trước mà không có lỗi nào. Chỉ tầng lưu trữ với ConditionExpression mới nguyên tử trước hai writer đồng thời.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Đọc rồi ghi là hai lời gọi riêng biệt, và chỉ tầng lưu trữ mới nguyên tử trước hai writer đồng thời — DynamoDB xử lý tuần tự nên kiểm tra và ghi gộp trong một lệnh là chốt an toàn.</p><ul><li><strong>Khe hở giữa đọc và ghi:</strong> Hai Lambda cùng đọc version cũ, cùng tính số tồn mới, cùng ghi; bản ghi sau xóa mất bản trước mà không có lỗi nào, vì cả hai câu lệnh đều hợp lệ với dữ liệu chúng đã thấy.</li><li><strong>Conditional write:</strong> ConditionExpression được đánh giá nguyên tử trên đúng phiên bản item tại thời điểm ghi; writer tới trước ghi và nâng version, writer sau nhận ConditionalCheckFailedException và phải đọc lại.</li></ul>",
   "group": "G",
   "topic": "DynamoDB conditional write và optimistic concurrency",
   "prio": "P0",
@@ -540,6 +558,8 @@ QUESTIONS.push(
 },
 {
   "id": "G10",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Đặt visibility timeout theo \"trung bình thì đủ\" mà không xem phân vị cao của thời gian xử lý. Worker xử lý đơn hàng chết giữa chừng vì hết bộ nhớ, và client bị gửi hai email xác nhận cùng một đơn.</p><p><strong>Vì sao hỏng:</strong> Message hết hạn ẩn khi worker đầu vẫn đang chạy, hiện lại và bị worker khác nhận tiếp. SQS chỉ đảm bảo at-least-once, nên trùng là thiết kế chứ không phải ngoại lệ, và không có gì để tự động phòng trừ nếu handler không viết chịu được chạy hai lần.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> SQS thiết kế để không bao giờ mất message khi worker chết, và cơ chế chính là message hiện lại khi hết thời gian ẩn; hệ quả là đảm bảo giao ít nhất một lần chứ không phải đúng một lần.</p><ul><li><strong>Hết hạn ẩn:</strong> Worker xử lý quá lâu mà chưa xóa, hết visibility timeout thì message hiện lại cho worker khác; hai worker cùng xử lý một đơn, cùng ghi kết quả, mỗi bên xóa message của mình.</li><li><strong>DLQ:</strong> Message thất bại quá ngưỡng nhận chuyển sang hàng đợi phụ để cách ly khỏi dòng chính; không có DLQ thì message độc quay vòng vô hạn và làm tắc dòng.</li></ul>",
   "group": "G",
   "topic": "SQS visibility timeout, giao trùng và DLQ",
   "prio": "P0",
@@ -600,6 +620,8 @@ QUESTIONS.push(
 },
 {
   "id": "G18",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Tin alarm chi phí realtime trên dashboard để phát hiện bất thường, và gắn tag thủ công cho tài nguyên \"khi nào nhớ tới\". Hóa đơn tăng gấp ba sau ba tuần mà không có cảnh báo nào trước đó.</p><p><strong>Vì sao hỏng:</strong> Dữ liệu chi phí tổng hợp định kỳ, luôn trễ so với hành vi thật. Alarm chi phí có thể báo khi hóa đơn đã cập nhật, hoặc báo sai khi dữ liệu chưa đầy đủ. Tag không bật ở mức account thì không hiện trong Cost Explorer, và retry không giới hạn sinh triệu lần gọi mà metric hành vi mới bắt được.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Chi phí AWS là kết quả tổng hợp mẫu đo nhân đơn giá, luôn trễ so với hành vi thật; dữ liệu chi phí tổng hợp định kỳ nên alarm realtime trên chính số tiền không đáng tin.</p><ul><li><strong>Chi phí lag:</strong> Cost Explorer và hóa đơn tổng hợp theo chu kỳ, alarm chi phí có thể báo quá muộn hoặc sai khi dữ liệu chưa đầy đủ; đặt alarm trên metric hành vi realtime như số request, số GB, số dòng log.</li><li><strong>Tag là cơ chế gộp:</strong> Cost allocation tag chỉ hiện trong Cost Explorer khi được bật ở mức account; không bật thì tag ghi trên tài nguyên nhưng không dùng được để phân nhóm chi phí.</li></ul>",
   "group": "G",
   "topic": "Chi phí AWS: hóa đơn, tag, budget và cảnh báo bất thường",
   "prio": "P0",
@@ -666,6 +688,8 @@ QUESTIONS.push(
 },
 {
   "id": "G11",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Tin rằng nền tảng tự \"lo việc thử lại\", nên handler trừ tiền trước rồi mới ghi nhận, không có mã giao dịch nào. Bảng đối soát dư 1.847 dòng trùng trong hai tuần mà log toàn 200.</p><p><strong>Vì sao hỏng:</strong> Với invocation bất đồng bộ, nền tảng giữ event và tự chạy lại cùng event khi lần đầu lỗi hay timeout. Mọi lần chạy đều nhận cùng input, nên lần hai trừ tiếp mà không biết lần đầu đã trừ rồi, vì không có mốc \"đã xử lý\" nào trong kho bền vững.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Với invocation bất đồng bộ, nền tảng giữ event và tự chạy lại cùng event khi lần đầu lỗi hay timeout; mọi lần chạy nhận cùng input nên không có mốc nào tự động phân biệt \"đã xử lý\" với \"chưa xử lý\".</p><ul><li><strong>At-least-once:</strong> Lần chạy thứ hai không được coi là lỗi; nếu lần đầu đã ghi xong rồi mới lỗi ở bước sau, lần hai ghi lần nữa và trả 200 hợp lệ.</li><li><strong>Trạng thái trong bộ nhớ:</strong> Biến cấp module sống qua các lần gọi ấm trong cùng environment, nhưng Lambda chạy nhiều environment song song và môi trường thu hồi bất kỳ lúc nào, nên khóa trùng trong RAM không phải bảo đảm.</li></ul>",
   "group": "G",
   "topic": "Lambda retry và idempotency",
   "prio": "P1",
@@ -728,6 +752,8 @@ QUESTIONS.push(
 },
 {
   "id": "G12",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Thấy Lambda trong VPC không ra được internet, liền mở security group outbound 0.0.0.0/0 rộng hơn, hoặc chuyển Lambda sang subnet public \"cho tiện\". Mọi lần gọi vẫn timeout sau 30 giây.</p><p><strong>Vì sao hỏng:</strong> Security group là tường lửa theo cổng và IP, không tạo đường đi; đường đi do bảng route quyết định. Subnet private không có route ra internet, nên gói tin treo cho tới hết timeout chứ không bị từ chối ngay. Sửa đúng là NAT gateway kèm route trỏ sang.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Security group và bảng route là hai lớp khác nhau: tường lửa quyết định được vào, bảng route quyết định đi đâu; mở outbound bao nhiêu cũng không tạo ra đường đi nếu subnet không có route ra internet.</p><ul><li><strong>Treo chứ không phải từ chối:</strong> Subnet private không có route ra Internet, gói tin đi ra không có đường về, kết nối không bao giờ hoàn tất, request chờ tới hết timeout; khác với thiếu endpoint được báo ngay.</li><li><strong>NAT gateway:</strong> Route mặc định của subnet private trỏ NAT gateway trong subnet public, lưu lượng ra ngoài với địa chỉ công cộng của NAT; đây là đường sửa, không phải mở rộng security group hay chuyển sang public.</li></ul>",
   "group": "G",
   "topic": "VPC, subnet, security group, public và private subnet",
   "prio": "P1",
@@ -789,6 +815,8 @@ QUESTIONS.push(
 },
 {
   "id": "G13",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Chỉ đặt alarm trên CPU và bộ nhớ, rồi tin là \"dashboard xanh thì hệ thống khỏe\". Khách báo web chậm 40 phút trong khi CPU chỉ 8% và không có dòng ERROR nào.</p><p><strong>Vì sao hỏng:</strong> CPU thấp kèm độ trễ cao là dấu hiệu đang chờ một phụ thuộc trả chậm, không phải tài nguyên của chính service. Không có metric nào đo độ trễ của lời gọi phụ thuộc đó, và log của hai service không ghép được vì thiếu correlation ID, nên mất 40 phút mới tìm ra.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Tài nguyên của chính service không phải nguyên nhân khi CPU thấp mà độ trễ cao; service đang chờ một phụ thuộc, và chỉ có metric độ trễ của phụ thuộc mới đo được điều đó.</p><ul><li><strong>CPU thấp không có nghĩa khỏe:</strong> Độ trễ cao kèm CPU thấp là chữ ký của việc chờ database, API bên thứ ba hay hàng đợi; chỉ có metric CPU và bộ nhớ thì hệ thống mù trước loại sự cố phổ biến nhất.</li><li><strong>Correlation ID:</strong> Log của các service là rời rạc, không ghép được nếu thiếu định danh chung; một mã duy nhất sinh ở điểm vào và truyền qua mọi tầng biến hành trình thành một chuỗi có thể truy vết.</li></ul>",
   "group": "G",
   "topic": "CloudWatch logs, metrics, alarms và correlation ID",
   "prio": "P1",
@@ -850,6 +878,8 @@ QUESTIONS.push(
 },
 {
   "id": "G14",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Đặt mật khẩu database trong biến môi trường của hàm, vì \"đổi mật khẩu thì sửa env rồi deploy lại là xong\". Mỗi lần xoay mật khẩu tốn 20 phút deploy, và bản mật khẩu cũ vẫn nằm trong lịch sử phiên bản của hàm.</p><p><strong>Vì sao hỏng:</strong> Biến môi trường bị đóng băng vào cấu hình tại thời điểm deploy, không có cơ chế xoay vòng. Kết nối hiện có vẫn dùng bản cũ, nên lúc bản cũ hết hạn mà bản mới chưa deploy xong thì đứt một khoảng thời gian không kết nối được database.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Biến môi trường bị đóng băng vào cấu hình tại thời điểm deploy, nên mọi thay đổi giá trị đòi deploy lại; kho secret chuyên dụng mới là nơi giá trị có vòng đời và được xoay vòng.</p><ul><li><strong>Không có xoay vòng:</strong> Khi cần đổi mật khẩu, đội phải sửa cấu hình hàm và triển khai lại; kết nối hiện có vẫn dùng bản cũ, nên không có cửa sổ đồng chạy thì bản cũ hết hạn là đứt một khoảng thời gian.</li><li><strong>Truy vấn ở biên:</strong> Đọc secret ở mọi request làm mỗi lần gọi thêm một lời mạng và chi phí API; cách đúng là cache ở pha khởi tạo kèm thời hạn ngắn và xử lý hết hạn bằng đọc lại một lần.</li></ul>",
   "group": "G",
   "topic": "Secrets Manager và Parameter Store",
   "prio": "P1",
@@ -911,6 +941,8 @@ QUESTIONS.push(
 },
 {
   "id": "G15",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Mỗi lần đổi nội dung là xóa toàn bộ cache CDN, vì tưởng \"thay file trên S3 thì CDN tự nhận bản mới\". Hóa đơn tăng vì số lần invalidation vượt mức miễn phí, và tỉ lệ cache hit tụt mạnh mỗi lần xóa.</p><p><strong>Vì sao hỏng:</strong> Cache khóa theo đường dẫn, không theo nội dung. Đổi nội dung mà giữ nguyên tên thì điểm biên vẫn trả bản cũ cho tới khi hết TTL. Cách đúng là đặt tên object theo nội dung kèm hash, để lần đổi là đường dẫn mới chưa từng cache.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Cache của CDN khóa theo đường dẫn, không theo nội dung, nên nội dung đổi mà tên giữ nguyên thì điểm biên không tự biết và vẫn trả bản sao cũ cho tới khi hết TTL hoặc được xóa.</p><ul><li><strong>Invalidation:</strong> Lệnh xóa chủ động bản cache, có phí khi vượt ngưỡng miễn phí, và mỗi lần xóa làm tỉ lệ cache hit tụt mạnh vì mọi request sau đó quay về nguồn.</li><li><strong>Tên theo nội dung:</strong> Mỗi deploy sinh đường dẫn mới với hash hoặc số phiên bản; đường dẫn mới chưa từng cache, nội dung mới xuất hiện ngay, loại bỏ hoàn toàn cửa sổ thấy bản cũ.</li></ul>",
   "group": "G",
   "topic": "CloudFront, caching và invalidation",
   "prio": "P1",
@@ -973,6 +1005,8 @@ QUESTIONS.push(
 },
 {
   "id": "G16",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Chọn công nghệ theo mức độ \"hiện đại\" hoặc theo sở thích, rồi nhồi tác vụ dài vào Lambda, vá bằng cách tăng timeout khi chạm trần, thay vì xem hình dạng tải.</p><p><strong>Vì sao hỏng:</strong> Tải đều cao suốt ngày thì container trả tiền cố định rẻ hơn và hết cold start; tải thưa theo đợt thì Lambda chỉ trả tiền khi có việc. Chọn sai chiều nào thì chi phí tăng theo chiều đó, không phải sự khác biệt công nghệ.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Mô hình trả tiền khác nhau: Lambda chỉ tính thời gian chạy thật, container trả tiền theo thời gian giữ tài nguyên, nên chi phí phụ thuộc vào hình dạng tải chứ không vào công nghệ.</p><ul><li><strong>Tải đều cao:</strong> Container chạy liên tục, không có cold start, kết nối database ổn định; chuyển dịch vụ 40 request mỗi giây từ Lambda sang container làm hóa đơn giảm và p99 giảm.</li><li><strong>Tải thưa theo đợt:</strong> Lambda không trả tiền khi không có việc; ép container cho dịch vụ có lúc không request nào trong nhiều giờ làm chi phí tăng gấp ba.</li></ul>",
   "group": "G",
   "topic": "Lambda và container ECS: chọn theo workload",
   "prio": "P1",
@@ -1035,6 +1069,8 @@ QUESTIONS.push(
 },
 {
   "id": "G17",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Quen với việc bấm tay trên console: mở tạm một cổng cho gỡ lỗi rồi không ai ghi lại. Ba tháng sau, kiểm tra bảo mật phát hiện cổng đó vẫn mở, không ai biết ai mở, khi nào, hay có gì phụ thuộc vào nó.</p><p><strong>Vì sao hỏng:</strong> CloudFormation so template mới với template cũ, không so với trạng thái thật trên console. Thay đổi tay không ai biết, tích tụ thành drift, và đến khi cần dựng lại môi trường thì mất ba ngày vì không có mã nào mô tả trạng thái hiện tại.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> CloudFormation so template mới với template cũ chứ không so với trạng thái thật, nên thay đổi tay không ai biết và tích tụ thành drift; không có mã thì không có gì để so.</p><ul><li><strong>Drift:</strong> Sửa tay trên console rồi deploy, lần cập nhật sau hoặc ghi đè mất chỗ sửa tay gây sập, hoặc kẹt vì thực tế không còn như mẫu tưởng; hai nguồn sự thật cùng tồn tại, không ai biết cái nào đúng.</li><li><strong>Rollback có giới hạn:</strong> Hoàn tác được thay đổi đã thực hiện, nhưng không hoàn tác được migration database đã chạy hay bucket đã xóa; thay đổi phá hủy phải tách thành bước riêng có xác nhận và sao lưu trước.</li></ul>",
   "group": "G",
   "topic": "IaC và CloudFormation: giá trị, quy trình, rollback",
   "prio": "P1",

@@ -2,6 +2,8 @@ var QUESTIONS = QUESTIONS || [];
 QUESTIONS.push(
 {
   "id": "F01",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Validate toàn bộ ngay trong backend: kiểm tra price lớn hơn 0, status thuộc tập hợp cho phép rồi mới insert, và bỏ qua tầng ràng buộc database vì đã có layer validate ở service. Trên môi trường dev một người gọi, code chạy sạch sẽ không có lỗi dữ liệu nào.</p><p><strong>Vì sao hỏng:</strong> Với hai request cùng ghi một đơn, hai job thủ công, hoặc một service khác insert thẳng vào bảng, bước validate của bạn bị bỏ qua hoàn toàn. Dòng sai luật vẫn nằm trong database và mọi báo cáo phía trên đều bị nhiễm theo.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Ràng buộc ở tầng database và index là hai thứ độc lập, một cái giữ đúng dữ liệu còn một cái giữ nhanh truy vấn, và thiếu cái thứ hai thì cái thứ nhất thành nút thắt.</p><ul><li><strong>FK không tự có index:</strong> PostgreSQL không tự tạo index cho cột khóa ngoại, nên mỗi lần xóa hay cập nhật dòng cha phải quét toàn bộ bảng con để kiểm tra tham chiếu; với bảng con mười triệu dòng, thao tác treo 40 giây và mọi truy vấn khác chờ theo.</li><li><strong>Validate ứng dụng bỏ lọt:</strong> Ràng buộc database thực thi bên trong database chứ không phải trong logic ứng dụng, nên race condition, job thủ công hay service khác cùng ghi đều bỏ qua bước validate ở backend; chỉ tầng database chặn được mọi con đường ghi.</li></ul>",
   "group": "F",
   "topic": "Ràng buộc PRIMARY KEY, FOREIGN KEY, UNIQUE, NOT NULL, CHECK",
   "prio": "P0",
@@ -61,6 +63,8 @@ QUESTIONS.push(
 },
 {
   "id": "F02",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Để điều kiện đơn hàng trong <code>WHERE</code> sau <code>JOIN</code>, vì nghĩ WHERE lọc là lọc, không cần phân biệt vị trí điều kiện. Báo cáo đúng trên dữ liệu thử nên bạn tin rằng câu truy vấn đã ổn và không kiểm thêm đường biên.</p><p><strong>Vì sao hỏng:</strong> Trên dữ liệu thật, những dòng không khớp nhận NULL ở bảng phải, mà so NULL với điều kiện cho UNKNOWN. WHERE chỉ giữ TRUE, nên toàn bộ dòng mà bạn muốn giữ biến mất im lặng và không có lỗi nào được ghi.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Thứ tự thực thi của truy vấn khác thứ tự bạn viết, và mỗi mệnh đề chỉ thấy một loại dữ liệu; đặt điều kiện sai mệnh đề là thay đổi ý nghĩa của phép ghép.</p><ul><li><strong>ON và WHERE:</strong> ON quyết định cách ghép, WHERE lọc sau khi ghép; với LEFT JOIN, dòng không khớp nhận NULL ở mọi cột bảng phải, và điều kiện trên NULL cho UNKNOWN nên WHERE loại chúng, biến LEFT JOIN thành INNER JOIN im lặng.</li><li><strong>HAVING và WHERE:</strong> WHERE chạy trước GROUP BY nên chỉ thấy cột gốc; điều kiện trên COUNT hay SUM chỉ hợp lệ trong HAVING, và đưa COUNT vào WHERE là báo lỗi ngay.</li><li><strong>JOIN một-nhiều:</strong> Gom bảng chi tiết vào trước tổng hợp làm mỗi dòng cha được nhân theo số dòng con, nên SUM cộng lặp cùng giá trị; phải tổng hợp bảng con trong CTE trước rồi mới ghép.</li></ul>",
   "group": "F",
   "topic": "JOIN kết hợp GROUP BY và HAVING lọc nhóm",
   "prio": "P1",
@@ -123,6 +127,8 @@ QUESTIONS.push(
 },
 {
   "id": "F03",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Viết <code>WHERE status <> 'cancelled'</code> và ngầm hiểu rằng \"khác cancelled\" sẽ bao gồm cả những dòng thiếu giá trị, vì trong đầu bạn NULL chỉ là \"trống\". Báo cáo chạy ra con số nhỏ hơn, nhưng SQL không báo lỗi nên bạn không đi kiểm tra lại.</p><p><strong>Vì sao hỏng:</strong> Mọi so sánh bằng hay khác với NULL đều cho UNKNOWN chứ không phải FALSE, và WHERE loại cả FALSE lẫn UNKNOWN. Dòng NULL bị bỏ qua như chưa từng tồn tại, khiến báo cáo thiếu dữ liệu mà không ai nhận ra.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> PostgreSQL dùng logic ba giá trị: TRUE, FALSE và UNKNOWN; mọi so sánh với NULL cho UNKNOWN, và WHERE chỉ giữ dòng cho TRUE nên dòng UNKNOWN bị loại lặng lẽ.</p><ul><li><strong>UNKNOWN lan truyền:</strong> Dấu khác với NULL không cho FALSE mà cho UNKNOWN, nên \"khác một giá trị\" không bao giờ tự động bao gồm dòng thiếu giá trị; muốn giữ dòng NULL phải viết rõ IS NULL hoặc dùng IS DISTINCT FROM.</li><li><strong>NOT IN:</strong> Với danh sách có NULL, mỗi dòng phải qua AND các điều kiện khác từng giá trị; chỉ cần một NULL là toàn bộ biểu thức thành UNKNOWN với mọi dòng, nên kết quả rỗng hoàn toàn.</li></ul>",
   "group": "F",
   "topic": "NULL và logic ba giá trị trong so sánh",
   "prio": "P0",
@@ -182,6 +188,8 @@ QUESTIONS.push(
 },
 {
   "id": "F04",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Tạo index composite theo thứ tự cột mà bạn quen nghĩ: cột thời gian trước, cột trạng thái sau, rồi đo p99 và thấy vẫn ba giây. Bạn kết luận index không hoạt động hoặc thêm một index đơn lẻ nữa thay vì đổi thứ tự, vì tưởng thứ tự cột không quan trọng.</p><p><strong>Vì sao hỏng:</strong> B-tree composite sắp theo cột đầu tiên như từ điển. Điều kiện chỉ lọc cột thứ hai rải giá trị khắp cây, nên planner phải quét gần hết index và không bao giờ đọc được dải lá hẹp.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> B-tree composite sắp theo cột đầu trước rồi tới cột sau, nên cột đứng trước quyết định dải lá cần đọc và cột đứng sau chỉ có thứ tự trong từng nhóm của cột trước.</p><ul><li><strong>Lọc cột đầu tiên:</strong> Điều kiện bằng trên cột đầu cho một vùng lá liên tục, và LIMIT cắt sớm; nếu ORDER BY khớp chiều sắp xếp của index thì không cần bước Sort riêng.</li><li><strong>Lọc cột sau:</strong> Giá trị ở cột thứ hai rải khắp cây vì cột đầu khác nhau ở mỗi nhóm, nên planner phải quét gần hết index hoặc chọn Seq Scan.</li><li><strong>Tính chọn lọc:</strong> Quyết định dùng index không nằm ở số giá trị phân biệt mà ở tỉ lệ dòng khớp; giá trị chiếm hơn vài phần trăm số dòng thì Seq Scan lại là lựa chọn đúng.</li></ul>",
   "group": "F",
   "topic": "Index B-tree và composite index với thứ tự cột",
   "prio": "P0",
@@ -241,6 +249,8 @@ QUESTIONS.push(
 },
 {
   "id": "F05",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Mỗi khi một báo cáo chậm, thêm ngay một index mới cho đúng truy vấn đó, không xem lại bảng thống kê index đang được dùng. Sau hai năm, bảng events có mười bốn index, tốc độ ghi tụt từ tám nghìn xuống một nghìn một trăm dòng mỗi giây.</p><p><strong>Vì sao hỏng:</strong> Mỗi index là cây B-tree riêng phải cập nhật đồng bộ trong cùng transaction với bảng, nên chi phí ghi và dung lượng nhân theo số index. Ít ai đo chi phí ghi sau khi thêm index, nên nợ kỹ thuật tích tụ âm thầm.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Mỗi index là cây B-tree riêng phải được cập nhật đồng bộ trong transaction ghi, nên chi phí ghi và dung lượng tăng tuyến tính theo số index trên bảng.</p><ul><li><strong>Chi phí ghi:</strong> INSERT phải chèn khóa vào đúng vị trí ở từng index, có thể tách trang khi trang đầy; UPDATE trên cột nằm trong index phải xoá rồi chèn lại như chèn mới.</li><li><strong>Dung lượng và RAM:</strong> Index giữ bản sao khóa kèm trỏ, không dùng chung heap, nên hàng chục index trên bảng lớn cộng dồn lên vài chục phần trăm dung lượng, làm VACUUM và sao lưu chậm hơn.</li><li><strong>Chỉ mục không ai dùng:</strong> Index có idx_scan bằng 0 trong nhiều tuần vẫn tồn tại, chỉ tốn dung lượng và làm chậm ghi mà không phục vụ truy vấn nào.</li></ul>",
   "group": "F",
   "topic": "Chi phí ghi và lưu trữ khi lạm dụng index",
   "prio": "P1",
@@ -303,6 +313,8 @@ QUESTIONS.push(
 },
 {
   "id": "F06",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Chạy <code>EXPLAIN</code> thường, thấy kế hoạch dùng index và chi phí ước tính thấp, rồi kết luận truy vấn đã tối ưu để đi tìm lỗi ở tầng ứng dụng. Bạn tin con số <code>rows</code> in ra là số dòng thật.</p><p><strong>Vì sao hỏng:</strong> EXPLAIN không thực thi, chỉ ước tính dựa trên thống kê. Node đó ước tính 1.200 dòng nhưng trả về 900.000 dòng, và thời gian thật nằm ở bước sắp xếp mà con số tĩnh không bao giờ cho thấy.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Kế hoạch truy vấn được chọn dựa trên thống kê, nên khoảng cách giữa ước tính và thực tế chính là điểm chẩn đoán; tin con số tĩnh là cách đọc sai.</p><ul><li><strong>Thống kê cũ:</strong> Bộ ước lượng dựa trên thống kê phân bố giá trị; dữ liệu đổi nhiều mà thống kê chưa cập nhật thì con số dòng lệch hàng chục lần, chạy ANALYZE bảng rồi đọc lại.</li><li><strong>Tương quan cột:</strong> Bộ ước lượng giả định điều kiện độc lập; hai cột tương quan mạnh như thành phố và mã bưu chính bị nhân tỉ lệ, ra con số nhỏ hơn thực tế rất nhiều.</li><li><strong>ANALYZE có tác dụng phụ:</strong> EXPLAIN ANALYZE thật sự thực thi truy vấn, nên với lệnh ghi phải bọc transaction rồi rollback; đọc actual rows ở từng node mới là sự thật, không phải chi phí tĩnh.</li></ul>",
   "group": "F",
   "topic": "Đọc EXPLAIN và phân biệt estimate với actual",
   "prio": "P1",
@@ -364,6 +376,8 @@ QUESTIONS.push(
 },
 {
   "id": "F07",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Giữ mức READ COMMITTED mặc định, tin rằng ACID đồng nghĩa với \"mọi thứ đúng\", rồi để hai giao dịch cùng đọc số dư và cùng trừ tiền. Mỗi bước đơn lẻ đều hợp lệ nên không ai nghi ngờ.</p><p><strong>Vì sao hỏng:</strong> READ COMMITTED chỉ hứa mỗi câu lệnh thấy dữ liệu đã commit, không hứa hai lần đọc trong cùng transaction thấy cùng một thế giới. Hai bên đọc cùng snapshot, cùng thấy đủ tiền, cùng ghi và kết quả âm mà không có lỗi nào được ném ra.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Mỗi mức isolation là một lời hứa khác nhau về việc hai giao dịch đồng thời thấy gì, và đọc rồi ghi luôn có khe hở nếu không có khóa hay điều kiện ở tầng lưu trữ.</p><ul><li><strong>READ COMMITTED:</strong> Mỗi câu lệnh trong transaction nhìn thấy một snapshot mới nhất đã commit, nên cùng một transaction có thể thấy hai giá trị khác nhau ở hai lần đọc, tức non-repeatable read là hành vi chuẩn chứ không phải lỗi.</li><li><strong>SERIALIZABLE:</strong> PostgreSQL triển khai bằng snapshot kèm kiểm tra xung đột, không phải khóa toàn bảng; giao dịch bị từ chối với mã 40001 rồi ứng dụng phải retry toàn bộ, và tỉ lệ retry tăng theo độ tranh chấp.</li></ul>",
   "group": "F",
   "topic": "ACID và các mức isolation trong PostgreSQL",
   "prio": "P2",
@@ -426,6 +440,8 @@ QUESTIONS.push(
 },
 {
   "id": "F08",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Chỉ bắt lỗi <code>deadlock detected</code> rồi retry vô hạn, không sửa thứ tự khóa, vì nghĩ deadlock là lỗi ngẫu nhiên của database. Mỗi lần tải tăng, sự cố lại dày lên nhưng bạn chỉ thêm nhiều vòng retry hơn.</p><p><strong>Vì sao hỏng:</strong> Root là hai transaction xin cùng tập khóa theo thứ tự ngược nhau. Retry không phá được vòng chờ khép kín, chỉ nhân thêm lần treo. Không có ORDER BY cố định thì deadlock vẫn tái diễn.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> UPDATE và FOR UPDATE giữ khóa dòng tới lúc commit, nên hai transaction xin cùng tập khóa theo thứ tự ngược nhau tạo vòng chờ khép kín; bộ phát hiện deadlock chỉ phá được vòng, không phòng được.</p><ul><li><strong>Vòng chờ chéo:</strong> A khóa dòng 1 rồi xin dòng 2, B khóa dòng 2 rồi xin dòng 1; không ai hủy nên không ai tiến, và database abort một bên để phá vòng.</li><li><strong>ORDER BY cố định:</strong> Mọi đường code chạm cùng tập dòng cùng khóa theo một thứ tự duy nhất thì vòng chờ không thể hình thành; thứ tự ngược nhau là root, không phải triệu chứng.</li></ul>",
   "group": "F",
   "topic": "Khóa dòng và deadlock giữa hai transaction",
   "prio": "P0",
@@ -486,6 +502,8 @@ QUESTIONS.push(
 },
 {
   "id": "F09",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Viết endpoint kiểm tra bằng SELECT xem email đã tồn tại chưa, thấy trống rồi mới INSERT, và coi đó là an toàn vì \"đã kiểm tra rồi\". Với một request đơn lẻ, code chạy đúng và không có lỗi nào.</p><p><strong>Vì sao hỏng:</strong> Giữa SELECT và INSERT luôn có khe hở. Hai request cùng email chạy đồng thời đều thấy trống, đều chèn thành công, và giờ có hai tài khoản trùng mà log không ghi lại bất kỳ lỗi nào.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Kiểm tra rồi ghi là hai câu lệnh rời với một khe hở ở giữa, và chỉ ràng buộc duy nhất ở tầng database mới thực sự nguyên tử trước hai request đồng thời.</p><ul><li><strong>Khe hở giữa hai lệnh:</strong> Ở READ COMMITTED mỗi câu lệnh thấy snapshot riêng, nên hai request cùng email đều thấy trống rồi cùng chèn thành công; SELECT rồi INSERT không bao giờ là một đơn vị.</li><li><strong>Khoá ứng dụng:</strong> Khoá trong bộ nhớ của một tiến trình không nhìn thấy khoá của tiến trình khác; nhiều worker hay nhiều máy vẫn chèn trùng, nên khóa phân tán thêm phụ thuộc và điểm hỏng mới.</li></ul>",
   "group": "F",
   "topic": "Race check-then-insert và upsert an toàn",
   "prio": "P1",
@@ -549,6 +567,8 @@ QUESTIONS.push(
 },
 {
   "id": "F10",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Viết code đọc giá trị hiện tại, cộng một, rồi ghi lại toàn bộ, vì tưởng \"mình đã đọc số mới nhất\". Với một request mỗi lần, con số luôn đúng và không có gì để cảnh báo.</p><p><strong>Vì sao hỏng:</strong> Giữa bước đọc và bước ghi, request khác đã thay đổi dòng. Bạn ghi đè bằng giá trị tính từ phiên bản cũ, nên thay đổi của người đi trước biến mất im lặng. Với 300 lượt mỗi giây, cuối ngày thiếu khoảng 18 phần trăm mà không có lỗi nào trong log.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Đọc rồi ghi là hai bước, và giữa chúng luôn có cửa sổ để thay đổi của người khác ghi đè lên bản tính từ giá trị cũ, trừ khi phép toán chạy bên trong database trên dòng mới nhất.</p><ul><li><strong>Ghi đè phiên bản cũ:</strong> Cả hai transaction đọc cùng giá trị, cả hai tính ra cùng giá trị mới, lần ghi sau ghi đè lần trước; không có lỗi nào được ném ra vì cả hai câu lệnh đều hợp lệ.</li><li><strong>Điều kiện trong WHERE:</strong> Đặt điều kiện nghiệp vụ vào WHERE của UPDATE thì database đánh giá trên phiên bản mới nhất của dòng ngay tại thời điểm ghi; 0 rows là tín hiệu có người đổi trước, không phải ghi đè.</li></ul>",
   "group": "F",
   "topic": "Lost update và optimistic so với pessimistic locking",
   "prio": "P1",
@@ -611,6 +631,8 @@ QUESTIONS.push(
 },
 {
   "id": "F11",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Batch đọc toàn bộ số dư lúc bắt đầu, xử lý mười hai nghìn giao dịch, kiểm tra đủ tiền trong ứng dụng, rồi mới ghi hàng loạt ở cuối. Bạn tin rằng \"đã kiểm tra rồi\" nên không cần điều kiện trong SQL.</p><p><strong>Vì sao hỏng:</strong> Kiểm tra dùng giá trị đọc từ đầu batch, không phải giá trị hiện tại. Hai trăm giao dịch khác đổi số dư giữa chừng bị ghi đè, và 340 bản ghi thành số dư âm dù batch chạy \"thành công\" về mặt kỹ thuật.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> Batch đọc một snapshot lúc bắt đầu rồi mới ghi, nên mọi thay đổi xảy ra giữa chừng bị ghi đè im lặng; kiểm tra trong ứng dụng chỉ đủ để đọc, thiếu để chặn ghi sai.</p><ul><li><strong>Snapshot lỗi thời:</strong> Kiểm tra số dư dùng giá trị đọc từ đầu batch, không phải giá trị hiện tại; càng xử lý lâu thì snapshot càng xa dữ liệu thật và xác suất ghi đè càng cao.</li><li><strong>Khoá toàn bộ batch:</strong> FOR UPDATE 12.000 dòng biến batch thành một transaction khổng lồ, mọi thay đổi trực tuyến khác chờ commit cuối cùng, dễ hết timeout kết nối và sinh deadlock.</li><li><strong>Điều kiện trong WHERE:</strong> UPDATE với điều kiện nghiệp vụ kiểm tra và ghi nguyên tử trên giá trị hiện tại, nên số dư không bao giờ xuống âm qua đường đó.</li></ul>",
   "group": "F",
   "topic": "Batch cập nhật số dư và lost update quy mô lớn",
   "prio": "P1",
@@ -673,6 +695,8 @@ QUESTIONS.push(
 },
 {
   "id": "F12",
+  "naive": "<p><strong>Cách sai thường gặp:</strong> Giữ <code>OFFSET</code> vì đơn giản, rồi khi trang sâu chậm bạn đi thêm index cho đủ, thay vì đổi cách phân trang. Đồng thời gọi thêm một truy vấn cho mỗi dòng để lấy tên khách, và không đo số query mỗi request.</p><p><strong>Vì sao hỏng:</strong> OFFSET bắt database đọc rồi bỏ qua mọi dòng trước đó, chi phí tăng tuyến tính theo độ sâu trang, nên trang 400 mất 8 giây cho đúng 20 dòng. Mỗi dòng cần tên khách lại sinh thêm 20 truy vấn phụ, làm độ trễ vừa tăng theo độ sâu vừa nhân theo số dòng.</p>",
+  "rootCause": "<p><strong>Nguyên nhân gốc:</strong> OFFSET trả giá theo số dòng bị bỏ vì database phải sinh ra rồi bỏ đi mọi dòng trước đó, còn N cộng 1 phát sinh từ vòng lặp gọi truy vấn theo từng dòng.</p><ul><li><strong>Chi phí theo độ sâu:</strong> Database không nhảy thẳng tới dòng thứ 40.001 trong kết quả đã sắp xếp, nên phải đọc và đếm qua toàn bộ phần bị bỏ; chi phí tăng tuyến tính theo độ sâu trang chứ không theo số dòng trả về.</li><li><strong>Trùng và thiếu dòng:</strong> Khi có dòng mới chen vào giữa các lần lật trang, cùng một dòng có thể hiện ở hai trang hoặc biến mất khỏi cả hai; mốc kép created_at kèm id tạo thứ tự toàn phần nên trang sau ổn định.</li><li><strong>N cộng 1:</strong> Vòng lặp gọi một query cho mỗi dòng làm độ trễ nhân theo số dòng; JOIN hoặc một truy vấn WHERE IN theo danh sách khóa giữ số query mỗi request ở hằng số.</li></ul>",
   "group": "F",
   "topic": "Phân trang offset so với keyset và xử lý N cộng 1",
   "prio": "P2",
