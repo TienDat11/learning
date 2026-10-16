@@ -1208,6 +1208,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         when(builds, '<div class="lesson-builds"><span class="lb-h">Dùng lại</span>' + builds + '</div>') +
         when(qbtns, '<p class="lesson-qids">Luyện ngay: ' + qbtns + '</p>') +
         when(refs, '<span class="status-note">Nguồn: ' + esc(refs) + '</span>') +
+        provBox(l.provenance) +
         when(navBtns, '<div class="lesson-nav">' + navBtns + '</div>') +
         '</div>';
 
@@ -1218,6 +1219,12 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         predictHtml + covered + body + '</div>';
     };
 
+    var provBox = function (list) {
+      list = arr(list).filter(function (s) { return str(s).trim().length > 0; });
+      if (!list.length) return '';
+      return '<div class="provenance"><div class="pb-h">Ghi chú nguồn</div><ul class="tight">' +
+        list.map(function (s) { return '<li>' + esc(str(s)) + '</li>'; }).join('') + '</ul></div>';
+    };
     var lessonCard = function (l, chainMap) {
       l = obj(l) || {};
       var id = str(l.id);

@@ -231,14 +231,14 @@ GROUP_INTROS.H = {
 };
 
 GROUP_INTROS.I = {
-  title: 'System design và kiến trúc ứng dụng web',
-  why: 'Nhóm này luyện khả năng dựng hệ thống từ yêu cầu nghiệp vụ: chọn loại cơ sở dữ liệu, đặt hàng ranh giới dịch vụ, xử lý nhất quán và chịu tải. Đây là phần quyết định điểm số ở vòng cuối, và là nơi bạn gắn kiến thức AWS vào một bài toán thật thay vì trả lời rời rạc.',
+  title: 'DSA và thiết kế phần mềm',
+  why: 'Nhóm này kiểm tra nền tảng kỹ thuật chung: chọn cấu trúc dữ liệu đúng cho từng tác vụ API, đọc độ phức tạp, xử lý chuỗi và phân trang đúng biên, rồi nâng lên tầng thiết kế với SOLID, DRY, tách trách nhiệm và tiêm phụ thuộc. Đây là phần chứng minh bạn viết code có chủ đích chứ không chỉ chạy được.',
   p0: [
-    'yêu cầu phi chức năng và ước lượng tải',
-    'monolith hay service, ranh giới dịch vụ',
-    'thiết kế schema và truy vấn chính',
-    'idempotency và xử lý lỗi phân tán',
-    'làm sao mở rộng và cân bằng tải'
+    'chọn cấu trúc dữ liệu theo tác vụ (array, hash map, set, stack, queue)',
+    'độ phức tạp thời gian và bộ nhớ, khử trùng lặp và đếm tần suất',
+    'logic phân trang và kiểm tra biên với slice',
+    'SOLID, DRY, KISS và rủi ro over-engineering',
+    'separation of concerns và dependency injection'
   ]
 };
 

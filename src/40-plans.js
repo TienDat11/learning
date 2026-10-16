@@ -8,12 +8,12 @@ STUDY_PLANS.six_hours = {
     {
       what: 'AWS P0: Lambda, API Gateway, S3, IAM, RDS/DynamoDB — phần bạn yếu nhất, phải trả lời được không cần mở tài liệu.',
       how: '80 phút, 10 câu P0 nhóm G, mỗi câu 6 phút: đọc q, trả lời miệng 60 giây không nhìn `oral`, mới mở `oral` để đối chiếu, câu nào sai hoặc nói ấp úng thì đánh đỏ. 10 phút cuối: chép lại 3 dòng cốt lõi (cold start + memory, presigned URL hết hạn, least privilege) vào một mảnh giấy, đó là phần bạn sẽ nói sai nhiều nhất dưới áp lực.',
-      pick: [{ group: 'G', prio: 'P0', limit: 8 }]
+      pick: [{ group: 'G', prio: 'P0', limit: 10 }]
     },
     {
       what: 'Vue P0: reactivity (ref/reactive/computed), props và emits một chiều, v-model, key ổn định trong v-for, cấu trúc SFC.',
       how: '80 phút, 8 câu P0 nhóm C. Với câu `predict` và `debug`, chạy code trong đầu rồi mới xem `expected`; dừng lại 30 giây sau mỗi câu để tự nói tiếp phần "khi nào điều này đổi thì câu trả lời đổi ra sao". 10 phút cuối: vẽ tay một component dùng `ref` + `computed` + `watch` và nói rõ mỗi cái dùng để làm gì.',
-      pick: [{ group: 'C', prio: 'P0', limit: 7 }]
+      pick: [{ group: 'C', prio: 'P0', limit: 8 }]
     },
     {
       what: 'Python P0: data model, closure, GIL và threading, async/await, typing, quy ước exception — nền để mọi câu hỏi kỹ thuật khác đứng vững.',
@@ -43,8 +43,8 @@ STUDY_PLANS.two_days = {
     },
     {
       what: 'Vue toàn diện: reactivity, component, vòng đời, composable, Pinia, router, form và hiệu năng.',
-      how: '100 phút: 6 câu P0 nhóm C trước, 4 câu P1 sau, rồi 2 câu L3 (watch cleanup với race condition, guard frontend không thay phân quyền backend). Không đọc `code` trước khi tự dự đoán kết quả. 10 phút cuối: mở một dự án Vue có sẵn, tự tìm một chỗ đang dùng `watch` sai và giải thích lại lỗi đó bằng lời của bạn.',
-      pick: [{ group: 'C', prio: 'P0', limit: 6 }, { group: 'C', prio: 'P1', limit: 4 }, { group: 'C', level: 'L3', limit: 2 }]
+      how: '100 phút: 6 câu P0 nhóm C trước (trong đó C05 là câu L3 về watch cleanup với race condition), rồi 4 câu P1 (gồm C10 về guard frontend không thay được phân quyền backend). Không đọc `code` trước khi tự dự đoán kết quả. 10 phút cuối: mở một dự án Vue có sẵn, tự tìm một chỗ đang dùng `watch` sai và giải thích lại lỗi đó bằng lời của bạn.',
+      pick: [{ group: 'C', prio: 'P0', limit: 6 }, { group: 'C', prio: 'P1', limit: 4 }]
     },
     {
       what: 'Web và bảo mật: HTTP, cookie, CSP, OWASP API security, rate limit, xác thực.',
@@ -58,12 +58,12 @@ STUDY_PLANS.two_days = {
     },
     {
       what: 'Postgres: index, EXPLAIN, MVCC, transaction, constraint, upsert, pagination.',
-      how: '90 phút: 4 câu P0 nhóm F, 3 câu L3 nhóm F. Với câu L3, bạn phải nói ra điều kiện nào làm câu trả lời đổi — ví dụ isolation level khác nhau thì hiện tượng đọc lặp khác nhau thế nào. 15 phút cuối: mở `sql:pg-explain` và dự đoán trước khi đọc câu trả lời.',
+      how: '90 phút: 4 câu P0 nhóm F, rồi 3 câu L3 nhóm F (F08 nằm ở cả hai nhóm, nên tổng là 6 câu riêng biệt). Với câu L3, bạn phải nói ra điều kiện nào làm câu trả lời đổi — ví dụ isolation level khác nhau thì hiện tượng đọc lặp khác nhau thế nào. 15 phút cuối: mở `sql:pg-explain` và dự đoán trước khi đọc câu trả lời.',
       pick: [{ group: 'F', prio: 'P0', limit: 4 }, { group: 'F', level: 'L3', limit: 3 }]
     },
     {
       what: 'AWS ngày 2 buổi sáng: serverless (Lambda, API Gateway, S3, presigned URL), hạ tầng bền (RDS, DynamoDB, SQS, DLQ, VPC), quan sát và chi phí.',
-      how: '150 phút, chia làm ba vòng 50 phút: vòng 1 lấy 6 câu P0 nhóm G; vòng 2 lấy 3 câu L3 nhóm G cộng 2 câu P0 nhóm H; vòng 3 lấy 3 câu L3 nhóm H. Mỗi câu AWS bắt buộc có một câu hỏi tự vấn: "vận hành cái này ở production, tôi sẽ cấu hình gì và tôi sẽ bị đánh phí ở đâu". Cuối vòng, nói lại SQS visibility timeout và DLQ không đọc code.',
+      how: '150 phút, chia làm ba vòng 50 phút: vòng 1 lấy 6 câu P0 nhóm G; vòng 2 lấy 3 câu L3 nhóm G cộng 2 câu P0 nhóm H; vòng 3 lấy 2 câu L3 nhóm H. Mỗi câu AWS bắt buộc có một câu hỏi tự vấn: "vận hành cái này ở production, tôi sẽ cấu hình gì và tôi sẽ bị đánh phí ở đâu". Cuối vòng, nói lại SQS visibility timeout và DLQ không đọc code.',
       pick: [{ group: 'G', prio: 'P0', limit: 6 }, { group: 'G', level: 'L3', limit: 3 }, { group: 'H', prio: 'P0', limit: 2 }, { group: 'H', level: 'L3', limit: 2 }]
     },
     {
@@ -80,7 +80,7 @@ STUDY_PLANS.three_days = {
     {
       what: 'Python và JS nền: data model, closure, event loop, GIL, async, `this`, CORS, HTTP.',
       how: '60 phút buổi sáng ngày 1: 5 câu P0 nhóm A và 3 câu nhóm B. Quy tắc tối giản: chỉ mở `oral` sau khi đã nói hết 60 giây tự trả lời, nói liền một mạch như trong phỏng vấn thật.',
-      pick: [{ group: 'A', limit: 5 }, { group: 'B', limit: 3 }]
+      pick: [{ group: 'A', prio: 'P0', limit: 5 }, { group: 'B', limit: 3 }]
     },
     {
       what: 'Vue lần 1: những gì bạn dùng hằng ngày — ref, reactive, computed, watch, props/emits, v-model, key.',
@@ -93,9 +93,9 @@ STUDY_PLANS.three_days = {
       pick: [{ group: 'D', limit: 4 }, { group: 'F', prio: 'P0', limit: 4 }, { group: 'E', prio: 'P0', limit: 4 }]
     },
     {
-      what: 'Vue lần 2 đào sâu: watch cleanup với race condition, guard, composable, Pinia, form và accessibility, câu L3.',
-      how: '90 phút buổi chiều ngày 1: 4 câu P1 nhóm C cộng 2 câu L3. Sau mỗi câu, thêm một điều kiện đổi và nói lại câu trả lời: request chậm hơn, người dùng đổi tab, store bị sửa từ nhiều nơi. 15 phút cuối tự viết một composable 20 dòng và giải thích vòng đời dispose của nó.',
-      pick: [{ group: 'C', prio: 'P1', limit: 4 }, { group: 'C', level: 'L3', limit: 2 }]
+      what: 'Vue lần 2 đào sâu: guard, composable, Pinia, form, hiệu năng và accessibility, test component.',
+      how: '90 phút buổi chiều ngày 1: 4 câu P1 nhóm C, trong đó C10 là câu về guard frontend không thay được phân quyền backend. Sau mỗi câu, thêm một điều kiện đổi và nói lại câu trả lời: request chậm hơn, người dùng đổi tab, store bị sửa từ nhiều nơi. 15 phút cuối tự viết một composable 20 dòng và giải thích vòng đời dispose của nó.',
+      pick: [{ group: 'C', prio: 'P1', limit: 4 }]
     },
     {
       what: 'AWS serverless và dữ liệu: Lambda, API Gateway, S3 và presigned URL, RDS, DynamoDB, IAM.',
@@ -108,13 +108,13 @@ STUDY_PLANS.three_days = {
       pick: [{ group: 'H', prio: 'P0', limit: 3 }, { group: 'H', level: 'L3', limit: 3 }, { group: 'I', level: 'L3', limit: 2 }]
     },
     {
-      what: 'Mock toàn bộ: một bộ mock có bấm giờ, không tra cứu, mô phỏng đúng nhịp phỏng vấn.',
-      how: '90 phút sáng ngày 3: chạy một bộ mock trong app, mỗi câu 2 phút, hết giờ thì đánh dấu bỏ và nói tiếp câu sau. Sau mỗi câu chỉ chấm 1 điểm: bạn đã tự nói ra được câu trả lời chưa. Không xem lại `oral` giữa chừng, xem lại sau buổi mock thôi.',
-      pick: [{ group: 'G', limit: 4 }, { group: 'C', limit: 4 }, { group: 'A', limit: 3 }, { group: 'E', limit: 3 }]
+      what: 'Mock toàn bộ và phần kể dự án: một bộ mock có bấm giờ, cộng nhóm J để luyện kể dự án và xử lý tình huống con người.',
+      how: '90 phút sáng ngày 3: chạy một bộ mock trong app, mỗi câu 2 phút, hết giờ thì đánh dấu bỏ và nói tiếp câu sau. Sau mỗi câu chỉ chấm 1 điểm: bạn đã tự nói ra được câu trả lời chưa. 20 phút cuối dành cho nhóm J — kể một dự án theo năm mắt xích và trả lời câu về khoảng trống AWS — vì đây là phần duy nhất ba ngày trước chưa chạm tới. Không xem lại `oral` giữa chừng, xem lại sau buổi mock thôi.',
+      pick: [{ group: 'J', limit: 8 }]
     },
     {
       what: 'Rà yếu và chốt: quay lại đúng những câu đã bỏ trong mock, đào sâu nhóm bạn yếu nhất, tập trả lời theo nguyên nhân gốc.',
-      how: '90 phút cuối ngày 3: 20 phút cho câu đỏ trong mock, 40 phút đào sâu nhóm yếu nhất (thường là G hoặc C, chọn theo danh sách đỏ của chính bạn), 30 phút tổng kết. Cách tổng kết: mỗi nhóm một dòng "tôi tự tin vào X, còn yếu Y", rồi nói thành lời một câu tự giới thiệu 60 giây nối từ kinh nghiệm Django/React sang vị trí AWS/Python/Vue.',
+      how: '90 phút cuối ngày 3: 20 phút quét lại nhóm G và C (mỗi nhóm 3 câu P0) — phần lớn là câu bạn đã gặp ở ngày 1 và 2, nên đây là lượt ôn chứ không phải lượt mới; 40 phút đào sâu các câu L3 còn yếu, gồm 2 câu H và 3 câu L3 bất kỳ trong bank; 30 phút tổng kết. Cách tổng kết: mỗi nhóm một dòng "tôi tự tin vào X, còn yếu Y", rồi nói thành lời một câu tự giới thiệu 60 giây nối từ kinh nghiệm Django/React sang vị trí AWS/Python/Vue.',
       pick: [{ group: 'G', prio: 'P0', limit: 3 }, { group: 'C', prio: 'P0', limit: 3 }, { group: 'H', level: 'L3', limit: 2 }, { level: 'L3', limit: 3 }]
     }
   ]

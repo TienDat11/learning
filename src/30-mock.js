@@ -56,7 +56,7 @@ MOCK_SETS.full_mock = {
   brief: 'Trộn P0 và P1 với các nhóm I và J để bạn quen nhịp trả lời dưới áp lực thời gian, đúng thứ tự và độ khó của một buổi phỏng vấn thực tế.',
   pick: [
     { prio: 'P0', limit: 14 },
-    { prio: 'P1', limit: 8 },
+    { prio: 'P1', limit: 7 },
     { group: 'D', limit: 3 },
     { group: 'I', limit: 3 },
     { group: 'J', limit: 3 }

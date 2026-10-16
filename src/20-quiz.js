@@ -20,7 +20,7 @@ options: [
 'GIL chỉ khoá các phép toán trên object Python thuần nên threading vẫn chạy song song được với mọi thư viện, còn asyncio chỉ là lớp cú pháp thay callback nên chọn cách nào cũng được',
 'GIL được nhả ra khi có I/O nên threading và asyncio tương đương nhau về chi phí, chọn cách nào cũng được miễn driver hỗ trợ async',
 'GIL không tồn tại trong tiến trình có nhiều luồng nên threading luôn nhanh hơn asyncio khi số kết nối chờ tăng lên vài nghìn',
-'GIL khoá bytecode của một tiến trình nên threading chỉ hữu ích khi thư viện C phát thành GIL, còn asyncio phù hợp hơn cho I/O nhiều kết nối chờ'
+"GIL khoá bytecode của một tiến trình nên threading chỉ hữu ích khi thư viện C nhả GIL, còn asyncio phù hợp hơn cho I/O nhiều kết nối chờ"
 ],
 answer: 3,
 explain: 'Đáp án D đúng vì GIL chỉ cho một luồng chạy bytecode Python tại một thời điểm trong mỗi tiến trình, còn các thư viện C như socket hay driver database nhả GIL khi chờ I/O, nên threading vẫn có ích cho I/O. Asyncio phù hợp hơn khi số kết nối chờ lớn, vì một luồng quản lý được hàng nghìn coroutine với chi phí thấp hơn nhiều so với hàng nghìn luồng. Bẫy A: GIL không khóa từng phép toán riêng lẻ, và threading không chạy song song code Python thuần. Bẫy B: nhả GIL khi I/O là đúng, nhưng kết luận chi phí tương đương và cách nào cũng được là sai khi số kết nối tăng. Bẫy C: GIL không biến mất khi có nhiều luồng, nên khẳng định threading luôn nhanh hơn là sai. (Đọc sâu cơ chế tại Bài L07)',
