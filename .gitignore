@@ -37,3 +37,7 @@ edge-profile/
 
 # stray single-lesson dumps from content work
 artifact_*.txt
+
+# content-review working dirs — backups and per-question review dumps, never published
+backup/
+local/

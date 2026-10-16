@@ -45,6 +45,10 @@ No `const QUESTIONS`. No IIFE. No `module.exports`.
 
 Optional keys (được phép, không bắt buộc, không phải "extras"): incident, askFirst, predict, anchor, attacks, tradeoff, alternatives, observe, say30, say90.
 
+**Trạng thái hiện tại:** mười trường trên đã có mặt trên **cả 147 câu hỏi**, và `build.mjs`
+nay bắt buộc chúng — thiếu một trường là build fail. Danh sách "optional" ở trên giữ lại
+như ghi chú lịch sử về hình dạng object; đừng thêm câu mới mà bỏ trống chúng.
+
 ```js
 {
   id: 'A01',
@@ -86,6 +90,7 @@ Optional keys (được phép, không bắt buộc, không phải "extras"): inc
 | `code` | RAW source text or `null`. No HTML escaping, no `&lt;` |
 | `expected` | REQUIRED for `type` `predict`/`debug`, >= 20 chars. PLAIN TEXT |
 | `refs` | only keys from the source list below |
+| `incident`, `askFirst`, `predict`, `anchor`, `naive`, `rootCause`, `tradeoff`, `alternatives`, `observe`, `attacks`, `say30`, `say90` | REQUIRED on **every** question; missing or empty fails the build. `predict` needs both `.q` and `.a`; `attacks`/`askFirst` need at least one entry |
 
 `selfcheck` order:
 1. what you still cannot explain
@@ -176,6 +181,13 @@ ddos:       ddos-aws-shield-tlr, ddos-azure-trends, ddos-cf-3-8tbps, ddos-cf-q4-
 
 ## Definition of done
 
+0. **Chain fields are mandatory.** Every question carries `incident`, `askFirst`,
+   `predict`, `anchor`, `naive`, `rootCause`, `tradeoff`, `alternatives`, `observe`,
+   `attacks`, `say30`, `say90`. Every lesson carries `incident`, `naive`, `rootCause`,
+   `concept`, `mechanism`, `failureModes`, `tradeoff`, `alternatives`, `observe`,
+   `naiveCode`, `naiveOut`, `say30`, `say90`, `anchor`, `askFirst`, `predict`, `attacks`,
+   `timeline`. `build.mjs` fails the build when any of them is missing or empty, so a
+   half-filled object never reaches the reader.
 1. Your assigned file exists at the exact path.
 2. `node -e "new Function(require('fs').readFileSync('<file>','utf8'))"` exits 0.
    Run this on YOUR file only. Do not run the project build or another agent's file.

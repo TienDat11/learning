@@ -6,6 +6,26 @@ Vòng audit này chạy 8 nhánh kiểm tra độc lập trên `src/` (nguồn c
 
 ---
 
+## 0. Trạng thái thi hành — cập nhật 2026-10-16
+
+Mọi mục P0, P1 và P2 dưới đây đã được sửa và kiểm lại. Thân báo cáo giữ nguyên bản gốc
+để làm hồ sơ; mục này ghi lại cái gì đã đóng và đóng bằng cách nào.
+
+| Nhóm | Kết quả |
+|---|---|
+| P0-1 QZ07, P0-2 B05, P0-3 (82 thẻ thô ở 18 câu) | Đã sửa. `build.mjs` nay có `PLAIN_Q` chặn tái phát: field render qua `esc()` không được chứa tag HTML |
+| P1-1 … P1-12 | Đã sửa, gồm E11 đảo `select_related`/`prefetch_related`, D03 Content-Type, G02 thiếu `code`, G11/QZ22 định danh SQS, `GROUP_INTROS['I']`, `full_mock` 30 câu, `cs-05` heartbeat |
+| P2 số liệu | Đã sửa: A16 (asyncio `min(32, cpu+4)` vs anyio 40), A12, QZ02 "nhả GIL", G13 hai dòng, G14 thiếu `user`/`dbname`, G18 (`BytesOutToDestination`, hạn mức 50 tag), G06 (S3 key phẳng, không path traversal), H02, H10, H13 (immutability re-push + bộ quyền ECR), D09, D10, `cs-02` ETag/checksum, `cs-05` typo, `cs-10` ba tầng rollback |
+| P2 sơ đồ | `flow-sqs-visibility` (DeleteMessage nằm trong hạn, thêm marker `--err`), `flow-cors-preflight` (thêm cột server ở lượt request thật + ghi chú browser chặn), `flow-cicd-pipeline` (thêm node Migration) |
+| P2 thứ tự | G18 đã dời về đúng vị trí theo id trong `src/16-q-g.js`; `build.mjs` nay báo lỗi khi pick xin nhiều hơn số câu khớp |
+| Cổng mới trong `build.mjs` | `PLAIN_Q` (plain text), `TRUNC_Q` (không kết bằng dấu ba chấm), pick vượt pool, label mock nêu số câu phải khớp số resolve |
+| Bị cụt khi viết | H03, H05, H07 kết bằng `…` giữa câu — đã viết nốt |
+| Lượt 2 (2026-10-16) | `G12` thêm attack phân biệt SG-drop vs thiếu route bằng VPC flow log; `G18` nêu hạn mức 50 tag cụ thể; `J01`–`J06` và `E12` được bổ sung `attacks`; `I01` có `anchor`; prose của `six_hours`/`two_days`/`three_days` khớp lại với `pick` |
+| Cổng mới (lượt 2) | `CHAIN_Q` + `LESSON_CHAIN` trong `build.mjs`: thiếu bất kỳ field nào của chuỗi là build đỏ. Prose plan nêu số câu phải khớp một `pick` spec resolve ra đúng số đó |
+| Đáp án quiz (đo lại 2026-10-16) | Không còn tái hiện được mức 36%. Đo trực tiếp trên DOM của artifact sau khi render: 28 item, đáp án đúng rơi vào ô hiển thị 1/2/3/4 lần lượt **7/4/10/7** — ô đầu đúng 7/28 = **25%**, đúng mức đoán mò. Con số 36% trong §7 đo trên trạng thái dữ liệu trước khi `QZ07` được sửa (hoán vị option 0 và option 3). Với 28 mẫu thì 25% chưa chứng minh LCG đã tốt, nhưng cũng không còn cơ sở để gọi là lỗi đang mở |
+
+---
+
 ## 1. Tóm tắt điều hành
 
 | Mức | Số lượng | Bản chất |

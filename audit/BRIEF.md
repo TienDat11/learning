@@ -8,9 +8,9 @@ agent working on this artifact.
 ## 1. What the artifact is
 
 A single-file, fully offline interview-preparation web app for a **Fullstack Engineer
-(AWS, Python, VueJS)** interview. It contains 131 interview questions, 22 lessons,
-28 quiz items, 6 mock-interview sets, 3 study plans, a case study, SVG flow diagrams,
-flashcards, localStorage progress, filters, dark mode and search.
+(AWS, Python, VueJS)** interview. It contains 147 interview questions, 23 lessons
+(L01–L23), 28 quiz items, 6 mock-interview sets, 3 study plans, a 24-section case study,
+13 SVG flow diagrams, flashcards, localStorage progress, filters, dark mode and search.
 
 The product infrastructure is **already good**. Do not propose rewriting the UI, the
 router, the storage layer, or the data shape. The problem under investigation is
@@ -55,22 +55,24 @@ with stable, small line numbers that the Lead can act on directly. Cite location
 | `src/13-q-d2.js` | questions **D08–D14** — HTTP / Web / API / security |
 | `src/14-q-e.js` | questions **E01–E12** — FastAPI / Django / backend |
 | `src/15-q-f.js` | questions **F01–F12** — PostgreSQL |
-| `src/16-q-g.js` | questions **G01–G17** — AWS |
-| `src/17-q-h.js` | questions **H01–H12** — Docker / Linux / CI-CD |
-| `src/18-q-i.js` | questions **I01–I08** — DSA / system design |
+| `src/16-q-g.js` | questions **G01–G29** — AWS |
+| `src/17-q-h.js` | questions **H01–H13** — Docker / Linux / CI-CD |
+| `src/18-q-i.js` | questions **I01–I08** — DSA / design |
 | `src/19-q-j.js` | questions **J01–J12** — project discussion / communication |
 | `src/20-quiz.js` | QUIZ — 28 multiple-choice items |
+| `src/21-q-depth.js` | DEPTH — overrides `predict`/`tradeoff`/`alternatives`/`observe`/`say30`/`say90` for the 60 P0 questions. **Merged last by id; edits to those six fields in a group file are silently overwritten.** |
 | `src/30-mock.js` | MOCK_SETS — 6 mock interview sets |
 | `src/35-lessons-aws.js` | LESSONS (AWS-related) |
 | `src/36-lessons-py.js` | LESSONS (Python-related) |
 | `src/37-lessons-vue.js` | LESSONS (Vue-related) |
-| `src/38-lessons-link.js` | LESSONS (linking/design) + the 22-lesson backbone |
+| `src/38-lessons-link.js` | LESSONS (linking/design) + the 23-lesson backbone |
+| `src/39-lessons-security.js` | LESSONS (security) |
 | `src/40-plans.js` | STUDY_PLANS |
-| `src/50-case.js` | CASE_STUDY (14 sections) |
-| `src/60-flows.js` | FLOW_SVGS (12 inline SVG diagrams) |
+| `src/50-case.js` | CASE_STUDY (24 sections) |
+| `src/60-flows.js` | FLOW_SVGS (13 inline SVG diagrams) |
 | `src/90-app.js` | app engine: render, filter, flashcard, quiz, mock, localStorage |
 
-There are **22 lessons, ids L01–L22**. Find them with `grep -n "id: 'L" src/*.js`.
+There are **23 lessons, ids L01–L23**. Find them with `grep -n '"id": "L' src/*.js`.
 
 ---
 
@@ -98,6 +100,19 @@ There are **22 lessons, ids L01–L22**. Find them with `grep -n "id: 'L" src/*.
 
 `deep` may only use `<p> <ul> <ol> <li> <strong> <em> <code> <br> <table> <thead>
 <tbody> <tr> <th> <td>`. `code` is **raw text**, never HTML-escaped.
+
+### Which fields may contain HTML — get this wrong and you invent defects
+
+| Render path | Fields | Rule |
+|---|---|---|
+| `sanitize()` — HTML allowed | `deep`, `incident`, `naive`, `rootCause`, `tradeoff`, `alternatives`, `observe`, `predict.q`, `predict.a`, `attacks[].q`, `attacks[].a`, `naiveOut` | Tags are fine and expected |
+| `esc()` — plain text | `q`, `topic`, `oral`, `expected`, `say30`, `say90`, `anchor`, `naiveCode`, `askFirst[]`, `followups[].q`, `followups[].a`, `pitfalls[]`, `selfcheck[]` | A tag here is shown to the reader verbatim — a real defect |
+| `<pre><code>` — raw text | `code` | Never HTML-escaped; markup inside is legitimate code, not a defect |
+
+`build.mjs` enforces the middle row via `PLAIN_Q`. Two caveats that have produced
+false positives before: `code` may contain `<div>` inside a template string, and
+placeholder text like `<key>` in `expected` renders correctly because `esc()` escapes
+the angle brackets.
 
 ---
 
@@ -175,16 +190,27 @@ evidence. If REFUTED, say what the file actually says and why it is correct.
 
 ## 7. Known-remaining gaps (verify the numbers, then deepen)
 
-Measured on the current bundle — re-measure before quoting:
+Re-measure before quoting. As of the 2026-10-16 pass the pedagogical chain is complete on
+every question and every lesson, and `build.mjs` now enforces it — so this table is a
+record of coverage, not a list of holes to fill:
 
 | Gap | Measured |
 |---|---|
-| `attacks` field | present on **0 / 131** questions (present on 22/22 lessons) |
-| `say30` / `say90` | present on **0 / 131** questions |
-| `incident`, `askFirst`, `predict`, `anchor` | present on the **60 P0** questions only; **0 of 71** P1/P2 questions |
-| `naive`, `rootCause`, `tradeoff`, `alternatives`, `observe` | **0 / 131** questions |
-| Quiz | 28 items, every `answer` index is `0` in the data; the app shuffles display order via `orderFor()` — verify whether the correct option is still identifiable (e.g. by length) after rendering |
-| `selfcheck[0]` | 91/131 are confidence self-reports of the form "Tôi vẫn chưa giải thích được…" |
+| `attacks` field | present on **147 / 147** questions and 23 / 23 lessons |
+| `incident` | present on **147 / 147** questions |
+| `anchor` | present on **147 / 147** questions |
+| `say30` / `say90` | present on **147 / 147** questions |
+| `naive`, `rootCause`, `tradeoff`, `alternatives`, `observe` | present on **147 / 147** questions |
+| Quiz | 28 items. `answer` is an index into `options`; `90-app.js` shuffles display order. Measured on the rendered artifact 2026-10-16: the correct option lands in display slot 1/2/3/4 **7/4/10/7** times, i.e. first-slot 25% — the guess baseline. Re-measure on the DOM, not by re-running `orderFor()` in isolation |
+| Lesson depth | All 23 lessons carry the full chain (incident → naive → rootCause → concept → mechanism → failureModes → tradeoff → alternatives → observe → attacks → anchor → say30/say90). L07/L08/L13–L16 were the last to be filled; no `RESEARCH_GAP` markers remain |
+| Lesson `buildsOn` | 22 / 23 — L01 is the root and correctly has none. `build.mjs` requires every other lesson to name only *earlier* lessons |
+
+Build gates that now exist in `build.mjs` (do not report these as defects):
+`PLAIN_Q` fields must be plain text, `TRUNC_Q` fields may not end in an ellipsis,
+`resolvePick` specs may not ask for more questions than match, a mock `label`
+that names a question count must match what the set resolves to, and a study-plan
+`how` that quotes a count ("10 câu P0 nhóm G") must match a pick spec that
+resolves to exactly that many.
 
 ---
 
