@@ -299,9 +299,12 @@ html[data-theme="dark"] .today-box.is-now .today-box-n { color: #0B0B0D; }
   display: inline-block; font-size: 12px; font-weight: 600; color: var(--fg-3);
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-tag); padding: 1px 8px; margin-right: 8px;
 }
-.pb, .asks, .predict, .attacks, .spoken {
+.pb, .asks, .predict, .attacks, .spoken, .provenance {
   margin: 14px 0; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
 }
+.provenance { background: var(--sunken); }
+.provenance > .pb-h { color: var(--fg-3); }
+.provenance li { font-size: 13.5px; color: var(--fg-2); }
 .pb-h { font-size: 13px; font-weight: 600; color: var(--fg-3); margin: 0 0 8px; }
 .pb .deep > p:last-child, .pb .deep > ul:last-child, .pb .deep > ol:last-child { margin-bottom: 0; }
 .pb-incident > .pb-h { color: var(--err); }

@@ -116,6 +116,21 @@ const { QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, CASE_STUDY, SOURCES, GROUP_INTR
 const errors = [];
 const err = (m) => { if (errors.length < 300) errors.push(m); };
 const t = (s) => typeof s === 'string' && s.trim().length > 0;
+const arr = (v) => (Array.isArray(v) ? v : []);
+// Fields rendered through esc() (plain text, no HTML) vs fields rendered through
+// sanitize() (HTML allowed). Getting this wrong shows raw tags to the reader.
+// `code` is excluded: it is a code sample, so markup inside it is legitimate content.
+// `naiveOut` is excluded: the contract types it as HTML and it goes through sanitize().
+const PLAIN_Q = ['oral', 'expected', 'say30', 'say90', 'anchor', 'q', 'topic', 'naiveCode'];
+const TRUNC_Q = ['expected', 'oral', 'deep', 'naive', 'rootCause', 'anchor', 'q'];
+// Twelve beats every question must carry; see CONTRACT.md "pedagogical chain".
+const CHAIN_Q = ['incident', 'askFirst', 'predict', 'anchor', 'naive', 'rootCause',
+  'tradeoff', 'alternatives', 'observe', 'attacks', 'say30', 'say90'];
+// The same beats for lessons, minus askFirst/attacks which use the lesson shape.
+const LESSON_CHAIN = ['incident', 'naive', 'rootCause', 'concept', 'mechanism',
+  'failureModes', 'tradeoff', 'alternatives', 'observe'];
+const TAG_RE = /<\/?(code|em|strong|b|i|br|p|ul|ol|li|span|div|pre|small)\b[^>]*>/i;
+const ENTITY_RE = /&(lt|gt|amp|quot|#39);/i;
 const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 const PRIOS = ['P0', 'P1', 'P2'];
 const LEVELS = ['L1', 'L2', 'L3'];
@@ -186,6 +201,33 @@ for (const q of QUESTIONS || []) {
       if (!t(a && a.a) || a.a.length < 40) err(`${q.id}: attacks[${i}].a missing or <40 chars`);
     });
   }
+  // Fields the app renders through esc() must be plain text: an HTML tag here is
+  // shown to the reader verbatim. Mirrors the lesson rules for bridge/spine.
+  for (const f of PLAIN_Q) {
+    if (q[f] == null) continue;
+    if (TAG_RE.test(q[f])) err(`${q.id}: ${f} must be plain text (found HTML tag)`);
+    if (ENTITY_RE.test(q[f])) err(`${q.id}: ${f} must be plain text, not HTML-escaped (found entity)`);
+  }
+  // The pedagogical chain is the product: every question carries all twelve beats.
+  // A new question that skips one renders as a visibly thinner card than its peers.
+  for (const f of CHAIN_Q) {
+    const v = q[f];
+    if (v == null) { err(`${q.id}: ${f} missing (chain field required on every question)`); continue; }
+    const filled = Array.isArray(v) ? v.length > 0
+      : (typeof v === 'object' ? t(v.q) && t(v.a) : t(v));
+    if (!filled) err(`${q.id}: ${f} present but empty`);
+  }
+  for (const [i, s] of arr(q.askFirst).entries()) {
+    if (TAG_RE.test(s)) err(`${q.id}: askFirst[${i}] must be plain text (found HTML tag)`);
+  }
+  for (const [i, o] of arr(q.followups).entries()) {
+    if (o && o.a && TAG_RE.test(o.a)) err(`${q.id}: followups[${i}].a must be plain text (found HTML tag)`);
+  }
+  // A field ending in a bare ellipsis is a truncated write, not a style choice.
+  for (const f of TRUNC_Q) {
+    if (q[f] == null) continue;
+    if (/(\.\.\.|…)\s*$/.test(String(q[f]).trim())) err(`${q.id}: ${f} looks truncated (ends with an ellipsis)`);
+  }
 }
 
 for (const q of QUIZ || []) {
@@ -217,6 +259,9 @@ const resolveSet = (label, spec) => {
       (!s.level || q.level === s.level) && (!s.type || q.type === s.type));
     if (!matched.length) err(`${label}: pick matched 0 questions ${JSON.stringify(s)}`);
     const lim = typeof s.limit === 'number' ? s.limit : matched.length;
+    if (typeof s.limit === 'number' && s.limit > matched.length) {
+      err(`${label}: pick ${JSON.stringify(s)} asks for ${s.limit} but only ${matched.length} match`);
+    }
     for (const q of matched.slice(0, lim)) if (!out.includes(q.id)) out.push(q.id);
   }
   return out;
@@ -228,6 +273,11 @@ else for (const [k, set] of Object.entries(MOCK_SETS)) {
   if (!t(set.brief)) err(`mock set ${k}: missing brief`);
   const ids = resolveSet(`mock set ${k}`, set.pick);
   if (ids.length < 5) err(`mock set ${k}: resolves to ${ids.length} questions, need >=5`);
+  // A label that names a count is a promise to the reader; check it holds.
+  const m = /(\d+)\s*câu/.exec(String(set.label));
+  if (m && Number(m[1]) !== ids.length) {
+    err(`mock set ${k}: label says ${m[1]} câu but resolves to ${ids.length}`);
+  }
 }
 
 if (!STUDY_PLANS || typeof STUDY_PLANS !== 'object') err('STUDY_PLANS missing');
@@ -239,6 +289,23 @@ else for (const [k, plan] of Object.entries(STUDY_PLANS)) {
     if (!t(b.how)) err(`plan ${k} block ${i}: missing 'how'`);
     const ids = resolveSet(`plan ${k} block ${i}`, b.pick);
     if (!ids.length) err(`plan ${k} block ${i}: resolves to no questions`);
+    // 'how' quotes counts ("10 câu P0 nhóm G"). Each quote is a promise about what
+    // the reader will actually be given, so it must match its pick spec's size.
+    const counts = [...String(b.how).matchAll(/(\d+) câu (L3|P0|P1)? ?nhóm ([A-J])/g)]
+      .map((m) => ({ want: Number(m[1]), kind: m[2] || null, grp: m[3], raw: m[0] }));
+    for (const c of counts) {
+      const ok = (b.pick || []).some((s) => {
+        if (!s || s.group !== c.grp) return false;
+        const kind = s.level === 'L3' ? 'L3' : (s.prio || null);
+        if (c.kind && kind !== c.kind) return false;
+        const n = (QUESTIONS || []).filter((q) =>
+          (!s.group || q.group === s.group) && (!s.prio || q.prio === s.prio) &&
+          (!s.level || q.level === s.level) && (!s.type || q.type === s.type)).length;
+        const lim = typeof s.limit === 'number' ? Math.min(s.limit, n) : n;
+        return lim === c.want;
+      });
+      if (!ok) err(`plan ${k} block ${i}: 'how' says "${c.raw}" but no pick spec resolves to ${c.want}`);
+    }
   });
 }
 
@@ -313,15 +380,15 @@ for (const [li, l] of LESSON_ARR.entries()) {
   if (!Array.isArray(l.refs) || !l.refs.length) err(`${l.id}: needs refs`);
   else for (const r of l.refs) if (!srcKeys.has(r)) err(`${l.id}: unknown source ref "${r}"`);
   if (l.flow && !FLOW_SVGS.some((f) => f.id === l.flow)) err(`${l.id}: unknown flow "${l.flow}"`);
-  // Optional pedagogical chain. Every field is optional, but any field present
-  // must be well-formed: a half-filled chain teaches worse than no chain.
-  for (const f of ['incident', 'naive', 'rootCause', 'concept', 'mechanism', 'failureModes', 'tradeoff', 'alternatives', 'observe']) {
-    if (l[f] == null) continue;
+  // The lesson chain is the product: every lesson carries all beats. A lesson that
+  // skips one renders as a visibly thinner card than its neighbours.
+  for (const f of LESSON_CHAIN) {
+    if (l[f] == null) { err(`${l.id}: ${f} missing (lesson chain field required)`); continue; }
     if (!t(l[f]) || l[f].length < 60) err(`${l.id}: ${f} present but <60 chars`);
     else if (/<script|<img|onerror=|onload=/i.test(l[f])) err(`${l.id}: ${f} contains script/img/event-handler`);
   }
   for (const f of ['naiveCode', 'naiveOut', 'say30', 'say90', 'anchor']) {
-    if (l[f] == null) continue;
+    if (l[f] == null) { err(`${l.id}: ${f} missing (lesson chain field required)`); continue; }
     if (!t(l[f]) || l[f].length < 10) err(`${l.id}: ${f} present but <10 chars`);
   }
   if (l.askFirst != null) {
