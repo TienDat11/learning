@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 640" width="1440" height="640" role="img" aria-label="Ba cách đọc cùng một bảng: seq scan, index scan, bitmap heap scan">
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9CA3AF"/>
+    </marker>
+  </defs>
+  <g font-family="Inter, system-ui, -apple-system, Segoe UI, sans-serif">
+    <text x="40" y="58" font-size="18" fill="#6B7280">Cùng một truy vấn: status = 'pending' · 380.000 / 4.200.000 dòng (9%)</text>
+
+    <!-- row 1: seq scan -->
+    <rect x="40" y="96" width="300" height="104" rx="8" fill="#FFFFFF" stroke="#D8DAE0"/>
+    <text x="64" y="134" font-size="20" font-weight="700" fill="#14161A">Seq scan</text>
+    <text x="64" y="162" font-size="15" fill="#6B7280">đọc mọi trang theo thứ tự</text>
+    <text x="64" y="184" font-size="15" fill="#6B7280">34.000 trang · I/O tuần tự</text>
+
+    <rect x="372" y="96" width="600" height="104" rx="8" fill="#FFFFFF" stroke="#D8DAE0"/>
+    <text x="396" y="134" font-size="17" fill="#14161A">Đọc toàn bộ heap, bỏ 91% số dòng đọc được</text>
+    <text x="396" y="162" font-size="15" fill="#6B7280">readahead hoạt động tốt · không nhảy ngẫu nhiên</text>
+    <text x="396" y="184" font-size="15" fill="#6B7280">thắng khi tỉ lệ khớp cao hoặc bảng nhỏ</text>
+
+    <!-- row 2: index scan -->
+    <rect x="40" y="228" width="300" height="104" rx="8" fill="#FFFFFF" stroke="#D8DAE0"/>
+    <text x="64" y="266" font-size="20" font-weight="700" fill="#14161A">Index scan</text>
+    <text x="64" y="294" font-size="15" fill="#6B7280">index → heap, từng dòng</text>
+    <text x="64" y="316" font-size="15" fill="#6B7280">380.000 lần nhảy trang</text>
+
+    <rect x="372" y="228" width="600" height="104" rx="8" fill="#FFFFFF" stroke="#D8DAE0"/>
+    <text x="396" y="266" font-size="17" fill="#14161A">Đọc index rồi ghé heap cho từng TID</text>
+    <text x="396" y="294" font-size="15" fill="#6B7280">chi phí random_page_cost nhân với số lần nhảy</text>
+    <text x="396" y="316" font-size="15" fill="#6B7280">thắng khi khớp rất ít, vài phần nghìn</text>
+
+    <!-- row 3: bitmap (chosen) -->
+    <rect x="40" y="360" width="300" height="104" rx="8" fill="#EEF0FE" stroke="#4F46E5" stroke-width="1.6"/>
+    <text x="64" y="398" font-size="20" font-weight="700" fill="#4F46E5">Bitmap heap scan</text>
+    <text x="64" y="426" font-size="15" fill="#4F46E5">gom TID rồi đọc theo trang</text>
+    <text x="64" y="448" font-size="15" fill="#4F46E5">dung hoà hai cách trên</text>
+
+    <rect x="372" y="360" width="600" height="104" rx="8" fill="#EEF0FE" stroke="#4F46E5" stroke-width="1.6"/>
+    <text x="396" y="398" font-size="17" fill="#4F46E5">Đọc index một lượt, sắp TID, rồi đọc heap theo thứ tự vật lý</text>
+    <text x="396" y="426" font-size="15" fill="#4F46E5">mỗi trang heap chỉ ghé một lần thay vì nhiều lần</text>
+    <text x="396" y="448" font-size="15" fill="#4F46E5">kế hoạch đúng ở tỉ lệ khớp trung bình — và là kế hoạch bị bỏ qua khi ước lượng sai</text>
+
+    <!-- right column: verdict -->
+    <rect x="1012" y="96" width="388" height="368" rx="8" fill="#FFFFFF" stroke="#D8DAE0"/>
+    <text x="1036" y="134" font-size="18" font-weight="700" fill="#14161A">Planner quyết định thế nào</text>
+    <text x="1036" y="170" font-size="15" fill="#6B7280">1. Ước lượng số dòng khớp</text>
+    <text x="1036" y="194" font-size="15" fill="#6B7280">2. Nhân với hằng số chi phí</text>
+    <text x="1036" y="218" font-size="15" fill="#6B7280">3. Chọn cây rẻ nhất</text>
+    <line x1="1036" y1="240" x2="1376" y2="240" stroke="#E5E7EB"/>
+    <text x="1036" y="272" font-size="15" fill="#14161A">Ước lượng 12 dòng → index scan</text>
+    <text x="1036" y="296" font-size="15" fill="#14161A">Ước lượng 380.000 dòng → seq scan</text>
+    <text x="1036" y="320" font-size="15" fill="#14161A">Thực tế 380.000 dòng, ước lượng 12</text>
+    <text x="1036" y="344" font-size="15" fill="#14161A">→ chạy kế hoạch sai cho dữ liệu thật</text>
+    <line x1="1036" y1="366" x2="1376" y2="366" stroke="#E5E7EB"/>
+    <text x="1036" y="398" font-size="15" fill="#6B7280">Sửa: ANALYZE trước, index sau.</text>
+    <text x="1036" y="422" font-size="15" fill="#6B7280">Index không bao giờ sửa được thống kê.</text>
+
+    <line x1="40" y1="512" x2="1400" y2="512" stroke="#E5E7EB"/>
+    <text x="40" y="552" font-size="16" fill="#6B7280">Cùng một index, cùng một truy vấn, ba kế hoạch — chọn cái nào là bài tính chi phí, không phải sự thật hiển nhiên.</text>
+    <text x="40" y="580" font-size="16" fill="#6B7280">Đọc EXPLAIN (ANALYZE, BUFFERS) để thấy actual rows lệch bao xa so với rows ước lượng.</text>
+  </g>
+</svg>

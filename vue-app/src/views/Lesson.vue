@@ -34,7 +34,7 @@ function openPrev() {
   if (pos > 0) emit('open-lesson', lessonsAll.value[pos - 1]);
 }
 
-const D2_SECTION = { L01: 2, L02: 2, L03: 2, L04: 2, L05: 2, L06: 3, L07: 3, L08: 2, L09: 5, L10: 3, L11: 5, L12: 2, L13: 3, L14: 3, L15: 3, L16: 3, L17: 3, L18: 5, L19: 3, L20: 5, L21: 3, L22: 3, L23: 3 };
+const D2_SECTION = { L01: 2, L02: 2, L03: 2, L04: 2, L05: 2, L06: 3, L07: 3, L08: 2, L09: 5, L10: 3, L11: 5, L12: 2, L13: 3, L14: 3, L15: 3, L16: 3, L17: 3, L18: 5, L19: 3, L20: 5, L21: 3, L22: 3, L23: 3, L24: 2, L25: 2 };
 const d2Section = computed(() => D2_SECTION[lessonId.value] || 0);
 const d1Url = computed(() => diagramUrl(lessonId.value, 1));
 const d2Url = computed(() => diagramUrl(lessonId.value, 2));

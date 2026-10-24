@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 640" width="1440" height="640" role="img" aria-label="Ba framework đặt trên hai trục: mô hình I/O và nguồn sự thật của schema">
+  <defs>
+    <marker id="c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9CA3AF"/>
+    </marker>
+  </defs>
+  <g font-family="Inter, system-ui, -apple-system, Segoe UI, sans-serif">
+    <!-- axes -->
+    <line x1="210" y1="560" x2="1400" y2="560" stroke="#D8DAE0" stroke-width="1.5" marker-end="url(#c)"/>
+    <line x1="210" y1="560" x2="210" y2="96" stroke="#D8DAE0" stroke-width="1.5" marker-end="url(#c)"/>
+
+    <text x="218" y="596" font-size="16" fill="#6B7280">WSGI · đồng bộ · một request một luồng</text>
+    <text x="1392" y="596" text-anchor="end" font-size="16" fill="#6B7280">ASGI · bất đồng bộ · chờ không chiếm luồng</text>
+    <text x="196" y="84" text-anchor="end" font-size="15" fill="#6B7280">type hint</text>
+    <text x="196" y="106" text-anchor="end" font-size="15" fill="#6B7280">là nguồn schema</text>
+    <text x="196" y="530" text-anchor="end" font-size="15" fill="#6B7280">framework</text>
+    <text x="196" y="552" text-anchor="end" font-size="15" fill="#6B7280">sở hữu schema</text>
+
+    <!-- Django -->
+    <rect x="248" y="430" width="260" height="104" rx="8" fill="#FFFFFF" stroke="#D8DAE0"/>
+    <text x="272" y="468" font-size="21" font-weight="700" fill="#14161A">Django</text>
+    <text x="272" y="496" font-size="15" fill="#6B7280">model → form, serializer, migration</text>
+    <text x="272" y="518" font-size="15" fill="#6B7280">middleware + ORM đồng bộ</text>
+
+    <!-- Flask -->
+    <rect x="560" y="300" width="260" height="104" rx="8" fill="#FFFFFF" stroke="#D8DAE0"/>
+    <text x="584" y="338" font-size="21" font-weight="700" fill="#14161A">Flask</text>
+    <text x="584" y="366" font-size="15" fill="#6B7280">không quyết định schema</text>
+    <text x="584" y="388" font-size="15" fill="#6B7280">bạn chọn ORM, validate, auth</text>
+
+    <!-- FastAPI -->
+    <rect x="1050" y="180" width="290" height="104" rx="8" fill="#EEF0FE" stroke="#4F46E5" stroke-width="1.6"/>
+    <text x="1074" y="218" font-size="21" font-weight="700" fill="#4F46E5">FastAPI</text>
+    <text x="1074" y="246" font-size="15" fill="#4F46E5">type hint → Pydantic → OpenAPI</text>
+    <text x="1074" y="268" font-size="15" fill="#4F46E5">Starlette + Depends trên ASGI</text>
+
+    <!-- guide lines -->
+    <line x1="378" y1="430" x2="378" y2="574" stroke="#E5E7EB" stroke-dasharray="4 5"/>
+    <line x1="690" y1="404" x2="690" y2="574" stroke="#E5E7EB" stroke-dasharray="4 5"/>
+    <line x1="1195" y1="284" x2="1195" y2="574" stroke="#E5E7EB" stroke-dasharray="4 5"/>
+    <line x1="508" y1="482" x2="1050" y2="482" stroke="#E5E7EB" stroke-dasharray="4 5"/>
+    <line x1="820" y1="352" x2="1050" y2="352" stroke="#E5E7EB" stroke-dasharray="4 5"/>
+
+    <line x1="120" y1="612" x2="1400" y2="612" stroke="#E5E7EB"/>
+  </g>
+</svg>

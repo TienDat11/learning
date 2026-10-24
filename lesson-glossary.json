@@ -563,5 +563,95 @@
         "not": "Ban theo IP nhìn thấy ở tầng ứng dụng, nhưng đó là IP của proxy hoặc CDN."
       }
     ]
+  },
+  {
+    "id": "L24",
+    "rows": [
+      {
+        "term": "planner",
+        "is": "Bộ tối ưu dựa trên chi phí: sinh nhiều kế hoạch khả dĩ, gán chi phí từ thống kê, chọn kế hoạch rẻ nhất.",
+        "not": "Một bộ luật cố định kiểu \"có index thì dùng index\"."
+      },
+      {
+        "term": "selectivity",
+        "is": "Tỉ lệ dòng khớp một điều kiện, do ANALYZE đo và lưu trong pg_statistic.",
+        "not": "Số dòng khớp thật của lần chạy hiện tại."
+      },
+      {
+        "term": "EXPLAIN ANALYZE",
+        "is": "Chạy thật câu lệnh, in kế hoạch kèm actual rows và actual time để so với ước lượng.",
+        "not": "EXPLAIN trần, vốn chỉ in kế hoạch dự kiến và không chạy gì."
+      },
+      {
+        "term": "bitmap heap scan",
+        "is": "Gom TID từ index rồi đọc heap theo thứ tự vật lý, dung hoà giữa index scan và seq scan.",
+        "not": "Index-only scan, vốn không chạm heap khi visibility map cho phép."
+      },
+      {
+        "term": "tiền tố trái nhất",
+        "is": "Index (a, b) phục vụ điều kiện trên a hoặc (a, b); không phục vụ điều kiện chỉ trên b.",
+        "not": "Một tập cột không thứ tự mà planner tự sắp lại khi cần."
+      },
+      {
+        "term": "MVCC",
+        "is": "Cơ chế giữ nhiều phiên bản dòng để người đọc không chặn người ghi và ngược lại.",
+        "not": "Khoá đọc; đọc và ghi vẫn có thể chờ nhau ở mức dòng khi có FOR UPDATE."
+      },
+      {
+        "term": "autovacuum",
+        "is": "Tiến trình dọn dòng chết và cập nhật thống kê, bị đẩy lùi khi có transaction giữ snapshot lâu.",
+        "not": "Một job có thể tắt đi mà không ảnh hưởng gì."
+      },
+      {
+        "term": "keyset pagination",
+        "is": "Phân trang bằng điều kiện so sánh trên khoá sắp xếp, chi phí không tăng theo độ sâu.",
+        "not": "OFFSET, vốn đọc rồi bỏ toàn bộ dòng phía trước."
+      }
+    ]
+  },
+  {
+    "id": "L25",
+    "rows": [
+      {
+        "term": "WSGI",
+        "is": "Giao thức ứng dụng đồng bộ: một callable nhận environ, trả iterable byte; mỗi request chiếm một luồng.",
+        "not": "Một framework; nó là hợp đồng giữa server và ứng dụng, Django và Flask đều nói giao thức này."
+      },
+      {
+        "term": "ASGI",
+        "is": "Giao thức bất đồng bộ: coroutine nhận scope, receive, send; chờ I/O không chiếm luồng.",
+        "not": "Chỉ dùng cho WebSocket; nó cũng phục vụ HTTP thường và lifespan."
+      },
+      {
+        "term": "dependency injection (Depends)",
+        "is": "Cơ chế giải cây phụ thuộc cho một lời gọi hàm, có cache theo request và teardown qua yield.",
+        "not": "Container quản lý vòng đời bean như Spring."
+      },
+      {
+        "term": "app context / request context",
+        "is": "Nơi Flask đặt request, g và current_app trong contextvars, đóng tài nguyên khi context kết thúc.",
+        "not": "Biến toàn cục dùng chung giữa các request."
+      },
+      {
+        "term": "threadpool",
+        "is": "Chỗ FastAPI đẩy endpoint def vào, để lời gọi chặn chỉ chiếm một thread thay vì chặn event loop.",
+        "not": "Một cách tăng số request xử lý song song vô hạn; nó có trần theo cấu hình."
+      },
+      {
+        "term": "nguồn sự thật của schema",
+        "is": "Chỗ định nghĩa hình dạng dữ liệu: model ORM ở Django, type hint và Pydantic ở FastAPI, do bạn chọn ở Flask.",
+        "not": "File OpenAPI viết tay; nó nên được sinh từ nguồn sự thật."
+      },
+      {
+        "term": "middleware chain",
+        "is": "Chuỗi lớp bọc quanh view ở Django, chạy vào theo thứ tự khai báo và ra theo thứ tự ngược.",
+        "not": "Một danh sách hàm độc lập không bọc nhau."
+      },
+      {
+        "term": "async giả",
+        "is": "Endpoint async def gọi driver đồng bộ, khiến event loop bị chặn đúng bằng thời gian chờ I/O.",
+        "not": "Một tối ưu hiệu năng; nó thường làm p99 tệ hơn."
+      }
+    ]
   }
 ]

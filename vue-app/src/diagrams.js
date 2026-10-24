@@ -1,7 +1,7 @@
-const modules = import.meta.glob('./assets/diagrams/*.webp', { eager: true, query: '?inline', import: 'default' });
+const modules = import.meta.glob('./assets/diagrams/*.{webp,svg}', { eager: true, query: '?inline', import: 'default' });
 const MAP = Object.fromEntries(
   Object.entries(modules).map(([path, url]) => {
-    const m = path.match(/\/L(\d+)-d(\d+)\.webp$/);
+    const m = path.match(/\/L(\d+)-d(\d+)\.(?:webp|svg)$/);
     if (!m) return [path, url];
     const key = 'L' + m[1] + '-d' + m[2];
     return [key, url];

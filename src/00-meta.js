@@ -131,7 +131,16 @@ SOURCES.push(
   { key: 'docker-compose', name: 'Docker Compose Specification', url: 'https://docs.docker.com/reference/compose-file/', checked: '2026-10-01', group: 'H' },
   { key: 'docker-security', name: 'Docker — Security best practices', url: 'https://docs.docker.com/build/building/best-practices/', checked: '2026-10-01', group: 'H' },
   { key: 'gh-actions', name: 'GitHub Actions Documentation', url: 'https://docs.github.com/en/actions', checked: '2026-10-01', group: 'H' },
-  { key: 'signal-man', name: 'signal(7) — POSIX signals', url: 'https://man7.org/linux/man-pages/man7/signal.7.html', checked: '2026-10-01', group: 'H' }
+  { key: 'signal-man', name: 'signal(7) — POSIX signals', url: 'https://man7.org/linux/man-pages/man7/signal.7.html', checked: '2026-10-01', group: 'H' },
+  { key: 'flask-docs', name: 'Flask Documentation', url: 'https://flask.palletsprojects.com/en/stable/', checked: '2026-10-24', group: 'E' },
+  { key: 'werkzeug-docs', name: 'Werkzeug Documentation', url: 'https://werkzeug.palletsprojects.com/', checked: '2026-10-24', group: 'E' },
+  { key: 'pep3333', name: 'PEP 3333 — WSGI', url: 'https://peps.python.org/pep-3333/', checked: '2026-10-24', group: 'E' },
+  { key: 'asgi-spec', name: 'ASGI Specification', url: 'https://asgi.readthedocs.io/en/latest/specs/main.html', checked: '2026-10-24', group: 'E' },
+  { key: 'starlette-docs', name: 'Starlette Documentation', url: 'https://www.starlette.io/', checked: '2026-10-24', group: 'E' },
+  { key: 'django-request', name: 'Django — Request and response objects', url: 'https://docs.djangoproject.com/en/stable/ref/request-response/', checked: '2026-10-24', group: 'E' },
+  { key: 'django-migrations', name: 'Django — Migrations', url: 'https://docs.djangoproject.com/en/stable/topics/migrations/', checked: '2026-10-24', group: 'E' },
+  { key: 'sqlalchemy-pool', name: 'SQLAlchemy — Connection Pooling', url: 'https://docs.sqlalchemy.org/en/20/core/pooling.html', checked: '2026-10-24', group: 'F' },
+  { key: 'pg-perf', name: 'PostgreSQL — Performance Tips', url: 'https://www.postgresql.org/docs/current/performance-tips.html', checked: '2026-10-24', group: 'F' }
 );
 
 GROUP_INTROS.A = {

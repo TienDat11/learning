@@ -126,3 +126,16 @@ directory came from `Export(…, "webp", …)`.
 Geometry note (verified): fresh `Export png` at scale 2 on `Vzg0E` → IHDR 1442x642; shipped `L01-d1.webp` → 1440x640.
 
 Units: frame 720 wide → raw export 1442 = 1440 content + 2 px bleed = 1 px per side in the image (0.5 document px per side, strokeWidth 1 drawn half-outside). Trim was exactly 1 px off each edge (crop width-2, offset +1), hence shipped 1440x640 for a 720x320 frame. Same applies vertically: 642 = 640 + 2.
+
+## Hand-authored diagrams (L24, L25)
+
+`L24-d1.svg`, `L24-d2.svg`, `L25-d1.svg`, `L25-d2.svg` are **not** Pencil exports. They are
+written directly as SVG at `viewBox="0 0 1440 640"` (2x the 720 px render width, matching the
+shipped WebP resolution) and use the same visual language: `#FFFFFF` plates, `#D8DAE0`
+hairline borders, 8 px radius, `#14161A` ink, `#6B7280` secondary, `#4F46E5` on exactly one
+focal node per frame, no shadows.
+
+`src/diagrams.js` globs `*.{webp,svg}` so both formats resolve through the same
+`diagramUrl(lessonId, n)` lookup; `L24`/`L25` are registered in `D2_SECTION` in `Lesson.vue`.
+Text is Vietnamese; every label is anchored inside the viewBox — check the left and right
+edges when adding a label longer than ~30 characters.
