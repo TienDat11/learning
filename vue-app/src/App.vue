@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
 watch(theme, (t) => {
   document.documentElement.setAttribute('data-theme', t);
   store.setTheme(t);
-});
+}, { immediate: true });
 
 watch(() => route.path, () => window.scrollTo(0, 0));
 

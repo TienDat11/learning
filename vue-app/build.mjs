@@ -17,8 +17,7 @@ const FAVICON = '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http:
 // replacements below are equivalent. Newlines and code are left untouched.
 function safeInlineJs(src) {
   return src.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '\\x3C!--');
-}
-// Inline JSON: `<` only occurs inside JSON strings, so \u003c is a legal JSON escape.
+}// Inline JSON: `<` only occurs inside JSON strings, so \u003c is a legal JSON escape.
 function safeJson(obj) {
   return JSON.stringify(obj)
     .replace(/</g, '\\u003c')
@@ -46,6 +45,9 @@ for (const f of files) {
     if (typeof ctx[k] !== 'undefined') payload[k] = ctx[k];
   }
 }
+
+const LESSON_GLOSSARY = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, '..', 'lesson-glossary.json'), 'utf8')).map(function(e){ return [e.id, e.rows]; }));
+payload.LESSON_GLOSSARY = LESSON_GLOSSARY;
 const LOGIC_SRC = readFileSync(join(SRCROOT, '05-logic.js'), 'utf8');
 
 // ---- 2. vite build ----

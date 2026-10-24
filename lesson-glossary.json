@@ -1,0 +1,567 @@
+[
+  {
+    "id": "L01",
+    "rows": [
+      {
+        "term": "ba ranh giới",
+        "is": "Ba thứ bạn phải tự quản khi không quản máy: quyền hạn, cổng vào và kết nối dữ liệu.",
+        "not": "Tin rằng AWS lo sao lưu và mã hóa dữ liệu nên một lần xóa nhầm không khôi phục được."
+      },
+      {
+        "term": "tầng dữ liệu",
+        "is": "Chỗ chứa trần kết nối không tăng khi bạn nhân bản tầng tính toán phía trên.",
+        "not": "Tăng số instance của service mà người dùng chạm tới mỗi khi p99 tăng."
+      },
+      {
+        "term": "RDS Proxy",
+        "is": "Lớp gom kết nối trước database để nhiều client dùng chung ít kết nối vật lý.",
+        "not": "Nhân bản tầng tính toán đơn lẻ mà không kiểm trần kết nối của tầng dưới."
+      },
+      {
+        "term": "Token Bucket",
+        "is": "Cơ chế hạn mức ở gateway, chặn request rác trước khi tốn lần chạy Lambda.",
+        "not": ""
+      }
+    ]
+  },
+  {
+    "id": "L02",
+    "rows": [
+      {
+        "term": "cửa ngoài",
+        "is": "Lớp quyết định ai được gọi hàm, kiểm qua resource policy gắn trên hàm.",
+        "not": "Cấp quyền rộng như s3:* để chạy được trước rồi quên thu lại."
+      },
+      {
+        "term": "cửa trong",
+        "is": "Lớp quyết định hàm được chạm tài nguyên nào, thực thi qua execution role.",
+        "not": "Dùng chung một execution role cho mọi Lambda vì cho tiện."
+      },
+      {
+        "term": "execution role",
+        "is": "Danh tính mà hàm Lambda mang theo khi gọi S3 hoặc DynamoDB.",
+        "not": "Tin rằng role dùng chung vẫn truy vết được Lambda nào ghi dữ liệu tenant X."
+      },
+      {
+        "term": "resource policy",
+        "is": "Chính sách gắn trên chính hàm, quyết định ai được gọi hàm đó.",
+        "not": "Coi quyền gọi hàm và quyền hàm chạm tài nguyên là cùng một lớp."
+      }
+    ]
+  },
+  {
+    "id": "L03",
+    "rows": [
+      {
+        "term": "Execution Environment",
+        "is": "Môi trường cô lập chứa runtime và code, mỗi thời điểm chỉ phục vụ đúng một request.",
+        "not": ""
+      },
+      {
+        "term": "Cold Start",
+        "is": "Pha INIT nạp code, tạo client và đọc cấu hình trước khi handler chạy.",
+        "not": "Đặt khóa chống trùng trong biến cấp module hay /tmp và tin nó sống qua cold start kế tiếp."
+      },
+      {
+        "term": "Idempotency-Key",
+        "is": "Khóa sinh một lần cho mỗi thao tác, để lần thử lại được nhận ra là cùng việc.",
+        "not": "Sinh khóa ở phía client mỗi lần bấm nên không chống được người dùng bấm hai lần."
+      },
+      {
+        "term": "trạng thái Warm",
+        "is": "Environment được giữ lại sau khi xong việc để tái dùng cho request sau.",
+        "not": "Sinh id bằng uuid4 bên trong handler rồi ghi không điều kiện, nên retry tạo thêm dòng."
+      }
+    ]
+  },
+  {
+    "id": "L04",
+    "rows": [
+      {
+        "term": "CORS preflight",
+        "is": "Request OPTIONS trình duyệt gửi trước request thật, được gateway trả lời ngay.",
+        "not": "Để handler tự trả lời OPTIONS nên mỗi header mới phải sửa code và deploy lại."
+      },
+      {
+        "term": "Token Bucket",
+        "is": "Cơ chế lấy token trong xô của usage plan; xô rỗng thì trả 429.",
+        "not": "Đặt hạn mức quá thấp khiến người dùng thật bị 429 trong giờ cao điểm."
+      },
+      {
+        "term": "usage plan",
+        "is": "Khung gắn hạn mức và Token Bucket cho từng nhóm người gọi.",
+        "not": ""
+      },
+      {
+        "term": "đồng hồ 29 giây",
+        "is": "Giới hạn thời gian gateway chờ tích hợp phía sau trước khi cắt request.",
+        "not": ""
+      }
+    ]
+  },
+  {
+    "id": "L05",
+    "rows": [
+      {
+        "term": "Presigned URL",
+        "is": "URL mang chữ ký của Execution Role, cho client ghi thẳng một object trong thời hạn.",
+        "not": "Để client tự chọn khóa S3 và chỉ kiểm loại file bằng điều khai."
+      },
+      {
+        "term": "đọc toàn bộ bảng",
+        "is": "Đọc cả bảng rồi lọc, chi phí tăng theo tổng dữ liệu chứ không theo tenant.",
+        "not": "Lọc theo tenant_id sau khi scan rồi tưởng chi phí chỉ tính phần trả về."
+      },
+      {
+        "term": "hot partition",
+        "is": "Một tenant quá nhiều item khiến partition thành điểm nóng và throughput bị giới hạn theo partition.",
+        "not": "Nghĩ rằng Query đúng khóa là đủ, không cần phân tán khóa theo shard."
+      }
+    ]
+  },
+  {
+    "id": "L06",
+    "rows": [
+      {
+        "term": "Visibility timeout",
+        "is": "Lease ẩn message trong lúc worker xử lý; hết hạn mà chưa xóa thì message hiện lại.",
+        "not": "Đặt bằng thời gian xử lý trung bình nên giờ cao điểm message hiện lại khi worker chưa xong."
+      },
+      {
+        "term": "Dead-Letter Queue",
+        "is": "Hàng đợi nhận message thất bại quá số lần cho phép để còn chỗ điều tra.",
+        "not": "Để DLQ không ai đọc, message tích lũy rồi hết retention và biến mất."
+      },
+      {
+        "term": "độ trễ tăng dần",
+        "is": "Khoảng chờ tăng dần kèm jitter để các lần thử lại không dồn cùng nhịp.",
+        "not": "Thử lại không có độ trễ khiến mọi message lỗi đập vào tầng dưới cùng một lúc."
+      },
+      {
+        "term": "redrive policy",
+        "is": "Cấu hình chuyển message sang DLQ sau maxReceiveCount lần nhận.",
+        "not": "Chưa gắn redrive policy nên message độc quay lại mãi cho tới hết hạn lưu trữ."
+      }
+    ]
+  },
+  {
+    "id": "L07",
+    "rows": [
+      {
+        "term": "event loop",
+        "is": "Vòng lặp sự kiện một luồng của Uvicorn, chỉ chạy được một việc tại một thời điểm.",
+        "not": "Nghĩ rằng thêm async def là code tự chạy bất đồng bộ và nhanh hơn."
+      },
+      {
+        "term": "async def",
+        "is": "Khai báo hàm chạy trực tiếp trên event loop, nên mọi lệnh chặn giữ cả vòng lặp.",
+        "not": "Gọi requests.get hay time.sleep bên trong async def vì thấy máy cá nhân vẫn nhanh."
+      },
+      {
+        "term": "hàm def",
+        "is": "Hàm đồng bộ được đẩy sang nhóm luồng nên không chặn event loop.",
+        "not": "Chuyển hết sang def rồi tin nhóm luồng 40 suất là đủ cho mọi tải."
+      }
+    ]
+  },
+  {
+    "id": "L08",
+    "rows": [
+      {
+        "term": "cấp module",
+        "is": "Nơi tạo engine dùng chung cho mọi lần gọi trong một container.",
+        "not": "Tin rằng pool cấp module giới hạn tổng kết nối tới RDS như trên VPS."
+      },
+      {
+        "term": "pool_size",
+        "is": "Tham số tạo đối tượng pool; trên Lambda nó không chặn tổng kết nối tới RDS.",
+        "not": "Chỉ tăng pool_size, cấu hình trông an toàn hơn trong khi lỗi vẫn xảy ra."
+      },
+      {
+        "term": "gom kết nối",
+        "is": "RDS Proxy ghép nhiều kết nối ứng dụng vào ít kết nối vật lý trước PostgreSQL.",
+        "not": "Để DATABASE_URL vẫn trỏ thẳng tới RDS nên Lambda bỏ qua proxy."
+      },
+      {
+        "term": "reserved concurrency",
+        "is": "Giới hạn số container chạy đồng thời, qua đó chặn đỉnh kết nối.",
+        "not": ""
+      }
+    ]
+  },
+  {
+    "id": "L09",
+    "rows": [
+      {
+        "term": "lỗi 4xx",
+        "is": "Nhóm lỗi do phía gọi, như dữ liệu sai kiểu hoặc thiếu trường.",
+        "not": "Gộp cả lỗi 4xx và 5xx vào một mã 500 duy nhất."
+      },
+      {
+        "term": "lỗi 5xx",
+        "is": "Nhóm lỗi phía hệ thống, chỉ nhóm này và timeout tạm thời mới đáng thử lại.",
+        "not": "Không retry trên 503 tạm thời nên request đáng cứu bị trả lỗi oan."
+      },
+      {
+        "term": "lỗi 422",
+        "is": "Mã trả khi Pydantic chặn dữ liệu vào sai kiểu hoặc thiếu trường.",
+        "not": "Retry trên 422, gửi lại đúng request sai nên không bao giờ thành công."
+      },
+      {
+        "term": "cơ chế Retry",
+        "is": "Gửi lại request, chỉ đúng với lỗi tạm thời và phải có backoff.",
+        "not": "Retry không có jitter khiến mọi client đập lại cùng lúc đúng lúc đối tác đang hồi phục."
+      }
+    ]
+  },
+  {
+    "id": "L10",
+    "rows": [
+      {
+        "term": "Structured JSON Logging",
+        "is": "Mỗi dòng log là một bản ghi JSON một dòng với các trường máy lọc được.",
+        "not": "Viết log dạng print chuỗi tự do rồi quen grep file log trên VPS."
+      },
+      {
+        "term": "correlation ID",
+        "is": "Mã định danh của cả hành trình nghiệp vụ, sinh ở trạm đầu và truyền nguyên vẹn.",
+        "not": "Nghĩ requestId của gateway, aws_request_id và messageId tự truyền sang nhau."
+      },
+      {
+        "term": "ngăn tủ cô lập",
+        "is": "Ngăn riêng cho từng async task, nên request xen nhau không ghi đè mã của nhau.",
+        "not": "Lưu correlation_id vào biến toàn cục nên request khác ghi đè sau mỗi await."
+      },
+      {
+        "term": "PII Redaction",
+        "is": "Bộ lọc che các trường nhạy cảm trước khi ghi log.",
+        "not": "Đưa cả body request và số thẻ vào JSON log mà ai đọc log cũng thấy."
+      }
+    ]
+  },
+  {
+    "id": "L11",
+    "rows": [
+      {
+        "term": "bảng ánh xạ",
+        "is": "Dict lấy chính đối tượng hàm làm khóa để tráo bản giả khi chạy test.",
+        "not": "Override trỏ sai object nên test gọi thật mà không có cảnh báo."
+      },
+      {
+        "term": "cây Depends()",
+        "is": "Cách route yêu cầu FastAPI bơm tài nguyên vào tham số thay vì tự khởi tạo.",
+        "not": "Tạo client boto3 ở cấp module rồi patch boto3.client và tin là đã chặn mạng."
+      },
+      {
+        "term": "Fixture cô lập",
+        "is": "Hàm chuẩn bị dữ liệu sạch và dọn trạng thái sau mỗi bài test.",
+        "not": "Quên clear bảng override làm test sau nhận fake của test trước."
+      },
+      {
+        "term": "chốt mạng",
+        "is": "Lớp chặn để một test lỡ tay không gửi request thật ra S3 hay SQS.",
+        "not": "Chạy suite với profile thật trên máy dev nên test lỡ tay vẫn dùng quyền của bạn."
+      }
+    ]
+  },
+  {
+    "id": "L12",
+    "rows": [
+      {
+        "term": "ES6 Proxy",
+        "is": "Lớp chắn trước object thật, đánh chặn thao tác đọc và ghi.",
+        "not": "Giữ state trong object thuần rồi tự tay gọi hàm render ở mọi chỗ ghi DOM."
+      },
+      {
+        "term": "track và trigger",
+        "is": "Đọc thì ghi tên effect vào sổ, ghi thì gọi các effect đã đọc chạy lại.",
+        "not": ""
+      },
+      {
+        "term": "dữ liệu lớn",
+        "is": "Mảng hàng nghìn bản ghi chỉ để đọc, mỗi object lồng nhau thành một Proxy.",
+        "not": "Bọc reactive đệ quy cả mảng 4.000 dòng rồi trả tiền cho Proxy không bao giờ đổi."
+      },
+      {
+        "term": "destructuring cắt dây",
+        "is": "Đọc giá trị qua Proxy một lần rồi chép ra biến thường, làm đứt liên kết.",
+        "not": "Tách thuộc tính khỏi object reactive rồi tưởng biến vẫn cập nhật theo."
+      }
+    ]
+  },
+  {
+    "id": "L13",
+    "rows": [
+      {
+        "term": "computed cache",
+        "is": "Giá trị suy ra có cache, chỉ tính lại khi dependency đổi và có nơi đọc.",
+        "not": "Đặt lời gọi API trong computed nên nó trả về Promise thay vì giá trị."
+      },
+      {
+        "term": "deep watch",
+        "is": "Theo dõi đệ quy cả cây thuộc tính, trả chi phí duyệt ở mỗi lần ghi.",
+        "not": "Bật deep watch cho chắc rồi gán state trong callback khiến watcher tự kích hoạt chính nó."
+      },
+      {
+        "term": "tự track",
+        "is": "watchEffect tự ghi nhận mọi reactive mà hàm đọc trong lần chạy.",
+        "not": "Dùng async trong watchEffect rồi tưởng biến đọc sau await vẫn được track."
+      },
+      {
+        "term": "stale response",
+        "is": "Kết quả của request cũ về muộn và ghi đè kết quả mới hơn.",
+        "not": "Chỉ debounce mà không abort, request cũ vẫn bay về và ghi vào state."
+      }
+    ]
+  },
+  {
+    "id": "L14",
+    "rows": [
+      {
+        "term": "file .vue",
+        "is": "Gồm template, script và style, biên dịch thành một hàm render.",
+        "not": "Nâng state lên cha cho chắc và bind một ref duy nhất vào mọi dòng."
+      },
+      {
+        "term": "props một chiều",
+        "is": "Cha truyền dữ liệu xuống con; con không sửa props mà chỉ emit xin đổi.",
+        "not": "Con sửa props.row.note trực tiếp nên cha đổi mà không hay biết."
+      },
+      {
+        "term": "key trong v-for",
+        "is": "Danh tính ổn định của dòng để Virtual DOM biết node nào là node nào.",
+        "not": "Dùng index làm key nên khi sắp xếp ghi chú dán sang dòng sai."
+      },
+      {
+        "term": "Virtual DOM",
+        "is": "Cây đối tượng mô phỏng DOM thật, được diff theo key khi state đổi.",
+        "not": ""
+      }
+    ]
+  },
+  {
+    "id": "L15",
+    "rows": [
+      {
+        "term": "composable tái dùng logic",
+        "is": "Mỗi lần gọi chạy lại thân hàm và tạo ô nhớ mới cho component đang gọi.",
+        "not": "Kéo ref ra ngoài hàm để ba nơi dùng chung, biến nó thành singleton cấp module."
+      },
+      {
+        "term": "cây component",
+        "is": "provide/inject truyền phụ thuộc xuống cây con, khóa bằng Symbol, gọi đồng bộ trong setup.",
+        "not": "Provide một object bị ghi liên tục, tạo store ẩn không devtools và không test được."
+      },
+      {
+        "term": "store Pinia",
+        "is": "Một bản duy nhất cho toàn ứng dụng, sống lâu hơn một màn hình.",
+        "not": "Nhét mọi thứ vào store khiến dữ liệu trang trước lọt sang trang sau."
+      },
+      {
+        "term": "destructure store",
+        "is": "Đọc giá trị tĩnh qua Proxy rồi cắt dây; phải dùng storeToRefs cho state.",
+        "not": "Destructure thẳng store ra biến rồi tưởng vẫn cập nhật theo store."
+      }
+    ]
+  },
+  {
+    "id": "L16",
+    "rows": [
+      {
+        "term": "route record",
+        "is": "Khai báo một đường dẫn gắn với một component; router so path để chọn record khớp.",
+        "not": "Chốt route.params.id vào ref lúc setup nên dữ liệu đóng băng ở lần vào đầu."
+      },
+      {
+        "term": "navigation guard",
+        "is": "Hàm chạy trong chuỗi điều hướng để cho đi, chặn hoặc chuyển hướng.",
+        "not": "Viết guard chặn mọi điều hướng chưa đăng nhập mà quên trừ chính trang /login."
+      },
+      {
+        "term": "lazy route",
+        "is": "Component khai báo bằng import() động để bundler tách chunk và tải khi vào route.",
+        "not": ""
+      },
+      {
+        "term": "tái dùng instance",
+        "is": "Hai path cùng khớp một record thì component không dựng lại, chỉ route.params đổi.",
+        "not": "Đặt :key lên router-view mà không thấy nó xóa sạch trạng thái cục bộ của trang."
+      }
+    ]
+  },
+  {
+    "id": "L17",
+    "rows": [
+      {
+        "term": "khóa idempotency",
+        "is": "Khóa gắn với ý định gửi, giữ nguyên khi lỗi mạng và chỉ xoay sau khi thành công.",
+        "not": "Sinh khóa trong setup nên đơn sau vẫn mang khóa của đơn trước."
+      },
+      {
+        "term": "cờ submitting",
+        "is": "Biến đổi ngay khi bấm để chặn cú nhấp đúp trước khi DOM kịp khóa nút.",
+        "not": "Quên mở lại nút trong finally nên một lần lỗi làm nút chết vĩnh viễn."
+      },
+      {
+        "term": "bốn trạng thái",
+        "is": "Rỗng, đang tải, lỗi và có dữ liệu, mỗi trạng thái có giao diện riêng.",
+        "not": ""
+      },
+      {
+        "term": "mảng detail",
+        "is": "Mảng lỗi FastAPI trả về, phải chiếu từng phần tử về đúng ô nhập.",
+        "not": "Object.assign trên mảng tạo khóa theo chỉ số nên fieldErrors.sku luôn undefined."
+      }
+    ]
+  },
+  {
+    "id": "L18",
+    "rows": [
+      {
+        "term": "HTTP status code",
+        "is": "Kênh máy đọc kết quả đúng hay sai, được thư viện, cache, gateway và alert đọc trước.",
+        "not": "Trả 200 rồi nhét lỗi vào body nên Axios và dashboard đều thấy thành công."
+      },
+      {
+        "term": "Pydantic BaseModel",
+        "is": "Class khai báo kiểu từng trường, chặn dữ liệu sai ngay tại biên.",
+        "not": "Thêm trường bắt buộc làm mọi client cũ vỡ ngay khi deploy."
+      },
+      {
+        "term": "màng lọc đầu ra",
+        "is": "response_model ép dữ liệu trả về đúng khuôn và cắt mọi trường thừa.",
+        "not": "Không khai response_model nên trường nội bộ bị gửi thẳng ra ngoài."
+      },
+      {
+        "term": "OpenAPI Spec",
+        "is": "Bản mô tả endpoint và schema dạng JSON, sinh từ model nên không lạc hậu.",
+        "not": "Coi hợp đồng là thứ không có vòng đời nên không có chỗ đặt v2 khi phá tương thích."
+      }
+    ]
+  },
+  {
+    "id": "L19",
+    "rows": [
+      {
+        "term": "access token",
+        "is": "JWT sống ngắn, giữ trong RAM và gắn vào mọi request nghiệp vụ.",
+        "not": "Cất cả access token lẫn refresh token trong localStorage nên XSS đọc được và chiếm phiên."
+      },
+      {
+        "term": "HttpOnly cookie",
+        "is": "Cookie JavaScript không đọc được, dùng chứa refresh token sống lâu.",
+        "not": ""
+      },
+      {
+        "term": "Promise refresh dùng chung",
+        "is": "Cả đợt request 401 chờ đúng một lần gọi refresh thay vì mỗi request tự gọi.",
+        "not": "Viết interceptor ở cấp từng request nên mỗi 401 tự mở một lời gọi refresh riêng."
+      },
+      {
+        "term": "kiểm quyền theo đối tượng",
+        "is": "Token chỉ chứng minh người gọi là ai, không chứng minh họ sở hữu bản ghi.",
+        "not": "Chỉ kiểm token mà không kiểm người gọi có sở hữu bản ghi số 999."
+      }
+    ]
+  },
+  {
+    "id": "L20",
+    "rows": [
+      {
+        "term": "presigned PUT",
+        "is": "URL mang chữ ký cho một thao tác ghi trên một object trong thời hạn nhất định.",
+        "not": "Để client tự chọn key từ body.filename nên có thể ghi đè dữ liệu tenant khác."
+      },
+      {
+        "term": "xác nhận bằng head_object",
+        "is": "Đọc metadata object sau khi PUT để đối chiếu với bản ghi đã khai.",
+        "not": "Chỉ tin đuôi file và lời khai, không kiểm nội dung thật trong bucket."
+      },
+      {
+        "term": "bản ghi PENDING",
+        "is": "Trạng thái ghi trước khi cấp URL, chỉ chuyển READY sau khi xác nhận khớp.",
+        "not": "Đặt READY ngay sau khi sniff, để người dùng đọc được tệp chưa qua kiểm tra."
+      },
+      {
+        "term": "magic bytes",
+        "is": "Dấu hiệu nhận dạng loại tệp thật, kiểm sau khi đã có byte trong bucket.",
+        "not": "Không kiểm magic bytes, chỉ tin đuôi file client khai."
+      }
+    ]
+  },
+  {
+    "id": "L21",
+    "rows": [
+      {
+        "term": "Transactional Outbox",
+        "is": "Bảng outbox ghi cùng transaction với dữ liệu nghiệp vụ, relay đẩy lên SQS sau.",
+        "not": "Gửi SQS ngay trong luồng nghiệp vụ, commit xong mà gửi lỗi thì đơn không có message."
+      },
+      {
+        "term": "visibility timeout",
+        "is": "Hợp đồng thuê có hạn, không phải khóa độc quyền; hết hạn thì message hiện lại.",
+        "not": "Để 30 giây theo mặc định dù worker xử lý 45 giây, nên message thuộc về worker khác."
+      },
+      {
+        "term": "FOR UPDATE SKIP LOCKED",
+        "is": "Mệnh đề giúp nhiều relay đọc song song mà không tranh cùng một hàng outbox.",
+        "not": ""
+      },
+      {
+        "term": "Dead-Letter Queue",
+        "is": "Nơi message thất bại quá maxReceiveCount dừng lại để điều tra thủ công.",
+        "not": "Để DLQ thành thùng rác không ai nhìn, message im lặng hết hạn lưu trữ."
+      }
+    ]
+  },
+  {
+    "id": "L22",
+    "rows": [
+      {
+        "term": "Origin Access Control",
+        "is": "Cơ chế CloudFront ký request tới S3 khi bucket private, chặn đường vòng trực tiếp.",
+        "not": "Mở bucket public để CloudFront đọc nên ai biết tên bucket cũng tải file trực tiếp."
+      },
+      {
+        "term": "cache phân tầng",
+        "is": "index.html luôn hỏi lại, còn file có hash được cache lâu vì nội dung không đổi.",
+        "not": "Cho index.html và file JS cùng TTL 24 giờ, HTML cũ trỏ tới JS đã xóa."
+      },
+      {
+        "term": "hashed asset immutable",
+        "is": "Tên file chứa hash nội dung nên gắn max-age một năm và immutable.",
+        "not": "Dùng sync --delete xóa file bản cũ ngay khi bản mới lên."
+      },
+      {
+        "term": "Expand-Contract migration",
+        "is": "Thêm cột mới trước, đọc được cả hai dạng, rồi mới xóa cột cũ ở chu kỳ sau.",
+        "not": "Chạy migration xóa cột khi code cũ còn dùng nên rollback hỏng."
+      }
+    ]
+  },
+  {
+    "id": "L23",
+    "rows": [
+      {
+        "term": "Asymmetric Resource Exhaustion",
+        "is": "Kẻ tấn công bỏ ít chi phí gửi request giả nhưng bắt hệ thống tiêu tốn nhiều lần hơn.",
+        "not": "Nâng trần concurrency và max_connections vì tưởng đó là đỉnh lưu lượng thật."
+      },
+      {
+        "term": "Rate limit theo IP",
+        "is": "Giới hạn theo từng địa chỉ, mù trước botnet vì mỗi IP chỉ gửi vài request mỗi giây.",
+        "not": "Đi tìm IP kẻ tấn công để chặn, trong khi botnet phân tán không có một IP như vậy."
+      },
+      {
+        "term": "Denial of Wallet",
+        "is": "Hệ quả khi Lambda bật hàng nghìn container và hóa đơn tăng theo request rác.",
+        "not": ""
+      },
+      {
+        "term": "origin cloaking",
+        "is": "Không để lộ IP hay URL trực tiếp của origin cho công chúng gọi vòng qua CloudFront.",
+        "not": "Ban theo IP nhìn thấy ở tầng ứng dụng, nhưng đó là IP của proxy hoặc CDN."
+      }
+    ]
+  }
+]

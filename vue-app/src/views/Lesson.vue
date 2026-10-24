@@ -1,406 +1,494 @@
 <script setup>
-import { computed, inject, ref, watch } from 'vue';
-import { esc, sanitize, renderLinkedHtml, sanitizeSvg } from '../utils.js';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { esc, renderLinkedHtml } from '../utils.js';
 import store from '../store.js';
+import { diagramUrl } from '../diagrams.js';
 
 const props = defineProps({ lesson: { type: Object, required: true } });
 const data = inject('data');
+const progress = inject('progress');
 
 const lesson = computed(() => props.lesson);
-const flowId = computed(() => (lesson.value ? String(lesson.value.flow || '') : ''));
-const hasFlow = computed(() => !!lesson.value?.flow && flowId.value !== '');
+const lessonId = computed(() => (lesson.value ? String(lesson.value.id) : ''));
+const lessonsAll = computed(() => (Array.isArray(data?.LESSONS) ? data.LESSONS : []));
+const lessonIndex = computed(() => lessonsAll.value.findIndex((l) => l && String(l.id) === lessonId.value));
+const totalLessons = computed(() => lessonsAll.value.length);
+const lessonNo = computed(() => lessonIndex.value + 1);
 
-// ---------- phase checklist (6 chặng H5) ----------
-const PHASES = [
-  { id: 1, label: '1. Giải mã từ gốc: Bản chất, Cơ chế hoạt động & Điểm tối ưu vào Khung', key: 'flow', field: 'flow', bodyKey: 'flow' },
-  { id: 2, label: '2. Câu hỏi định hướng & Tự kiểm tra sau khi hiểu cơ chế', key: 'askFirst', field: 'askFirst', bodyKey: 'predict' },
-  { id: 3, label: '3. Tình huống sự cố, Cách làm sai & Nguyên nhân gốc', key: 'incident', field: 'incident', bodyKey: 'incident' },
-  { id: 4, label: '4. Cách trả lời miệng (30 giây & 90 giây)', key: 'say30', field: 'say30', bodyKey: 'say30' },
-  { id: 5, label: '5. Đánh đổi (Trade-off), Phương án khác & Hỏi xoáy CTO', key: 'attacks', field: 'attacks', bodyKey: 'attacks' },
-  { id: 6, label: '6. Hoàn thành', key: null, field: null, bodyKey: null },
+const done = computed(() => Number((progress.value || {})[lessonId.value] || 0) >= 6);
+function toggleDone() {
+  const p = (progress.value || {})[lessonId.value] || 0;
+  const newP = done.value ? Math.min(p, 5) : 6;
+  progress.value = { ...progress.value, [lessonId.value]: newP };
+  if (newP >= 6) store.markH5Completed(lessonId.value);
+}
+
+const emit = defineEmits(['open-lesson', 'close']);
+function openNext() {
+  const pos = lessonsAll.value.findIndex((l) => l && String(l.id) === lessonId.value);
+  if (pos >= 0 && pos < lessonsAll.value.length - 1) emit('open-lesson', lessonsAll.value[pos + 1]);
+  else if (pos >= 0) emit('close');
+}
+function openPrev() {
+  const pos = lessonsAll.value.findIndex((l) => l && String(l.id) === lessonId.value);
+  if (pos > 0) emit('open-lesson', lessonsAll.value[pos - 1]);
+}
+
+const D2_SECTION = { L01: 2, L02: 2, L03: 2, L04: 2, L05: 2, L06: 3, L07: 3, L08: 2, L09: 5, L10: 3, L11: 5, L12: 2, L13: 3, L14: 3, L15: 3, L16: 3, L17: 3, L18: 5, L19: 3, L20: 5, L21: 3, L22: 3, L23: 3 };
+const d2Section = computed(() => D2_SECTION[lessonId.value] || 0);
+const d1Url = computed(() => diagramUrl(lessonId.value, 1));
+const d2Url = computed(() => diagramUrl(lessonId.value, 2));
+
+const SECTIONS = [
+  { id: 'sec-1', num: '01', title: 'Vì sao' },
+  { id: 'sec-2', num: '02', title: 'Cơ chế' },
+  { id: 'sec-3', num: '03', title: 'Sự cố' },
+  { id: 'sec-4', num: '04', title: 'Nói trong 30 giây' },
+  { id: 'sec-5', num: '05', title: 'CTO hỏi xoáy' },
+  { id: 'sec-6', num: '06', title: 'Câu neo' },
 ];
 
-const progress = inject('progress');
-const saved = store.getH5Progress();
-const phaseState = ref({});
-// Mặc định mở toàn bộ các phần và bảng thuật ngữ để người học đọc hiểu liền mạch từ trên xuống dưới.
-const openPhases = ref({ 1: true, 2: true, 3: true, 4: true, 5: true });
-const glossaryOpen = ref(true);
-function toggleOpen(id) { openPhases.value[id] = !openPhases.value[id]; }
-function toggleGlossary() { glossaryOpen.value = !glossaryOpen.value; }
+const TOC_IDS = SECTIONS.map((s) => s.id);
 
-const lessonId = computed(() => lesson.value ? String(lesson.value.id) : '');
-watch([lessonId, progress], () => {
-  const p = (progress.value || {})[lessonId.value] || 0;
-  for (const ph of PHASES) phaseState.value[ph.id] = p >= ph.id;
-}, { immediate: true });
-watch(lessonId, () => {
-  openPhases.value = { 1: true, 2: true, 3: true, 4: true, 5: true };
-  glossaryOpen.value = true;
+const glossaryRows = computed(() => {
+  const g = data?.LESSON_GLOSSARY;
+  if (!g) return [];
+  const entry = Array.isArray(g) ? g.find((e) => e && String(e.id) === lessonId.value) : g[lessonId.value];
+  const rows = Array.isArray(entry) ? entry : (entry && Array.isArray(entry.rows) ? entry.rows : []);
+  return rows.filter((r) => r);
 });
 
-function togglePhase(id) {
-  const p = (progress.value || {})[lessonId.value] || 0;
-  const checked = phaseState.value[id];
-  const newP = checked ? Math.min(p, id - 1) : id;
-  progress.value = { ...progress.value, [lessonId.value]: newP };
-  phaseState.value[id] = newP >= id;
-  if (id === 6) store.markH5Completed(lessonId.value);
-}
-
-function openNext() {
-  const pos = data.LESSONS.findIndex((l) => l.id === lessonId.value);
-  if (pos >= 0 && pos < data.LESSONS.length - 1) {
-    emit('open-lesson', data.LESSONS[pos + 1]);
-  } else if (pos >= 0) {
-    emit('close');
+const NL = String.fromCharCode(10);
+const bridgeHtml = computed(() => {
+  const b = String(lesson.value?.bridge || '');
+  const paras = b.split(NL + NL).map((p) => p.trim()).filter(Boolean);
+  const out = [];
+  for (const p of paras) {
+    if (p.startsWith('[')) {
+      const sep = p.indexOf(']:');
+      if (sep > 0) {
+        const label = p.slice(1, sep);
+        const rest = p.slice(sep + 2).trim();
+        out.push('<p><strong>[' + esc(label) + ']:</strong> ' + renderHtml(esc(rest)) + '</p>');
+        continue;
+      }
+    }
+    out.push('<p>' + renderHtml(esc(p)) + '</p>');
   }
-}
+  return out.join('');
+});
 
-// ---------- CTA "Hoàn thành chặng này" ----------
-// CTA không được nhảy bài khi chưa ghi tiến độ, và không được làm giảm tiến độ:
-// nó luôn đánh dấu pha CHƯA xong sớm nhất, rồi mở pha kế tiếp. Khi cả 5 pha xong
-// thì đánh dấu bài hoàn thành (pha 6); chỉ khi bài đã hoàn thành CTA mới điều hướng.
-const allPhasesDone = computed(() => SECTION_PHASES.every((ph) => phaseState.value[ph.id]));
-
-function primaryAction() {
-  if (phaseState.value[6]) { openNext(); return; }
-  const next = SECTION_PHASES.find((ph) => !phaseState.value[ph.id]);
-  if (!next) { togglePhase(6); return; }
-  togglePhase(next.id);
-  if (next.id < 5) openPhases.value[next.id + 1] = true;
-}
-
-// ---------- helper: sanitize + auto-link "Bài L01..L23" to clickable lesson links ----------
 function renderHtml(raw) {
   return renderLinkedHtml(raw, data?.LESSONS, lessonId.value);
 }
 
-// ---------- phase render helpers ----------
-function phaseContent(ph) {
+const mechanismProse = computed(() => {
+  const mech = String(lesson.value?.mechanism || '');
+  const open = mech.indexOf('<p>');
+  const close = open >= 0 ? mech.indexOf('</p>', open) : -1;
+  if (open >= 0 && close > open) return '<p>' + mech.slice(open + 3, close) + '</p>';
+  return mech ? '<p>' + renderHtml(mech) + '</p>' : '';
+});
+
+// §3 prose = đoạn mở của incident (spec: chỉ phần mở; phần còn lại vào timeline)
+const incidentProse = computed(() => {
+  const raw = String(lesson.value?.incident || '');
+  const open = raw.indexOf('<p>');
+  const close = open >= 0 ? raw.indexOf('</p>', open) : -1;
+  if (open >= 0 && close > open) return '<p>' + raw.slice(open + 3, close) + '</p>';
+  return raw ? '<p>' + renderHtml(raw) + '</p>' : '';
+});
+
+// §5 prose = mệnh đề đánh đổi chính (spec: chỉ mệnh đề chính, không đổ cả khối trade-off)
+const tradeoffProse = computed(() => {
+  const raw = String(lesson.value?.tradeoff || '');
+  const doc = new DOMParser().parseFromString('<div>' + raw + '</div>', 'text/html');
+  const first = doc.querySelector('li') || doc.querySelector('p');
+  if (!first) return raw ? '<p>' + renderHtml(raw) + '</p>' : '';
+  const strong = first.querySelector('strong');
+  if (strong) strong.remove();
+  const text = (first.textContent || '').trim().replace(/^[:\s-]+/, '');
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  return '<p>' + renderHtml(esc(sentences.slice(0, 2).join(' ').trim())) + '</p>';
+});
+
+const timelineRows = computed(() => {
+  const tl = Array.isArray(lesson.value?.timeline) ? lesson.value.timeline : [];
+  return tl.filter((r) => Array.isArray(r) && r[0] != null).map((r) => ({ t: String(r[0]), v: String(r[1] || '') }));
+});
+
+const rhythmRows = computed(() => {
   const l = lesson.value || {};
-  if (!l.id) return '<p>Chưa có dữ liệu bài.</p>';
-  const qs = Array.isArray(data?.QUESTIONS) ? data.QUESTIONS : [];
-
-  switch (ph.id) {
-    case 1: {
-      const html = [];
-      if (l.bridge) {
-        const depLabel = Array.isArray(l.buildsOn) && l.buildsOn.length ? ' (' + esc(l.buildsOn.join(', ')) + ')' : '';
-        const bridgeParas = String(l.bridge).split('\n\n');
-        let bridgeHtml;
-        if (bridgeParas.length > 1) {
-          bridgeHtml = '<ul class="hcp-bridge-list hcp-body hcp-bridge">';
-          for (const para of bridgeParas) {
-            const m = para.match(/^\[([^\]]+)\]:\s*/);
-            if (m) {
-              bridgeHtml += '<li><strong>[' + esc(m[1]) + ']:</strong> ' + renderHtml(esc(para.slice(m[0].length))) + '</li>';
-            } else {
-              bridgeHtml += '<li>' + renderHtml(esc(para)) + '</li>';
-            }
-          }
-          bridgeHtml += '</ul>';
-        } else {
-          bridgeHtml = '<p class="hcp-body hcp-bridge">' + renderHtml(esc(l.bridge)) + '</p>';
-        }
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Bức tranh kết nối từ kiến thức cũ' + depLabel + '</h4>' + bridgeHtml + '</div>');
-      }
-      if (l.concept) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Bản chất từ gốc: Cái này là gì & Sinh ra để giải quyết nỗi đau nào?</h4><div class="hcp-body">' + renderHtml(l.concept) + '</div></div>');
-      }
-      if (l.mechanism) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Cơ chế hoạt động bên dưới & Điểm cần tối ưu vào Khung (Core / Lifecycle / Pattern)</h4><div class="hcp-body">' + renderHtml(l.mechanism) + '</div></div>');
-      }
-      if (hasFlow.value) {
-        const flow = (data.FLOW_SVGS || []).find((f) => f.id === flowId.value);
-        if (flow && typeof flow.svg === 'string') {
-          html.push('<div class="hcp-section"><h4 class="hcp-section-h">Sơ đồ luồng kiến trúc</h4><div class="hcp-svg-wrap"><div class="hcp-svg-inner">' + sanitizeSvg(flow.svg) + '</div>' + (flow.caption ? '<p class="hcp-svg-cap">' + esc(flow.caption) + '</p>' : '') + '</div></div>');
-        }
-      }
-      if (bodyRest.value) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Use-case thực chiến & Công thức suy luận khi bị hỏi xoáy</h4><div class="hcp-notes hcp-body">' + renderHtml(bodyRest.value) + '</div></div>');
-      }
-      if (l.code) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Mẫu code chuẩn theo Pattern của Framework</h4><pre class="hcp-code"><code>' + esc(l.code) + '</code></pre>' + (l.codeNote ? '<div class="hcp-body hcp-code-note">' + renderHtml(l.codeNote) + '</div>' : '') + '</div>');
-      }
-      return html.join('') || '<p class="hcp-empty">Chưa có dữ liệu.</p>';
-    }
-    case 2: {
-      const cues = Array.isArray(l.askFirst) ? l.askFirst : [];
-      const predict = (l.predict && typeof l.predict === 'object') ? l.predict : null;
-      let html = '';
-      if (cues.length) {
-        html += '<div class="hcp-section"><h4 class="hcp-section-h">Tự hỏi trước khi trả lời</h4><ol class="hcp-checklist">';
-        for (let i = 0; i < cues.length; i++) {
-          const cue = cues[i];
-          const sepIdx = cue.indexOf(' → Giải mã: ');
-          if (sepIdx >= 0) {
-            const q = cue.slice(0, sepIdx);
-            const ans = cue.slice(sepIdx + 13);
-            html += '<li class="hcp-checklist-item"><span class="hcp-prompt">' + esc(q) + '</span><div class="hcp-cue-answer">' + renderHtml(esc(ans)) + '</div></li>';
-          } else {
-            html += '<li class="hcp-checklist-item"><span class="hcp-prompt">' + esc(cue) + '</span></li>';
-          }
-        }
-        html += '</ol></div>';
-      }
-      if (predict && (predict.q || predict.a)) {
-        html += '<div class="hcp-section"><h4 class="hcp-section-h">Đoán trước</h4>';
-        html += '<div class="hcp-predict"><div class="hcp-predict-q hcp-body">' + renderHtml(predict.q) + '</div>';
-        html += '<button type="button" class="hcp-btn hcp-reveal-ans" data-show-answer>' + (predict.a ? 'Mở đáp án' : 'Xem gợi ý') + '</button>';
-        if (predict.a) html += '<div class="hcp-predict-a hcp-body" hidden>' + renderHtml(predict.a) + '</div>';
-        html += '</div></div>';
-      }
-      return html || '<p class="hcp-empty">Chưa có dữ liệu.</p>';
-    }
-    case 3: {
-      const html = [];
-      if (l.incident) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Sự cố thực tế</h4><div class="hcp-body">' + renderHtml(l.incident) + '</div></div>');
-      if (Array.isArray(l.timeline) && l.timeline.length) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Dòng thời gian</h4><ul class="hcp-timeline">');
-        for (const row of l.timeline) {
-          html.push('<li><span class="hcp-time">' + esc(row[0]) + '</span><span class="hcp-tl-text">' + esc(row[1]) + '</span></li>');
-        }
-        html.push('</ul></div>');
-      }
-      if (l.naive || l.naiveCode || l.naiveOut) {
-        let block = '<div class="hcp-section"><h4 class="hcp-section-h">Cách sửa sai phổ biến (Ngây thơ)</h4>';
-        if (l.naive) block += '<div class="hcp-body">' + renderHtml(l.naive) + '</div>';
-        if (l.naiveCode) block += '<pre class="hcp-code"><code>' + esc(l.naiveCode) + '</code></pre>';
-        if (l.naiveOut) block += '<div class="hcp-callout-warn"><p class="hcp-callout-label">Kết quả thực tế</p><div class="hcp-callout-body hcp-body">' + renderHtml(l.naiveOut) + '</div></div>';
-        block += '</div>';
-        html.push(block);
-      }
-      if (l.rootCause) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Nguyên nhân gốc</h4><div class="hcp-body">' + renderHtml(l.rootCause) + '</div></div>');
-      if (l.failureModes) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Lỗi thường gặp</h4><div class="hcp-body">' + renderHtml(l.failureModes) + '</div></div>');
-      if (!html.length) html.push('<p class="hcp-empty">Chưa có dữ liệu mô phỏng sự cố.</p>');
-      return html.join('');
-    }
-    case 4: {
-      const html = [];
-      if (l.say30) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Trả lời 30 giây</h4><div class="hcp-say-box"><p class="hcp-body hcp-voice">' + esc(l.say30) + '</p></div></div>');
-      if (l.say90) {
-        const parts = l.say90.split('\n\n');
-        let say90Html = '';
-        for (const part of parts) {
-          const m = part.match(/^(\[Nhịp [^\]]+\]:)\s*/);
-          if (m) {
-            say90Html += '<p class="hcp-body hcp-voice"><strong>' + esc(m[1]) + '</strong> ' + renderHtml(esc(part.slice(m[0].length))) + '</p>';
-          } else {
-            say90Html += '<p class="hcp-body hcp-voice">' + renderHtml(esc(part)) + '</p>';
-          }
-        }
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Trả lời 90 giây</h4><div class="hcp-say-box">' + say90Html + '</div></div>');
-      }
-      if (Array.isArray(l.sayIt) && l.sayIt.length) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Những điểm phải nói được</h4><ol class="hcp-tight">');
-        for (const s of l.sayIt) html.push('<li>' + esc(s) + '</li>');
-        html.push('</ol></div>');
-      }
-      if (!html.length) html.push('<p class="hcp-empty">Chưa có dữ liệu phát biểu.</p>');
-      return html.join('');
-    }
-    case 5: {
-      const html = [];
-      if (l.tradeoff) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Đánh đổi (Trade-off)</h4><div class="hcp-body">' + renderHtml(l.tradeoff) + '</div></div>');
-      if (l.alternatives) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Phương án khác</h4><div class="hcp-body">' + renderHtml(l.alternatives) + '</div></div>');
-      if (l.observe) html.push('<div class="hcp-section"><h4 class="hcp-section-h">Quan sát được gì trên Production</h4><div class="hcp-body">' + renderHtml(l.observe) + '</div></div>');
-      if (Array.isArray(l.attacks) && l.attacks.length) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Câu hỏi CTO</h4><div class="hcp-cto">');
-        for (let i = 0; i < l.attacks.length; i++) {
-          const a = l.attacks[i];
-          const open = i === 0;
-          html.push(
-            '<div class="hcp-cto-item' + (open ? ' is-open' : '') + '">' +
-            '<button type="button" class="hcp-cto-head" data-cto-toggle aria-expanded="' + String(open) + '">' +
-            '<span class="hcp-cto-q">' + renderHtml(a.q) + '</span>' +
-            '<span class="hcp-cto-icon" aria-hidden="true">' + (open ? '⌄' : '›') + '</span>' +
-            '</button>' +
-            '<div class="hcp-cto-a hcp-body"' + (open ? '' : ' hidden') + '>' + renderHtml(a.a) + '</div>' +
-            '</div>'
-          );
-        }
-        html.push('</div></div>');
-      }
-      if (Array.isArray(l.qids) && l.qids.length) {
-        html.push('<div class="hcp-section"><h4 class="hcp-section-h">Câu hỏi liên quan</h4><div class="hcp-qchips">');
-        for (const qid of l.qids) {
-          const qObj = qs.find((x) => x && x.id === qid);
-          const label = qObj && qObj.topic ? qid + ' · ' + qObj.topic : qid;
-          html.push('<a class="hcp-qchip" href="#/drill?ids=' + encodeURIComponent(qid) + '">' + esc(label) + '</a>');
-        }
-        html.push('</div></div>');
-      }
-      if (!html.length) {
-        html.push('<p class="hcp-empty">Chưa có dữ liệu hỏi-đáp.</p>');
-      }
-      return html.join('');
-    }
-    case 6:
-      return '<div class="hcp-done"><p class="hcp-done-msg">Bài đã hoàn thành.</p></div>';
-    default:
-      return '<p>Chưa rõ chặng.</p>';
+  const rows = [];
+  if (l.say30) rows.push({ key: '__say30', label: '30 giây', content: String(l.say30), sec: '30s' });
+  const parts = String(l.say90 || '').split(NL + NL);
+  for (const p of parts) {
+    if (!p.startsWith('[')) continue;
+    const sep = p.indexOf(']:');
+    if (sep < 0) continue;
+    const label = p.slice(1, sep);
+    const content = p.slice(sep + 2).trim();
+    const lOpen = label.indexOf('(');
+    const lClose = label.indexOf(')', lOpen);
+    const sec = lOpen >= 0 && lClose > lOpen ? label.slice(lOpen, lClose + 1) : '';
+    const cleanLabel = sec ? label.slice(0, lOpen) + label.slice(lClose + 1) : label;
+    rows.push({ key: label, label: cleanLabel, content, sec });
   }
-}
-
-// ---------- predict reveal & CTO accordion (delegated on phase body) ----------
-function onPhaseBodyClick(e) {
-  const target = e.target instanceof Element ? e.target : null;
-  if (!target) return;
-  const btn = target.closest('[data-show-answer]');
-  if (btn && e.currentTarget.contains(btn)) {
-    const ans = btn.parentElement?.querySelector(':scope > .hcp-predict-a');
-    if (!ans) return;
-    ans.hidden = !ans.hidden;
-    btn.textContent = ans.hidden ? 'Mở đáp án' : 'Ẩn đáp án';
-    return;
-  }
-  const ctoBtn = target.closest('[data-cto-toggle]');
-  if (ctoBtn && e.currentTarget.contains(ctoBtn)) {
-    const item = ctoBtn.parentElement;
-    const ans = item?.querySelector(':scope > .hcp-cto-a');
-    const icon = ctoBtn.querySelector('.hcp-cto-icon');
-    if (!ans || !item) return;
-    ans.hidden = !ans.hidden;
-    item.classList.toggle('is-open', !ans.hidden);
-    ctoBtn.setAttribute('aria-expanded', String(!ans.hidden));
-    if (icon) icon.textContent = ans.hidden ? '›' : '⌄';
-  }
-}
-
-const emit = defineEmits(['open-lesson', 'close']);
-
-// ---------- layout data (glossary from body, refs from SOURCES) ----------
-const SECTION_PHASES = PHASES.filter((p) => p.id <= 5);
-
-const glossary = computed(() => {
-  const html = String(lesson.value?.body || '');
-  const m = html.match(/<p><strong>Thuật ngữ cần biết[^<]*<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i);
-  if (!m) return [];
-  const doc = new DOMParser().parseFromString('<ul>' + m[1] + '</ul>', 'text/html');
-  return Array.from(doc.querySelectorAll('li'), (li) => {
-    const rawTerm = (li.querySelector('strong')?.textContent || '').trim();
-    const term = rawTerm.replace(/\s*[:—-]\s*$/, '').trim();
-    const full = (li.textContent || '').trim();
-    return { term, def: full.slice(rawTerm.length).replace(/^\s*[:—-]\s*/, '').trim() };
-  }).filter((g) => g.term);
+  return rows;
 });
 
-const bodyRest = computed(() =>
-  String(lesson.value?.body || '').replace(/<p><strong>Thuật ngữ cần biết[^<]*<\/strong><\/p>\s*<ul>[\s\S]*?<\/ul>/ig, '')
-);
-
-const prereqLessons = computed(() => {
-  const deps = Array.isArray(lesson.value?.buildsOn) ? lesson.value.buildsOn : [];
-  const all = Array.isArray(data?.LESSONS) ? data.LESSONS : [];
-  return deps.map((id) => all.find((x) => x && x.id === id)).filter(Boolean);
+const altChips = computed(() => {
+  const al = String(lesson.value?.alternatives || '');
+  const doc = new DOMParser().parseFromString('<div>' + al + '</div>', 'text/html');
+  const items = Array.from(doc.querySelectorAll('li'))
+    .map((li) => (li.querySelector('strong')?.textContent || li.textContent || '').split(':')[0])
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  return items;
 });
 
-const followUpLessons = computed(() => {
-  const curId = lessonId.value;
-  const all = Array.isArray(data?.LESSONS) ? data.LESSONS : [];
-  return all.filter((x) => x && Array.isArray(x.buildsOn) && x.buildsOn.includes(curId));
+const QUESTIONS = computed(() => (Array.isArray(data?.QUESTIONS) ? data.QUESTIONS : []));
+const qidChips = computed(() => {
+  const qids = Array.isArray(lesson.value?.qids) ? lesson.value.qids : [];
+  const chips = [];
+  for (const qid of qids) {
+    const qObj = QUESTIONS.value.find((x) => x && x.id === qid);
+    chips.push({ qid, label: qObj && qObj.topic ? qid + ' · ' + qObj.topic : qid });
+  }
+  return chips.slice(0, 5);
 });
 
 const refDocs = computed(() => {
   const keys = Array.isArray(lesson.value?.refs) ? lesson.value.refs : [];
   const all = Array.isArray(data?.SOURCES) ? data.SOURCES : [];
-  return keys.map((k) => all.find((s) => s.key === k)).filter(Boolean);
+  const out = [];
+  for (const k of keys) {
+    const s = all.find((x) => x && x.key === k);
+    if (s) out.push(s);
+  }
+  return out.slice(0, 3);
 });
+
+const sayIt0 = computed(() => (Array.isArray(lesson.value?.sayIt) && lesson.value.sayIt.length ? lesson.value.sayIt[0] : ''));
+const sayItList = computed(() => (Array.isArray(lesson.value?.sayIt) ? lesson.value.sayIt : []).slice(0, 7));
+const buildsOnChips = computed(() => {
+  const b = Array.isArray(lesson.value?.buildsOn) ? lesson.value.buildsOn : [];
+  return b.slice(0, 2).map((id) => ({ id, label: 'Bài trước: ' + id }));
+});
+
+const GLOSS_MARKER = 'Thuật nguyên cần biết';
+const bodyRest = computed(() => {
+  const html = String(lesson.value?.body || '');
+  const start = html.indexOf('<p><strong>' + GLOSS_MARKER);
+  if (start < 0) return html;
+  const ul = html.indexOf('<ul>', start);
+  if (ul < 0) return html;
+  const ulEnd = html.indexOf('</ul>', ul);
+  const after = ulEnd >= 0 ? html.slice(ulEnd + 5) : '';
+  return after;
+});
+
+const activeSec = ref('sec-1');
+let io = null;
+function goToSection(sid) {
+  document.getElementById('hcp-' + sid)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function observeSects() {
+  io?.disconnect();
+  io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const sid = String(e.target.id || '').replace(/^hcp-/, '');
+      if (e.isIntersecting) activeSec.value = sid;
+    }
+  }, { rootMargin: '-160px 0px -55% 0px', threshold: 0 });
+  for (const s of TOC_IDS) {
+    const el = document.getElementById('hcp-' + s);
+    if (el) io.observe(el);
+  }
+}
+onMounted(() => { nextTick(() => observeSects()); });
+onBeforeUnmount(() => { io?.disconnect(); });
+watch(lessonId, () => { activeSec.value = 'sec-1'; nextTick(() => observeSects()); });
+
+const openQ = ref(0);
+const glossaryOpen = ref(true);
+function toggleGlossary() { glossaryOpen.value = !glossaryOpen.value; }
+
+function codeHtml(code, max) {
+  const lines = String(code == null ? '' : code).split(NL);
+  if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  const extra = Math.max(0, lines.length - max);
+  const body = lines.slice(0, max).map((l) => esc(l)).join(NL);
+  const pre = '<pre class="hcp-code"><code>' + body + '</code></pre>';
+  return extra > 0 ? pre + '<p class="hcp-code-more">+ ' + extra + ' dòng</p>' : pre;
+}
 </script>
 
 <template>
   <div class="hcp-lesson" v-if="lesson && lesson.id">
-    <div class="hcp-lesson-header">
-      <button type="button" class="hcp-back" @click="$emit('close')" aria-label="Về trang chủ">← Về</button>
-      <div class="hcp-lesson-meta">
-        <span class="hcp-lesson-id">{{ lesson.id }}</span>
-        <span class="hcp-lesson-stage">{{ lesson.stageTitle }}</span>
+    <header class="hcp-lesson-header">
+      <div class="hcp-lesson-header-in">
+        <button type="button" class="hcp-back" aria-label="Về trang chủ" @click="emit('close')">← Về</button>
+        <nav class="hcp-lesson-crumb" aria-label="Breadcrumb">Vở ôn · {{ lesson.stageTitle }} · Bài {{ lessonNo }} / {{ totalLessons }}</nav>
+        <button type="button" class="hcp-btn hcp-done-btn" :class="{ done: done }" :aria-pressed="done" @click="toggleDone">{{ done ? 'Đã học' : 'Đánh dấu đã học' }}</button>
       </div>
-      <button type="button" class="hcp-done-btn" :aria-pressed="phaseState[6]"
-              @click="togglePhase(6)" :class="{ done: phaseState[6] }">
-        {{ phaseState[6] ? 'Đã học' : 'Đánh dấu đã học' }}
-      </button>
-    </div>
+    </header>
 
-    <h1 class="hcp-lesson-title">{{ lesson.title }}</h1>
-    <p class="hcp-lesson-goal">{{ lesson.goal }}</p>
-
-    <div class="hcp-lesson-grid">
-      <div class="hcp-lesson-main">
-        <div class="hcp-rail">
-          <div class="hcp-rail-segments" :class="{ finished: phaseState[6] }">
-            <div class="hcp-rail-fill" :style="{ width: ((phaseState[6] ? 6 : 0) / 6) * 100 + '%' }"></div>
-            <template v-for="ph in PHASES" :key="ph.id">
-              <button type="button" class="hcp-rail-seg" :class="{ active: phaseState[ph.id], checked: phaseState[ph.id] }"
-                      :aria-label="ph.label + (phaseState[ph.id] ? ' đã xong' : '')"
-                      @click="togglePhase(ph.id)">
-                <span class="hcp-rail-num">{{ ph.id }}</span>
-              </button>
-            </template>
-          </div>
-          <p class="hcp-rail-text">{{ phaseState[6] ? 'Bài đã hoàn thành' : 'Chặng ' + (Object.keys(phaseState).filter((k) => phaseState[+k]).length) + ' / 6' }}</p>
+    <div class="hcp-lesson-shell">
+      <div class="hcp-lesson-hero">
+        <nav class="hcp-lesson-crumb-m" aria-hidden="true">Vở ôn · {{ lesson.stageTitle }} · Bài {{ lessonNo }} / {{ totalLessons }}</nav>
+        <h1 class="hcp-lesson-title">{{ lesson.id }} · {{ lesson.title }}</h1>
+        <div class="hcp-lesson-goal">
+          <p class="hcp-lbl">Mục tiêu</p>
+          <p class="hcp-goal">{{ lesson.goal }}</p>
         </div>
+      </div>
 
-        <div class="hcp-phases">
-          <template v-for="ph in SECTION_PHASES" :key="ph.id">
-            <section class="hcp-glossary-strip" v-if="ph.id === 1 && (glossary.length || prereqLessons.length || followUpLessons.length)">
-              <h2 class="hcp-glossary-strip-h">
-                <button type="button" class="hcp-accordion-head" @click="toggleGlossary" :aria-expanded="String(glossaryOpen)">
-                  <span>Từ điển thuật ngữ bài này ({{ glossary.length }}) & Bản đồ bài học liên quan</span>
-                  <svg class="hcp-chev" :class="{ open: glossaryOpen }" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="hcp-lesson-grid">
+        <details class="hcp-toc">
+          <summary class="hcp-toc-summary">Trong bài này</summary>
+          <ol class="hcp-toc-list">
+            <li v-for="s in SECTIONS" :key="s.id">
+              <button type="button" class="hcp-toc-item" :class="{ active: activeSec === s.id }" @click="goToSection(s.id)">
+                <span class="hcp-toc-num">{{ s.num }}</span>
+                <span class="hcp-toc-title">{{ s.title }}</span>
+              </button>
+            </li>
+          </ol>
+        </details>
+
+        <main class="hcp-lesson-main">
+          <section id="hcp-sec-1" class="hcp-sec">
+            <p class="hcp-sec-n">01</p>
+            <h2 class="hcp-sec-h">Vì sao</h2>
+            <div class="hcp-prose"><p v-html="bridgeHtml"></p></div>
+            <p class="hcp-scroll-hint">Kéo ngang để xem đủ sơ đồ</p>
+            <figure class="hcp-figure">
+              <div class="hcp-figure-wrap">
+                <img class="hcp-figure-img" :src="d1Url" :alt="'Hình 1 · ' + lessonId" />
+              </div>
+              <figcaption class="hcp-figure-cap">Hình 1</figcaption>
+            </figure>
+            <table class="hcp-table hcp-gloss">
+              <caption class="hcp-table-cap">Bảng 1 · {{ glossaryRows[0] && glossaryRows[0].term }}</caption>
+              <colgroup>
+                <col style="width: 170px" />
+                <col style="width: 300px" />
+                <col style="width: 250px" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Khái niệm</th>
+                  <th>Là gì</th>
+                  <th>Không phải là gì</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="g in glossaryRows" :key="g.term">
+                  <td class="hcp-g-term" data-label="Khái niệm">{{ g.term }}</td>
+                  <td data-label="Là gì">{{ g.is }}</td>
+                  <td data-label="Không phải là gì" v-if="g.not">{{ g.not }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="hcp-sec-2" class="hcp-sec">
+            <p class="hcp-sec-n">02</p>
+            <h2 class="hcp-sec-h">Cơ chế</h2>
+            <div class="hcp-prose"><div v-html="mechanismProse"></div></div>
+            <p class="hcp-scroll-hint">Kéo ngang để xem đủ sơ đồ</p>
+            <figure class="hcp-figure">
+              <div class="hcp-figure-wrap">
+                <img class="hcp-figure-img" :src="d1Url" :alt="'Hình 1 · ' + lessonId" />
+              </div>
+              <figcaption class="hcp-figure-cap">Hình 1</figcaption>
+            </figure>
+            <figure v-if="d2Section === 2" class="hcp-figure">
+              <div class="hcp-figure-wrap">
+                <img class="hcp-figure-img" :src="d2Url" :alt="'Hình 2 · ' + lessonId" />
+              </div>
+              <figcaption class="hcp-figure-cap">Hình 2</figcaption>
+            </figure>
+            <div class="hcp-code" v-html="codeHtml(lesson.code, 24)"></div>
+            <div class="hcp-code-note" v-html="lesson.codeNote || ''"></div>
+          </section>
+
+          <section id="hcp-sec-3" class="hcp-sec">
+            <p class="hcp-sec-n">03</p>
+            <h2 class="hcp-sec-h">Sự cố</h2>
+            <div class="hcp-prose"><div v-html="incidentProse"></div></div>
+            <div class="hcp-root">
+              <p class="hcp-lbl">Nguyên nhân gốc</p>
+              <div class="hcp-root-line" v-html="renderHtml(lesson.rootCause)"></div>
+            </div>
+            <table class="hcp-table hcp-timeline">
+              <caption class="hcp-table-cap">Bảng 2 · Dòng thời gian</caption>
+              <colgroup>
+                <col style="width: 96px" />
+                <col style="width: 624px" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Mốc</th>
+                  <th>Việc</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in timelineRows" :key="i">
+                  <td class="hcp-tl-m" data-label="Mốc">{{ r.t }}</td>
+                  <td class="hcp-tl-v" data-label="Việc">{{ r.v }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="hcp-code-wrap" v-html="codeHtml(lesson.naiveCode, 14)"></div>
+            <div class="hcp-callout-warn" v-if="lesson.naiveOut">
+              <p class="hcp-callout-label">Kết quả thực tế</p>
+              <div class="hcp-callout-body" v-html="renderHtml(lesson.naiveOut)"></div>
+            </div>
+            <div class="hcp-fail" v-if="lesson.failureModes">
+              <p class="hcp-lbl">Lỗi thường gặp</p>
+              <div class="hcp-fail-list" v-html="renderHtml(lesson.failureModes)"></div>
+            </div>
+            <figure v-if="d2Section === 3" class="hcp-figure">
+              <div class="hcp-figure-wrap">
+                <img class="hcp-figure-img" :src="d2Url" :alt="'Hình 2 · ' + lessonId" />
+              </div>
+              <figcaption class="hcp-figure-cap">Hình 2</figcaption>
+            </figure>
+          </section>
+
+          <section id="hcp-sec-4" class="hcp-sec">
+            <p class="hcp-sec-n">04</p>
+            <h2 class="hcp-sec-h">Nói trong 30 giây</h2>
+            <div class="hcp-say">
+              <p class="hcp-say-label">30 giây</p>
+              <p class="hcp-say-body" v-html="renderHtml(esc(lesson.say30))"></p>
+            </div>
+            <table class="hcp-table hcp-rhythm">
+              <caption class="hcp-table-cap">Bảng 3 · Ba nhịp của câu trả lời 90 giây</caption>
+              <colgroup>
+                <col style="width: 120px" />
+                <col style="width: 520px" />
+                <col style="width: 80px" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Nhịp</th>
+                  <th>Nội dung</th>
+                  <th>Giây</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in rhythmRows" :key="r.key">
+                  <td>{{ r.label }}</td>
+                  <td>{{ r.content }}</td>
+                  <td class="num">{{ r.sec }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="hcp-chips">
+              <li v-for="(s, i) in sayItList" :key="i" class="hcp-chip-item"><span class="hcp-chip">{{ s }}</span></li>
+            </ol>
+          </section>
+
+          <section id="hcp-sec-5" class="hcp-sec">
+            <p class="hcp-sec-n">05</p>
+            <h2 class="hcp-sec-h">CTO hỏi xoáy</h2>
+            <div class="hcp-prose"><div v-html="tradeoffProse"></div></div>
+            <figure v-if="d2Section === 5" class="hcp-figure">
+              <div class="hcp-figure-wrap">
+                <img class="hcp-figure-img" :src="d2Url" :alt="'Hình 2 · ' + lessonId" />
+              </div>
+              <figcaption class="hcp-figure-cap">Hình 2</figcaption>
+            </figure>
+            <div class="hcp-qa">
+              <div v-for="(a, i) in lesson.attacks" :key="i" class="hcp-qa-item" :class="{ open: i === openQ }">
+                <button type="button" class="hcp-qa-q" :aria-expanded="i === openQ" @click="openQ = (i === openQ ? -1 : i)">
+                  <span class="hcp-qa-qtext" v-html="renderHtml(a.q)"></span>
+                  <span class="hcp-qa-ico" aria-hidden="true">{{ i === openQ ? '⌄' : '›' }}</span>
                 </button>
-              </h2>
-              <div class="hcp-glossary-list" v-show="glossaryOpen">
-                <div class="hcp-roadmap-links" v-if="prereqLessons.length || followUpLessons.length">
-                  <div v-if="prereqLessons.length" class="hcp-roadmap-group">
-                    <span class="hcp-roadmap-label">Kiến thức nền đã học ở trước:</span>
-                    <a v-for="pl in prereqLessons" :key="pl.id" class="hcp-qchip" :href="'#/lesson/' + pl.id">{{ pl.id }} · {{ pl.title }}</a>
-                  </div>
-                  <div v-if="followUpLessons.length" class="hcp-roadmap-group">
-                    <span class="hcp-roadmap-label">Các bài phía sau sẽ mổ xẻ sâu hơn từ bài này:</span>
-                    <a v-for="fl in followUpLessons" :key="fl.id" class="hcp-qchip" :href="'#/lesson/' + fl.id">{{ fl.id }} · {{ fl.title }}</a>
-                  </div>
-                </div>
-                <div class="hcp-glossary-item" v-for="g in glossary" :key="g.term">
-                  <p class="hcp-glossary-term">{{ g.term }}</p>
-                  <p class="hcp-glossary-def" v-html="renderHtml(esc(g.def))"></p>
+                <div class="hcp-qa-a" v-show="i === openQ">
+                  <div class="hcp-prose"><div v-html="renderHtml(a.a)"></div></div>
                 </div>
               </div>
-            </section>
-            <section class="hcp-phase" :class="{ done: phaseState[ph.id], open: openPhases[ph.id] }">
-              <h2 class="hcp-phase-title">
-                <button type="button" class="hcp-accordion-head hcp-phase-toggle" @click="toggleOpen(ph.id)" :aria-expanded="String(!!openPhases[ph.id])">
-                  <span>{{ ph.label }}</span>
-                  <svg class="hcp-chev" :class="{ open: openPhases[ph.id] }" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-              </h2>
-              <div class="hcp-phase-body" v-show="openPhases[ph.id]" v-html="phaseContent(ph)" @click="onPhaseBodyClick"></div>
-            </section>
-          </template>
-        </div>
+            </div>
+            <p class="hcp-qa-cap">Bảng 4 · {{ lesson.attacks.length }} câu CTO, mở câu 1</p>
+            <div class="hcp-chips">
+              <span v-for="c in altChips" :key="c" class="hcp-chip">{{ c }}</span>
+            </div>
+            <p class="hcp-observe">
+              <span class="hcp-lbl">Quan sát trên Production</span>
+              <span class="hcp-observe-text" v-html="renderHtml(lesson.observe)"></span>
+            </p>
+            <div class="hcp-chips">
+              <a v-for="c in qidChips" :key="c.qid" class="hcp-chip" :href="'#/drill?ids=' + encodeURIComponent(c.qid)">{{ c.label }}</a>
+            </div>
+          </section>
 
-        <div class="hcp-footer-actions">
-          <button type="button" class="hcp-btn hcp-btn-primary hcp-next-btn" @click="primaryAction">
-            {{ phaseState[6] ? 'Bài tiếp theo / Về danh sách' : (allPhasesDone ? 'Hoàn thành bài' : 'Hoàn thành chặng này') }}
-          </button>
-        </div>
-      </div>
+          <section id="hcp-sec-6" class="hcp-sec">
+            <p class="hcp-sec-n">06</p>
+            <h2 class="hcp-sec-h">Câu neo</h2>
+            <div class="hcp-band">
+              <p class="hcp-band-lbl">Câu neo</p>
+              <p class="hcp-band-a">{{ lesson.anchor }}</p>
+            </div>
+            <div class="hcp-band-sub">
+              <p class="hcp-lbl">Nói được trong một câu</p>
+              <p class="hcp-say-it">{{ sayIt0 }}</p>
+            </div>
+            <div class="hcp-chips">
+              <span v-for="b in buildsOnChips" :key="b.id" class="hcp-chip">{{ b.label }}</span>
+            </div>
+            <div class="hcp-refs">
+              <p class="hcp-lbl">Tài liệu đọc</p>
+              <div class="hcp-refs-list">
+                <a v-for="d in refDocs" :key="d.key" :href="d.url" target="_blank" rel="noopener noreferrer">{{ d.name }}</a>
+              </div>
+            </div>
+            <details class="hcp-body-more">
+              <summary>Đọc thêm · Ứng dụng thực tế</summary>
+              <div class="hcp-body-inner" v-html="bodyRest"></div>
+            </details>
+          </section>
 
-      <aside class="hcp-lesson-side">
-        <section class="hcp-side-box" v-if="lesson.anchor">
-          <h2 class="hcp-side-label">Câu neo</h2>
-          <p class="hcp-side-text">{{ lesson.anchor }}</p>
-        </section>
-        <section class="hcp-side-box" v-if="refDocs.length">
-          <h2 class="hcp-side-label">Tài liệu đọc</h2>
-          <ul class="hcp-side-list">
-            <li v-for="d in refDocs" :key="d.key">
-              <a :href="d.url" target="_blank" rel="noopener noreferrer">{{ d.name }}</a>
+          <footer class="hcp-lesson-footer">
+            <div class="hcp-footer-pos">
+              <button v-if="lessonIndex > 0" type="button" class="hcp-prev" @click="openPrev">Bài trước</button>
+            </div>
+            <button type="button" class="hcp-btn hcp-btn-primary hcp-next-btn" @click="openNext">Bài tiếp theo</button>
+            <p class="hcp-footer-line">Bài {{ lessonNo }} / {{ totalLessons }} · {{ lesson.stageTitle }}</p>
+          </footer>
+        </main>
+
+        <aside class="hcp-rail">
+          <p class="hcp-rail-label">Trong bài này</p>
+          <ol class="hcp-rail-list">
+            <li v-for="s in SECTIONS" :key="s.id">
+              <button type="button" class="hcp-toc-item" :class="{ active: activeSec === s.id }" @click="goToSection(s.id)">
+                <span class="hcp-toc-num">{{ s.num }}</span>
+                <span class="hcp-toc-title">{{ s.title }}</span>
+              </button>
             </li>
-          </ul>
-        </section>
-      </aside>
+          </ol>
+          <p class="hcp-rail-sep"></p>
+          <p class="hcp-rail-gloss">Từ điển bài này ({{ glossaryRows.length }})</p>
+          <details class="hcp-rail-gloss">
+            <summary>Chi tiết</summary>
+            <ul class="hcp-gloss-list">
+              <li v-for="g in glossaryRows" :key="g.term" class="hcp-gloss-item">
+                <p class="hcp-gloss-term">{{ g.term }}</p>
+                <p v-if="g.is" class="hcp-gloss-def">{{ g.is }}</p>
+                <p v-if="g.not" class="hcp-gloss-def not">{{ g.not }}</p>
+              </li>
+            </ul>
+          </details>
+          <p class="hcp-rail-sep"></p>
+          <button type="button" class="hcp-rail-nav" :disabled="lessonIndex <= 0" @click="openPrev">Bài trước</button>
+          <button type="button" class="hcp-rail-nav" @click="openNext">Bài tiếp theo</button>
+        </aside>
+      </div>
     </div>
   </div>
   <div v-else class="hcp-error">Bài chưa có dữ liệu.</div>
@@ -408,134 +496,139 @@ const refDocs = computed(() => {
 
 <style scoped>
 .hcp-lesson { padding-bottom: 24px; }
-.hcp-lesson-header {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
-}
-.hcp-back { border: none; background: none; color: var(--accent-ink); font-size: 14px; cursor: pointer; padding: 0; min-height: 44px; display: inline-flex; align-items: center; }
-.hcp-lesson-meta { flex: 1; }
-.hcp-lesson-id { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--accent-ink); }
-.hcp-lesson-stage { font-size: 13px; color: var(--fg-3); margin-left: 8px; }
-.hcp-lesson-title { margin: 4px 0 6px 0; font-size: 24px; line-height: 1.3; }
-.hcp-lesson-goal { margin: 0 0 16px 0; font-size: 14px; color: var(--fg-2); line-height: 1.5; }
+.hcp-lesson-header { position: sticky; top: 64px; z-index: 40; background: var(--surface); border-bottom: 1px solid var(--line); }
+.hcp-lesson-header-in { max-width: 1024px; margin: 0 auto; min-height: 64px; padding: 0 16px; display: flex; align-items: center; gap: 12px; }
+.hcp-back { border: none; background: none; color: var(--accent-ink); font-size: 15px; font-weight: 600; cursor: pointer; padding: 0; min-height: 44px; display: inline-flex; align-items: center; }
+.hcp-lesson-crumb { flex: 1; min-width: 0; font-size: 15px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hcp-done-btn { font-size: 13px; padding: 7px 12px; min-height: 36px; border-color: var(--ok); color: var(--ok); }
-.hcp-done-btn.done { background: var(--ok); color: white; }
+.hcp-done-btn.done { background: var(--ok); color: var(--surface); }
 .hcp-done-btn.done:hover { background: var(--ok-fill); }
-.hcp-rail {
-  margin: 20px 0; position: sticky; top: 68px; z-index: 20;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
-  padding: 8px 12px; backdrop-filter: blur(8px);
-}
-.hcp-rail-segments { display: flex; gap: 6px; position: relative; }
-.hcp-rail-fill {
-  position: absolute; top: 0; left: 0; height: 100%; background: var(--ok);
-  transition: width 0.3s; border-radius: 4px;
-}
-.hcp-rail-seg {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  min-width: 40px; height: 32px; border-radius: var(--r-sm);
-  border: 1px solid var(--line); background: var(--sunken); color: var(--fg-3);
-  font-size: 13px; font-weight: 600; cursor: pointer;
-}
-.hcp-rail-seg.active { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
-.hcp-rail-seg.checked { border-color: var(--ok); color: var(--ok); background: var(--ok-soft); }
-.hcp-rail-text { margin: 8px 0 0 0; font-size: 12px; color: var(--fg-3); text-align: right; }
-.hcp-phases { display: flex; flex-direction: column; gap: 14px; }
-.hcp-phase { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); overflow: hidden; }
-.hcp-phase.done { border-color: var(--ok); }
-.hcp-phase-title { margin: 0; background: var(--sunken); }
-.hcp-accordion-head {
-  width: 100%; text-align: left; background: var(--sunken); border: none;
-  padding: 16px 20px; font-size: 15px; font-weight: 600; color: var(--fg); cursor: pointer;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-}
-.hcp-back:focus-visible, .hcp-done-btn:focus-visible, .hcp-rail-seg:focus-visible, .hcp-next-btn:focus-visible { outline: none; box-shadow: var(--ring); }
-.hcp-accordion-head:focus-visible { outline: none; box-shadow: var(--ring); }
-.hcp-chev { flex: none; transition: transform 150ms ease; }
-.hcp-chev.open { transform: rotate(90deg); }
-.hcp-glossary-strip { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); overflow: hidden; }
-.hcp-glossary-strip-h { margin: 0; background: var(--sunken); font-size: 14px; }
-.hcp-glossary-strip-h .hcp-accordion-head { font-size: 14px; color: var(--accent-ink); }
-.hcp-glossary-list { padding: 8px 16px 16px 16px; }
-/* Nội dung chặng do phaseContent() sinh ra rồi chèn bằng v-html, nên không mang
-   attribute scope của component. Mọi rule cho nó phải đi qua :deep(), nếu không
-   selector biên dịch thành .hcp-x[data-v-hash] và không bao giờ khớp.
-   Padding 20px lấy từ design.pen frame "Nội dung pha 1" = [0, 20, 20, 20]. */
-.hcp-phase-body { padding: 4px 20px 20px; }
-.hcp-phase-body :deep(.hcp-checklist) { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
-.hcp-phase-body :deep(.hcp-checklist-item) { margin: 0; line-height: 1.6; color: var(--fg); }
-.hcp-phase-body :deep(.hcp-prompt) { color: var(--fg); font-size: 15px; }
-.hcp-phase-body :deep(.hcp-predict) { display: grid; gap: 12px; }
-.hcp-phase-body :deep(.hcp-predict-q) { margin: 0; font-size: 15px; line-height: 1.65; }
-.hcp-phase-body :deep(.hcp-predict-a) { margin: 0; padding: 14px; border-radius: var(--r); background: var(--sunken); border: 1px solid var(--line); font-size: 15px; line-height: 1.65; }
-.hcp-phase-body :deep(.hcp-reveal-ans) { width: 100%; justify-content: center; font-size: 14px; font-weight: 600; min-height: 44px; }
-.hcp-phase-body :deep(.hcp-placeholder) { border: 1px dashed var(--fg-2); border-radius: var(--r-card); padding: 16px; text-align: center; }
-.hcp-phase-body :deep(.hcp-placeholder-msg) { margin: 0; color: var(--fg-3); font-size: 14px; font-family: var(--mono); }
-.hcp-phase-body :deep(.hcp-notes) { margin-top: 4px; }
-.hcp-phase-body :deep(.hcp-section) { margin: 16px 0 0 0; padding-top: 16px; border-top: 1px solid var(--line); }
-.hcp-phase-body :deep(.hcp-section:first-child) { margin-top: 12px; padding-top: 0; border-top: none; }
-.hcp-phase-body :deep(.hcp-section-h) { margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: var(--fg-2); }
-.hcp-phase-body :deep(.hcp-body) { font-size: 15px; line-height: 1.68; color: var(--fg); }
-.hcp-phase-body :deep(.hcp-body p) { margin: 0 0 10px 0; }
-.hcp-phase-body :deep(.hcp-body p:last-child) { margin-bottom: 0; }
-.hcp-phase-body :deep(.hcp-body ul), .hcp-phase-body :deep(.hcp-body ol) { margin: 6px 0 10px 0; padding-left: 20px; display: grid; gap: 6px; }
-.hcp-phase-body :deep(.hcp-bridge) { color: var(--fg-2); background: var(--sunken); padding: 12px 14px; border-radius: var(--r); }
-.hcp-phase-body :deep(.hcp-bridge-list) { margin: 0; padding: 12px 14px; background: var(--sunken); color: var(--fg-2); border-radius: var(--r); list-style: none; display: grid; gap: 10px; }
-.hcp-phase-body :deep(.hcp-bridge-list li) { margin: 0; }
-.hcp-phase-body :deep(.hcp-code) { margin: 10px 0; padding: 14px 16px; border-radius: var(--r); background: var(--code-bg); color: var(--code-fg); font-family: var(--mono); font-size: 13.5px; line-height: 1.55; overflow-x: auto; }
-.hcp-phase-body :deep(.hcp-code-note) { margin-top: 8px; color: var(--fg-2); }
-.hcp-phase-body :deep(.hcp-callout-warn) { margin-top: 10px; padding: 12px 16px; border-radius: var(--r); background: var(--warn-soft, var(--sunken)); border: 1px solid var(--line); }
-.hcp-phase-body :deep(.hcp-callout-label) { margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: var(--warn, var(--accent-ink)); }
-.hcp-phase-body :deep(.hcp-callout-body) { margin: 0; font-size: 14px; line-height: 1.6; color: var(--fg); }
-.hcp-phase-body :deep(.hcp-say-box) { padding: 14px 16px; border-radius: var(--r); background: var(--sunken); border: 1px solid var(--line); }
-.hcp-phase-body :deep(.hcp-voice) { margin: 0 0 12px 0; color: var(--fg); }
-.hcp-phase-body :deep(.hcp-voice:last-child) { margin-bottom: 0; }
-.hcp-phase-body :deep(.hcp-cue-answer) { margin-top: 6px; padding: 8px 12px; border-radius: var(--r); background: var(--sunken); font-size: 14px; line-height: 1.6; color: var(--fg-2); }
-.hcp-phase-body :deep(.hcp-cue-answer strong) { color: var(--fg); }
-.hcp-phase-body :deep(.hcp-timeline) { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-.hcp-phase-body :deep(.hcp-timeline) li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; line-height: 1.55; }
-.hcp-phase-body :deep(.hcp-timeline) li:last-child { border-bottom: none; }
-.hcp-phase-body :deep(.hcp-tight) { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 15px; line-height: 1.65; }
-.hcp-phase-body :deep(.hcp-time) { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--accent-ink); }
-.hcp-phase-body :deep(.hcp-cto) { display: flex; flex-direction: column; gap: 10px; }
-.hcp-phase-body :deep(.hcp-cto-item) { border: 1px solid var(--line); border-radius: var(--r); background: var(--sunken); overflow: hidden; }
-.hcp-phase-body :deep(.hcp-cto-head) { width: 100%; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 16px; border: none; background: transparent; color: var(--fg); font: inherit; font-size: 15px; font-weight: 600; text-align: left; cursor: pointer; line-height: 1.5; }
-.hcp-phase-body :deep(.hcp-cto-icon) { flex: none; font-family: var(--mono); color: var(--fg-3); font-size: 16px; }
-.hcp-phase-body :deep(.hcp-cto-a) { padding: 0 16px 14px 16px; font-size: 15px; line-height: 1.65; color: var(--fg); border-top: 1px solid var(--line); padding-top: 12px; }
-.hcp-phase-body :deep(.hcp-qchips) { display: flex; flex-wrap: wrap; gap: 8px; }
-.hcp-phase-body :deep(.hcp-qchip) { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 13.5px; font-weight: 600; text-decoration: none; }
-.hcp-phase-body :deep(.hcp-qchip:hover) { text-decoration: underline; }
-.hcp-phase-body :deep(.hcp-empty) { color: var(--fg-3); font-style: italic; }
-.hcp-phase-body :deep(.hcp-done) { text-align: center; padding: 20px; border-top: 1px solid var(--line); }
-.hcp-phase-body :deep(.hcp-done-msg) { margin: 0; font-size: 16px; font-weight: 600; color: var(--ok); }
-.hcp-footer-actions { margin-top: 20px; display: flex; justify-content: flex-end; }
-.hcp-next-btn { min-width: 160px; justify-content: center; }
-.hcp-error { padding: 20px; text-align: center; color: var(--err); }
-.hcp-phase-body :deep(.hcp-svg-wrap) { margin: 8px 0 0 0; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); padding: 12px; }
-.hcp-phase-body :deep(.hcp-svg-inner) svg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; }
-.hcp-phase-body :deep(.hcp-svg-cap) { margin: 8px 0 0 0; font-size: 13px; color: var(--fg-3); text-align: center; }
-.hcp-phase-body :deep(.hcp-lesson-link) { color: var(--accent-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
-.hcp-roadmap-links { display: grid; gap: 10px; padding-bottom: 12px; margin-bottom: 10px; border-bottom: 1px dashed var(--line-2); }
-.hcp-roadmap-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.hcp-roadmap-label { font-size: 13px; font-weight: 600; color: var(--fg-2); margin-right: 4px; }
-.hcp-glossary-item { display: grid; gap: 2px; padding: 8px 0; border-top: 1px solid var(--line); }
-.hcp-glossary-item:first-of-type { border-top: none; padding-top: 0; }
-.hcp-glossary-term { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
-.hcp-glossary-def { margin: 0; font-size: 14px; color: var(--fg-2); line-height: 1.5; overflow-wrap: anywhere; }
-.hcp-side-box { padding: 16px; margin-bottom: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); }
-.hcp-side-label { margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: var(--accent-ink); text-transform: uppercase; letter-spacing: 0.03em; }
-.hcp-side-text { margin: 0; font-size: 14px; color: var(--fg); line-height: 1.5; overflow-wrap: anywhere; }
-.hcp-side-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
-.hcp-side-list a { overflow-wrap: anywhere; }
+.hcp-lesson-shell { max-width: 1024px; margin: 0 auto; }
+.hcp-lesson-hero { padding: 64px 0 0; }
+.hcp-lesson-crumb-m { display: none; font-size: 13px; color: var(--fg-3); margin: 0 0 4px; }
+.hcp-lesson-title { margin: 0; font-size: 48px; line-height: 1.15; font-weight: 600; color: var(--fg); }
+.hcp-lesson-goal { margin: 24px 0 0; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.hcp-lbl { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--fg-3); }
+.hcp-goal { margin: 0; font-size: 17px; line-height: 1.6; color: var(--fg); }
+.hcp-lesson-grid { display: grid; grid-template-columns: minmax(0, 720px) minmax(0, 240px); column-gap: 64px; margin-top: 96px; align-items: start; }
+.hcp-toc { display: none; }
+.hcp-lesson-main { min-width: 0; }
+.hcp-rail { position: sticky; top: 152px; align-self: start; display: flex; flex-direction: column; gap: 4px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.hcp-rail-label { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg-3); }
+.hcp-rail-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hcp-toc-item { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 4px; border: none; border-left: 2px solid transparent; background: none; border-radius: 6px 6px 6px 0; cursor: pointer; text-align: left; font: inherit; }
+.hcp-toc-item:hover { background: var(--sunken); }
+.hcp-toc-item.active { background: var(--accent-soft); border-left-color: var(--accent); }
+.hcp-toc-item.active .hcp-toc-num { color: var(--accent-ink); }
+.hcp-toc-item.active .hcp-toc-title { color: var(--accent-ink); }
+.hcp-toc-num { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--fg-3); }
+.hcp-toc-title { font-size: 15px; color: var(--fg); }
+.hcp-rail-sep { height: 1px; background: var(--line); margin: 8px 0; }
+.hcp-rail-gloss { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--accent-ink); }
+.hcp-rail-gloss summary { cursor: pointer; }
+.hcp-gloss-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.hcp-gloss-item { font-size: 14px; color: var(--fg-2); line-height: 1.5; }
+.hcp-gloss-term { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg); }
+.hcp-gloss-def { margin: 0; font-size: 14px; color: var(--fg-2); line-height: 1.5; }
+.hcp-gloss-def.not { color: var(--fg-3); }
+.hcp-rail-nav { display: block; width: 100%; text-align: left; padding: 8px 0; border: none; border-bottom: 1px solid var(--line); background: none; font: inherit; font-size: 15px; color: var(--accent-ink); cursor: pointer; }
+.hcp-rail-nav:last-child { border-bottom: none; }
+.hcp-rail-nav:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.hcp-sec { scroll-margin-top: 152px; }
+.hcp-sec-n { margin: 0; font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--fg-3); line-height: 18px; }
+.hcp-sec-h { margin: 8px 0 0; font-size: 34px; line-height: 1.2; font-weight: 600; color: var(--fg); }
+.hcp-sec + .hcp-sec { margin-top: 96px; }
+.hcp-prose { margin: 24px 0 0; font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 600px; }
+.hcp-prose p { margin: 0 0 12px; }
+.hcp-prose p:last-child { margin-bottom: 0; }
+.hcp-prose ul, .hcp-prose ol { margin: 0 0 12px; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+.hcp-prose li { line-height: 1.6; }
+.hcp-prose strong { color: var(--fg); font-weight: 600; }
+.hcp-prose code { font-family: var(--mono); font-size: 14px; background: var(--sunken); padding: 1px 4px; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.hcp-prose, .hcp-prose * { overflow-wrap: anywhere; }
+.hcp-prose > :last-child { margin-bottom: 0; }
+.hcp-scroll-hint { display: none; margin: 8px 0 0; font-size: 13px; color: var(--fg-3); }
+
+.hcp-figure { margin: 32px 0 0; }
+.hcp-figure-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.hcp-figure-img { width: 720px; height: auto; display: block; max-width: none; }
+.hcp-figure-cap { margin: 8px 0 0; font-size: 15px; color: var(--fg-3); }
+
+.hcp-table { width: 100%; border-collapse: collapse; font-size: 15px; max-width: 720px; }
+.hcp-table caption { font-size: 15px; color: var(--fg-3); margin-bottom: 8px; text-align: left; }
+.hcp-table th { background: var(--sunken); font-weight: 600; color: var(--fg); }
+.hcp-table td { color: var(--fg-2); line-height: 1.55; }
+.hcp-table td:first-child { color: var(--fg); font-weight: 600; }
+.hcp-table .num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+
+.hcp-code { margin: 40px 0 0; padding: 16px; border-radius: 8px; background: var(--code-bg); color: var(--code-fg); font-family: var(--mono); font-size: 15px; line-height: 1.6; overflow-x: auto; }
+.hcp-code-more { margin: 8px 0 0; font-family: var(--mono); font-size: 13px; color: var(--fg-3); }
+.hcp-code-note { margin: 12px 0 0; font-size: 17px; line-height: 1.65; color: var(--fg); overflow-wrap: anywhere; }
+.hcp-code-note code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.hcp-code-wrap { margin-top: 40px; }
+
+.hcp-callout-warn { margin: 16px 0 0; padding: 12px 16px; border-radius: 8px; background: var(--warn-soft); border: 1px solid var(--line); }
+.hcp-callout-label { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--warn); }
+.hcp-callout-body { margin: 0; font-size: 17px; line-height: 1.65; color: var(--fg); }
+.hcp-fail { margin-top: 24px; }
+.hcp-fail-list { font-size: 17px; line-height: 1.65; color: var(--fg); }
+
+.hcp-say { margin: 32px 0 0; padding: 24px; border-radius: 8px; background: var(--sunken); }
+.hcp-say-label { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg-3); }
+.hcp-say-body { margin: 0; font-size: 17px; line-height: 1.65; color: var(--fg); }
+
+.hcp-qa { margin: 32px 0 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; max-width: 720px; }
+.hcp-qa-item { border-bottom: 1px solid var(--line); }
+.hcp-qa-item:last-child { border-bottom: none; }
+.hcp-qa-q { width: 100%; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 16px; border: none; background: transparent; color: var(--fg); font: inherit; font-size: 17px; font-weight: 600; text-align: left; cursor: pointer; line-height: 1.5; }
+.hcp-qa-ico { flex: none; font-family: var(--mono); color: var(--fg-3); font-size: 16px; }
+.hcp-qa-a { padding: 12px 16px 14px; font-size: 17px; line-height: 1.65; color: var(--fg); border-top: 1px solid var(--line); }
+.hcp-qa-cap { margin: 12px 0 0; font-size: 15px; color: var(--fg-3); }
+
+.hcp-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 32px; max-width: 720px; }
+.hcp-chip { display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; background: var(--sunken); color: var(--accent-ink); border: none; border-radius: 6px; padding: 6px 12px; }
+.hcp-chip-item { display: inline-flex; }
+
+.hcp-observe { display: block; margin: 24px 0 0; max-width: 720px; font-size: 15px; line-height: 1.6; color: var(--fg-2); }
+.hcp-observe-text { display: block; margin-top: 4px; }
+
+.hcp-band { margin-top: 24px; padding: 24px; background: var(--ok-soft); border: 1px solid var(--line); border-left: 3px solid var(--ok); border-radius: 8px; }
+.hcp-band-lbl { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--ok); }
+.hcp-band-a { margin: 0; font-size: 22px; line-height: 1.35; font-weight: 600; color: var(--ok); }
+.hcp-band-sub { margin-top: 24px; }
+.hcp-say-it { margin: 0; font-size: 17px; line-height: 1.65; font-weight: 600; color: var(--fg); }
+
+.hcp-refs { margin-top: 32px; max-width: 720px; }
+.hcp-refs-list { display: flex; flex-direction: column; gap: 6px; }
+.hcp-refs-list a { color: var(--accent-ink); font-size: 15px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+.hcp-body-more { margin-top: 48px; }
+.hcp-body-more summary { cursor: pointer; font-size: 15px; font-weight: 600; color: var(--accent-ink); }
+.hcp-body-inner { margin-top: 12px; font-size: 17px; line-height: 1.65; color: var(--fg); }
+
+.hcp-lesson-footer { margin-top: 96px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.hcp-footer-pos { display: flex; }
+.hcp-prev { border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); border-radius: var(--r-sm); padding: 8px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.hcp-footer-line { margin: 0; font-size: 13px; color: var(--fg-3); }
+
 @media (max-width: 900px) {
-  .hcp-lesson-grid { grid-template-columns: minmax(0, 1fr); }
+  .hcp-lesson-grid { grid-template-columns: minmax(0, 1fr); margin-top: 32px; }
+  .hcp-toc { display: block; }
+  .hcp-rail { display: none; }
+}
+@media (max-width: 640px) {
+  .hcp-lesson-hero { padding: 40px 0 0; }
+  .hcp-lesson-title { font-size: 34px; }
+  .hcp-sec-h { font-size: 22px; }
+  .hcp-sec + .hcp-sec { margin-top: 32px; }
+  .hcp-sec { padding-top: 24px; border-top: 1px solid var(--line); }
+  .hcp-figure-img { width: 720px; }
 }
 @media (max-width: 720px) {
-  /* Frame LVxjj: the primary action sits in a fixed bar above the 5-item bottom nav. */
-  .hcp-lesson { padding-bottom: 72px; }
-  .hcp-footer-actions {
-    position: fixed; left: 0; right: 0; bottom: var(--nav-h, 60px); z-index: 40;
-    margin: 0; padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--line);
-  }
-  .hcp-next-btn { width: 100%; min-width: 0; height: 44px; }
+  .hcp-lesson { padding-bottom: 88px; }
+  .hcp-lesson-footer { position: fixed; left: 0; right: 0; bottom: var(--nav-h, 69px); z-index: 40; margin: 0; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--line); }
+  .hcp-lesson-footer .hcp-next-btn { width: 100%; min-width: 0; }
+  .hcp-lesson-footer .hcp-footer-line { display: none; }
 }
 </style>
