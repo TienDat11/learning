@@ -86,7 +86,7 @@ const mechanismProse = computed(() => {
   const mech = String(lesson.value?.mechanism || '');
   const open = mech.indexOf('<p>');
   const close = open >= 0 ? mech.indexOf('</p>', open) : -1;
-  if (open >= 0 && close > open) return '<p>' + mech.slice(open + 3, close) + '</p>';
+  if (open >= 0 && close > open) return '<p>' + renderHtml(mech.slice(open + 3, close)) + '</p>';
   return mech ? '<p>' + renderHtml(mech) + '</p>' : '';
 });
 
@@ -95,7 +95,7 @@ const incidentProse = computed(() => {
   const raw = String(lesson.value?.incident || '');
   const open = raw.indexOf('<p>');
   const close = open >= 0 ? raw.indexOf('</p>', open) : -1;
-  if (open >= 0 && close > open) return '<p>' + raw.slice(open + 3, close) + '</p>';
+  if (open >= 0 && close > open) return '<p>' + renderHtml(raw.slice(open + 3, close)) + '</p>';
   return raw ? '<p>' + renderHtml(raw) + '</p>' : '';
 });
 
@@ -154,7 +154,7 @@ const qidChips = computed(() => {
   const chips = [];
   for (const qid of qids) {
     const qObj = QUESTIONS.value.find((x) => x && x.id === qid);
-    chips.push({ qid, label: qObj && qObj.topic ? qid + ' · ' + qObj.topic : qid });
+    chips.push({ qid, label: (qObj && qObj.topic ? qid + ' · ' + qObj.topic : qid).replace(/`/g, '') });
   }
   return chips.slice(0, 5);
 });
@@ -170,8 +170,9 @@ const refDocs = computed(() => {
   return out.slice(0, 3);
 });
 
-const sayIt0 = computed(() => (Array.isArray(lesson.value?.sayIt) && lesson.value.sayIt.length ? lesson.value.sayIt[0] : ''));
-const sayItList = computed(() => (Array.isArray(lesson.value?.sayIt) ? lesson.value.sayIt : []).slice(0, 7));
+const stripTicks = (s) => String(s == null ? '' : s).replace(/`/g, '');
+const sayIt0 = computed(() => (Array.isArray(lesson.value?.sayIt) && lesson.value.sayIt.length ? stripTicks(lesson.value.sayIt[0]) : ''));
+const sayItList = computed(() => (Array.isArray(lesson.value?.sayIt) ? lesson.value.sayIt : []).slice(0, 7).map(stripTicks));
 const buildsOnChips = computed(() => {
   const b = Array.isArray(lesson.value?.buildsOn) ? lesson.value.buildsOn : [];
   return b.slice(0, 2).map((id) => ({ id, label: 'Bài trước: ' + id }));
@@ -179,7 +180,7 @@ const buildsOnChips = computed(() => {
 
 const GLOSS_MARKER = 'Thuật nguyên cần biết';
 const bodyRest = computed(() => {
-  const html = String(lesson.value?.body || '');
+  const html = renderHtml(String(lesson.value?.body || ''));
   const start = html.indexOf('<p><strong>' + GLOSS_MARKER);
   if (start < 0) return html;
   const ul = html.indexOf('<ul>', start);
@@ -312,7 +313,7 @@ function codeHtml(code, max) {
               <figcaption class="hcp-figure-cap">Hình 2</figcaption>
             </figure>
             <div class="hcp-code" v-html="codeHtml(lesson.code, 24)"></div>
-            <div class="hcp-code-note" v-html="lesson.codeNote || ''"></div>
+            <div class="hcp-code-note" v-html="renderHtml(lesson.codeNote || '')"></div>
           </section>
 
           <section id="hcp-sec-3" class="hcp-sec">
@@ -383,7 +384,7 @@ function codeHtml(code, max) {
               <tbody>
                 <tr v-for="r in rhythmRows" :key="r.key">
                   <td>{{ r.label }}</td>
-                  <td>{{ r.content }}</td>
+                  <td v-html="renderHtml(esc(r.content))"></td>
                   <td class="num">{{ r.sec }}</td>
                 </tr>
               </tbody>
@@ -432,7 +433,7 @@ function codeHtml(code, max) {
             <h2 class="hcp-sec-h">Câu neo</h2>
             <div class="hcp-band">
               <p class="hcp-band-lbl">Câu neo</p>
-              <p class="hcp-band-a">{{ lesson.anchor }}</p>
+              <p class="hcp-band-a" v-html="renderHtml(esc(lesson.anchor))"></p>
             </div>
             <div class="hcp-band-sub">
               <p class="hcp-lbl">Nói được trong một câu</p>

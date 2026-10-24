@@ -21,9 +21,17 @@ const ALLOWED = new Set([
 const TAG_RE = /<\/?[a-z][a-z0-9]*\b[^>]*>/gi;
 const ATTR_RE = /\s[a-z][a-z0-9-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi;
 
+// Authored data uses markdown backticks for inline code in HTML fields.
+// Convert them to <code> before the tag whitelist runs so the tag survives.
+const TICK_RE = /`([^`\n]+)`/g;
+export function inlineCode(s) {
+  const str = typeof s === 'string' ? s : '';
+  return str.replace(TICK_RE, '<code>$1</code>');
+}
+
 export function sanitize(html) {
   if (typeof html !== 'string') return '';
-  return html.replace(TAG_RE, (tag) => {
+  return inlineCode(html).replace(TAG_RE, (tag) => {
     const m = tag.match(/^<(\/?)([a-z][a-z0-9]*)/i);
     if (!m) return '';
     const name = m[2].toLowerCase();
@@ -44,7 +52,7 @@ export function sanitize(html) {
 export function renderLinkedHtml(raw, lessons = [], currentLessonId = '') {
   const clean = sanitize(raw);
   const all = Array.isArray(lessons) ? lessons : [];
-  return clean.replace(/(?:Bài\s+|bài\s+)?\b(L(?:0[1-9]|1[0-9]|2[0-3]))\b/g, (match, lid) => {
+  return clean.replace(/(?:Bài\s+|bài\s+)?\b(L(?:0[1-9]|1[0-9]|2[0-5]))\b/g, (match, lid) => {
     if (lid === currentLessonId) return '<strong>' + match + '</strong>';
     const target = all.find((x) => x && x.id === lid);
     const tip = target ? esc(target.id + ' — ' + target.title) : lid;
