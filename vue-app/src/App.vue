@@ -87,14 +87,15 @@ provide('progress', progress);
 provide('route', route);
 
 // ---------- theme ----------
-const theme = ref(store.getTheme());
+// Resolved once at setup so the first paint is correct: stored choice wins,
+// otherwise the OS preference decides. Only an explicit toggle persists.
+const theme = ref(
+  store.hasTheme()
+    ? store.getTheme()
+    : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+);
 
 onMounted(() => {
-  // sync native preference on first load only if user never chose
-  if (!store.KEYS.theme) {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    if (mq.matches) theme.value = 'dark';
-  }
   window.addEventListener('hashchange', syncRoute);
 });
 onBeforeUnmount(() => {
@@ -103,13 +104,13 @@ onBeforeUnmount(() => {
 
 watch(theme, (t) => {
   document.documentElement.setAttribute('data-theme', t);
-  store.setTheme(t);
 }, { immediate: true });
 
 watch(() => route.path, () => window.scrollTo(0, 0));
 
 function toggleTheme() {
   theme.value = theme.value === 'light' ? 'dark' : 'light';
+  store.setTheme(theme.value);
 }
 function doPrint() {
   window.print();

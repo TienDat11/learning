@@ -37,6 +37,10 @@ function saveObj(k, v) {
 export default {
   KEYS,
   getTheme() { return getRaw(KEYS.theme) === 'dark' ? 'dark' : 'light'; },
+  hasTheme() {
+    const v = getRaw(KEYS.theme);
+    return v === 'dark' || v === 'light';
+  },
   setTheme(t) { setRaw(KEYS.theme, t); },
 
   // reads old done-set if present, merges with new H5-completed
