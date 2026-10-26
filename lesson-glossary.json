@@ -3,24 +3,39 @@
     "id": "L01",
     "rows": [
       {
-        "term": "ba ranh giới",
-        "is": "Ba thứ bạn phải tự quản khi không quản máy: quyền hạn, cổng vào và kết nối dữ liệu.",
-        "not": "Tin rằng AWS lo sao lưu và mã hóa dữ liệu nên một lần xóa nhầm không khôi phục được."
+        "term": "Availability Zone",
+        "is": "Một hoặc nhiều trung tâm dữ liệu độc lập về điện và mạng trong một Region; mỗi subnet chỉ thuộc đúng một AZ.",
+        "not": "Một vùng địa lý chứa nhiều AZ — đó là Region."
       },
       {
-        "term": "tầng dữ liệu",
-        "is": "Chỗ chứa trần kết nối không tăng khi bạn nhân bản tầng tính toán phía trên.",
-        "not": "Tăng số instance của service mà người dùng chạm tới mỗi khi p99 tăng."
+        "term": "Multi-AZ DB instance",
+        "is": "RDS giữ một standby đồng bộ ở AZ khác; failover là việc đổi bản ghi DNS của endpoint sang standby, và standby không phục vụ đọc.",
+        "not": "Cơ chế gom và xếp hàng kết nối trước database — đó là RDS Proxy."
+      },
+      {
+        "term": "environment của Lambda",
+        "is": "Môi trường cô lập Lambda tạo cho mỗi request đồng thời, được tái dùng cho lần gọi sau và giữ client khởi tạo ngoài handler.",
+        "not": "Một tiến trình chạy dài phục vụ mọi request đồng thời như một worker trên VPS."
+      },
+      {
+        "term": "concurrency",
+        "is": "Số environment chạy đồng thời, xấp xỉ số request mỗi giây nhân thời gian một lần gọi.",
+        "not": "Số request mỗi giây — đó là throughput, không phải số việc đang chạy cùng lúc."
+      },
+      {
+        "term": "reserved concurrency",
+        "is": "Trần số environment đồng thời của một hàm, để nó không chiếm hết quota và không đè bẹp tài nguyên phía sau.",
+        "not": "Số environment giữ sẵn để bỏ pha Init — đó là provisioned concurrency."
+      },
+      {
+        "term": "max_connections",
+        "is": "Tham số PostgreSQL đặt trần số kết nối đồng thời mà instance chấp nhận.",
+        "not": "Trần số environment chạy đồng thời của hàm — đó là reserved concurrency."
       },
       {
         "term": "RDS Proxy",
-        "is": "Lớp gom kết nối trước database để nhiều client dùng chung ít kết nối vật lý.",
-        "not": "Nhân bản tầng tính toán đơn lẻ mà không kiểm trần kết nối của tầng dưới."
-      },
-      {
-        "term": "Token Bucket",
-        "is": "Cơ chế hạn mức ở gateway, chặn request rác trước khi tốn lần chạy Lambda.",
-        "not": ""
+        "is": "Lớp tùy chọn đứng trước RDS để gom và xếp hàng kết nối, có thể giữ kết nối ứng dụng khi chuyển standby.",
+        "not": "Cơ chế failover của Multi-AZ: khi standby lên thay, endpoint đổi bản ghi DNS."
       }
     ]
   },
@@ -28,24 +43,24 @@
     "id": "L02",
     "rows": [
       {
-        "term": "cửa ngoài",
-        "is": "Lớp quyết định ai được gọi hàm, kiểm qua resource policy gắn trên hàm.",
-        "not": "Cấp quyền rộng như s3:* để chạy được trước rồi quên thu lại."
-      },
-      {
-        "term": "cửa trong",
-        "is": "Lớp quyết định hàm được chạm tài nguyên nào, thực thi qua execution role.",
-        "not": "Dùng chung một execution role cho mọi Lambda vì cho tiện."
+        "term": "resource policy",
+        "is": "Chính sách gắn trên chính hàm, quyết định ai được gọi hàm đó.",
+        "not": "Chính sách quyết định hàm được chạm tài nguyên nào — đó là execution role."
       },
       {
         "term": "execution role",
-        "is": "Danh tính mà hàm Lambda mang theo khi gọi S3 hoặc DynamoDB.",
-        "not": "Tin rằng role dùng chung vẫn truy vết được Lambda nào ghi dữ liệu tenant X."
+        "is": "Danh tính Lambda đảm nhận khi chạy; SDK ký mọi lời gọi ra bằng credential tạm của role đó.",
+        "not": "Danh tính của người dùng cuối gửi request — JWT chỉ chứng minh người dùng là ai."
       },
       {
-        "term": "resource policy",
-        "is": "Chính sách gắn trên chính hàm, quyết định ai được gọi hàm đó.",
-        "not": "Coi quyền gọi hàm và quyền hàm chạm tài nguyên là cùng một lớp."
+        "term": "JWT authorizer",
+        "is": "Lớp xác thực người dùng ở API Gateway: nó chứng minh người gọi là ai nhưng không cấp quyền gọi hàm và không cấp quyền cho hàm.",
+        "not": "Lớp cấp quyền cho hàm chạm S3 hay DynamoDB."
+      },
+      {
+        "term": "lọc theo chủ sở hữu",
+        "is": "Câu lệnh có điều kiện trong code giới hạn bản ghi theo danh tính người gọi, vì IAM không biết ai sở hữu dòng nào.",
+        "not": "Một action trong IAM policy đủ để chỉ trả dữ liệu của đúng người gọi."
       }
     ]
   },
@@ -53,24 +68,24 @@
     "id": "L03",
     "rows": [
       {
-        "term": "Execution Environment",
-        "is": "Môi trường cô lập chứa runtime và code, mỗi thời điểm chỉ phục vụ đúng một request.",
-        "not": ""
+        "term": "Init",
+        "is": "Pha chạy một lần cho mỗi environment: nạp runtime, import module và chạy phần code nằm ngoài handler.",
+        "not": "Pha chạy lại ở mỗi lần gọi — đó là handler."
       },
       {
-        "term": "Cold Start",
-        "is": "Pha INIT nạp code, tạo client và đọc cấu hình trước khi handler chạy.",
-        "not": "Đặt khóa chống trùng trong biến cấp module hay /tmp và tin nó sống qua cold start kế tiếp."
+        "term": "warm",
+        "is": "Environment đã chạy xong Init được giữ lại và tái dùng, nên lần gọi sau bỏ qua toàn bộ Init.",
+        "not": "Một environment mới tinh vừa được tạo — đó là cold start."
       },
       {
-        "term": "Idempotency-Key",
-        "is": "Khóa sinh một lần cho mỗi thao tác, để lần thử lại được nhận ra là cùng việc.",
-        "not": "Sinh khóa ở phía client mỗi lần bấm nên không chống được người dùng bấm hai lần."
+        "term": "timeout",
+        "is": "Cắt lần chạy giữa chừng khi hết thời gian, nhưng không hoàn tác những gì đã ghi ra ngoài.",
+        "not": "Một rollback tự động các tác dụng phụ đã xảy ra."
       },
       {
-        "term": "trạng thái Warm",
-        "is": "Environment được giữ lại sau khi xong việc để tái dùng cho request sau.",
-        "not": "Sinh id bằng uuid4 bên trong handler rồi ghi không điều kiện, nên retry tạo thêm dòng."
+        "term": "khoá ghi có điều kiện",
+        "is": "Khóa ghi có điều kiện để lần giao lại cùng một sự kiện được nhận ra là đã xử lý.",
+        "not": "Một bảo đảm exactly-once của Lambda — mọi đường retry đều có thể giao cùng sự kiện nhiều lần."
       }
     ]
   },
@@ -78,24 +93,29 @@
     "id": "L04",
     "rows": [
       {
-        "term": "CORS preflight",
-        "is": "Request OPTIONS trình duyệt gửi trước request thật, được gateway trả lời ngay.",
-        "not": "Để handler tự trả lời OPTIONS nên mỗi header mới phải sửa code và deploy lại."
+        "term": "origin",
+        "is": "Bộ ba scheme, host và port; khác một trong ba là cross-origin, kể cả khi cùng tên miền gốc mà khác cổng.",
+        "not": "Tên miền gốc — cùng domain nhưng khác cổng vẫn là cross-origin."
       },
       {
-        "term": "Token Bucket",
-        "is": "Cơ chế lấy token trong xô của usage plan; xô rỗng thì trả 429.",
-        "not": "Đặt hạn mức quá thấp khiến người dùng thật bị 429 trong giờ cao điểm."
+        "term": "request không đơn giản",
+        "is": "Request dùng header tuỳ biến hoặc content type ngoài danh sách đơn giản, nên trình duyệt phải hỏi trước.",
+        "not": "Mọi request khác origin đều phải hỏi trước — request đơn giản đi thẳng."
       },
       {
-        "term": "usage plan",
-        "is": "Khung gắn hạn mức và Token Bucket cho từng nhóm người gọi.",
-        "not": ""
+        "term": "preflight",
+        "is": "Lượt OPTIONS trình duyệt gửi trước request không đơn giản, phải được trả đủ header cho phép thì request thật mới được gửi.",
+        "not": "Một lớp bảo mật của server — server không chặn request, chính trình duyệt mới chặn việc đọc response."
       },
       {
-        "term": "đồng hồ 29 giây",
-        "is": "Giới hạn thời gian gateway chờ tích hợp phía sau trước khi cắt request.",
-        "not": ""
+        "term": "Access-Control-Allow-Origin",
+        "is": "Header phải có trên cả response thật; thiếu thì trình duyệt chặn việc đọc dù server đã chạy xong và đã ghi dữ liệu.",
+        "not": "Header chỉ cần trên response của preflight — lượt thật được kiểm lại lần nữa."
+      },
+      {
+        "term": "credentials",
+        "is": "Khi request mang cookie, wildcard bị từ chối: phải trả đúng origin kèm Access-Control-Allow-Credentials và Vary: Origin.",
+        "not": "Wildcard là lựa chọn an toàn cho mọi trường hợp."
       }
     ]
   },
@@ -104,18 +124,23 @@
     "rows": [
       {
         "term": "Presigned URL",
-        "is": "URL mang chữ ký của Execution Role, cho client ghi thẳng một object trong thời hạn.",
-        "not": "Để client tự chọn khóa S3 và chỉ kiểm loại file bằng điều khai."
+        "is": "URL chứa chữ ký SigV4 tính từ method, key, thời hạn và điều kiện; S3 tính lại chữ ký và chỉ nhận khi khớp.",
+        "not": "Một URL công khai vĩnh viễn — nó hết hạn và chỉ cho đúng một thao tác."
       },
       {
-        "term": "đọc toàn bộ bảng",
-        "is": "Đọc cả bảng rồi lọc, chi phí tăng theo tổng dữ liệu chứ không theo tenant.",
-        "not": "Lọc theo tenant_id sau khi scan rồi tưởng chi phí chỉ tính phần trả về."
+        "term": "Query",
+        "is": "Đọc các bản ghi của đúng một Partition Key, nên chi phí theo số dòng của PK đó.",
+        "not": "Scan, vốn đọc toàn bộ bảng rồi mới lọc nên chi phí theo cả bảng."
       },
       {
         "term": "hot partition",
-        "is": "Một tenant quá nhiều item khiến partition thành điểm nóng và throughput bị giới hạn theo partition.",
-        "not": "Nghĩ rằng Query đúng khóa là đủ, không cần phân tán khóa theo shard."
+        "is": "Một PK nhận gần hết lưu lượng nên một phân vùng vật lý gánh hết và chạm trần throughput.",
+        "not": "Một lỗi cấu hình capacity — nó là hệ quả của thiết kế khóa."
+      },
+      {
+        "term": "xác nhận sau khi PUT",
+        "is": "Bước server đọc lại metadata và mười sáu byte đầu của object để đối chiếu với loại tệp đã khai.",
+        "not": "Một bước kiểm ở phía client trước khi upload — client có thể khai sai."
       }
     ]
   },
@@ -124,23 +149,23 @@
     "rows": [
       {
         "term": "Visibility timeout",
-        "is": "Lease ẩn message trong lúc worker xử lý; hết hạn mà chưa xóa thì message hiện lại.",
-        "not": "Đặt bằng thời gian xử lý trung bình nên giờ cao điểm message hiện lại khi worker chưa xong."
+        "is": "Lease ẩn message trong lúc worker xử lý; hết hạn mà chưa xoá thì message hiện lại cho worker khác.",
+        "not": "Một khoá độc quyền giữ message cho tới khi worker xoá — hết hạn là mất quyền."
       },
       {
         "term": "Dead-Letter Queue",
-        "is": "Hàng đợi nhận message thất bại quá số lần cho phép để còn chỗ điều tra.",
-        "not": "Để DLQ không ai đọc, message tích lũy rồi hết retention và biến mất."
+        "is": "Hàng đợi nhận message đã bị nhận quá maxReceiveCount để còn chỗ điều tra.",
+        "not": "Nơi lưu trữ lâu dài — message trong DLQ hết retention thì biến mất."
       },
       {
-        "term": "độ trễ tăng dần",
-        "is": "Khoảng chờ tăng dần kèm jitter để các lần thử lại không dồn cùng nhịp.",
-        "not": "Thử lại không có độ trễ khiến mọi message lỗi đập vào tầng dưới cùng một lúc."
+        "term": "backoff kèm jitter",
+        "is": "Khoảng chờ tăng dần cộng nhiễu để các lần thử lại không dồn cùng nhịp.",
+        "not": "Một lần thử lại ngay lập tức — thử ngay khi tầng dưới đang quá tải chỉ làm tải nặng thêm."
       },
       {
-        "term": "redrive policy",
-        "is": "Cấu hình chuyển message sang DLQ sau maxReceiveCount lần nhận.",
-        "not": "Chưa gắn redrive policy nên message độc quay lại mãi cho tới hết hạn lưu trữ."
+        "term": "ApproximateAgeOfOldestMessage",
+        "is": "Tuổi của message cũ nhất còn chờ, không tính message đang bị ẩn; tăng đều nghĩa là worker chậm hơn tốc độ vào hàng.",
+        "not": "Số message trong hàng — hàng đông mà xử lý nhanh vẫn khoẻ."
       }
     ]
   },
@@ -149,18 +174,23 @@
     "rows": [
       {
         "term": "event loop",
-        "is": "Vòng lặp sự kiện một luồng của Uvicorn, chỉ chạy được một việc tại một thời điểm.",
-        "not": "Nghĩ rằng thêm async def là code tự chạy bất đồng bộ và nhanh hơn."
+        "is": "Vòng lặp một luồng của uvicorn: mỗi lúc chỉ chạy một việc, nên một lệnh chặn giữ cả vòng lặp.",
+        "not": "Một pool nhiều luồng — đó là nhóm luồng mà endpoint def được đẩy sang."
       },
       {
-        "term": "async def",
-        "is": "Khai báo hàm chạy trực tiếp trên event loop, nên mọi lệnh chặn giữ cả vòng lặp.",
-        "not": "Gọi requests.get hay time.sleep bên trong async def vì thấy máy cá nhân vẫn nhanh."
+        "term": "nhóm luồng",
+        "is": "Tập luồng hữu hạn mà FastAPI đẩy endpoint def vào, nên lời gọi chặn chỉ chiếm một suất.",
+        "not": "Một hàng đợi vô hạn — hết suất thì request mới xếp hàng dù loop đang rảnh."
       },
       {
-        "term": "hàm def",
-        "is": "Hàm đồng bộ được đẩy sang nhóm luồng nên không chặn event loop.",
-        "not": "Chuyển hết sang def rồi tin nhóm luồng 40 suất là đủ cho mọi tải."
+        "term": "điểm nhường lượt",
+        "is": "Lời gọi await trên I/O bất đồng bộ, nơi coroutine trả quyền để loop chạy task khác.",
+        "not": "time.sleep() — nó không nhường lượt, chỉ giữ loop đúng bằng thời gian ngủ."
+      },
+      {
+        "term": "middleware",
+        "is": "Lớp bọc chạy cho mọi request trước và sau phần còn lại, nên một lệnh chặn ở đây làm chậm cả health check.",
+        "not": "Một bước chỉ chạy cho route khai nó — đó là dependency của route."
       }
     ]
   },
@@ -168,24 +198,24 @@
     "id": "L08",
     "rows": [
       {
-        "term": "cấp module",
-        "is": "Nơi tạo engine dùng chung cho mọi lần gọi trong một container.",
-        "not": "Tin rằng pool cấp module giới hạn tổng kết nối tới RDS như trên VPS."
-      },
-      {
         "term": "pool_size",
-        "is": "Tham số tạo đối tượng pool; trên Lambda nó không chặn tổng kết nối tới RDS.",
-        "not": "Chỉ tăng pool_size, cấu hình trông an toàn hơn trong khi lỗi vẫn xảy ra."
+        "is": "Trần kết nối của một engine trong một tiến trình, không phải trần của cả hệ thống.",
+        "not": "Trần kết nối phía database — đó là max_connections."
       },
       {
-        "term": "gom kết nối",
-        "is": "RDS Proxy ghép nhiều kết nối ứng dụng vào ít kết nối vật lý trước PostgreSQL.",
-        "not": "Để DATABASE_URL vẫn trỏ thẳng tới RDS nên Lambda bỏ qua proxy."
+        "term": "pool cấp module",
+        "is": "Engine tạo ngoài handler để mỗi environment giữ một pool riêng qua các lần gọi.",
+        "not": "Một pool dùng chung cho mọi environment — mỗi environment là một tiến trình riêng."
       },
       {
-        "term": "reserved concurrency",
-        "is": "Giới hạn số container chạy đồng thời, qua đó chặn đỉnh kết nối.",
-        "not": ""
+        "term": "RDS Proxy",
+        "is": "Lớp gom kết nối ở mức transaction để nhiều client dùng chung ít kết nối backend.",
+        "not": "Một cách nâng CPU hay IO của database — trần max_connections vẫn nguyên."
+      },
+      {
+        "term": "session pinning",
+        "is": "Trạng thái phiên như SET không LOCAL, bảng tạm hay LISTEN buộc Proxy ghim một kết nối backend cho client.",
+        "not": "Một công tắc bật tắt của Proxy — nó là hệ quả của lệnh trong code."
       }
     ]
   },
@@ -194,23 +224,28 @@
     "rows": [
       {
         "term": "lỗi 4xx",
-        "is": "Nhóm lỗi do phía gọi, như dữ liệu sai kiểu hoặc thiếu trường.",
-        "not": "Gộp cả lỗi 4xx và 5xx vào một mã 500 duy nhất."
+        "is": "Nhóm lỗi do phía gọi, nên gửi lại cùng request không đổi kết quả.",
+        "not": "Nhóm lỗi đáng thử lại — chỉ timeout, 429 và 5xx mới đáng."
       },
       {
-        "term": "lỗi 5xx",
-        "is": "Nhóm lỗi phía hệ thống, chỉ nhóm này và timeout tạm thời mới đáng thử lại.",
-        "not": "Không retry trên 503 tạm thời nên request đáng cứu bị trả lỗi oan."
+        "term": "5xx",
+        "is": "Nhóm lỗi phía hệ thống; cùng timeout và 429, đây là nhóm duy nhất đáng gọi lại.",
+        "not": "Nhóm lỗi do payload sai kiểu hay thiếu trường — đó là 422."
       },
       {
-        "term": "lỗi 422",
-        "is": "Mã trả khi Pydantic chặn dữ liệu vào sai kiểu hoặc thiếu trường.",
-        "not": "Retry trên 422, gửi lại đúng request sai nên không bao giờ thành công."
+        "term": "422",
+        "is": "Mã FastAPI trả khi Pydantic chặn body sai kiểu hoặc thiếu trường, trước khi handler chạy.",
+        "not": "Xung đột trạng thái khi tài nguyên đã đổi — đó là 409."
       },
       {
-        "term": "cơ chế Retry",
-        "is": "Gửi lại request, chỉ đúng với lỗi tạm thời và phải có backoff.",
-        "not": "Retry không có jitter khiến mọi client đập lại cùng lúc đúng lúc đối tác đang hồi phục."
+        "term": "409",
+        "is": "Mã báo tài nguyên đã đổi từ lúc client đọc, nên client phải đọc lại trạng thái rồi quyết định.",
+        "not": "Một lỗi tạm thời đáng gửi lại y nguyên."
+      },
+      {
+        "term": "retry",
+        "is": "Gửi lại chỉ với lỗi tạm thời, có backoff kèm jitter, giới hạn số lần và idempotency key.",
+        "not": "Một kỹ thuật áp cho mọi mã lỗi, kể cả 4xx."
       }
     ]
   },
@@ -218,24 +253,24 @@
     "id": "L10",
     "rows": [
       {
-        "term": "Structured JSON Logging",
-        "is": "Mỗi dòng log là một bản ghi JSON một dòng với các trường máy lọc được.",
-        "not": "Viết log dạng print chuỗi tự do rồi quen grep file log trên VPS."
+        "term": "log JSON",
+        "is": "Mỗi dòng log là một bản ghi JSON một dòng có trường máy lọc được.",
+        "not": "Log dạng chuỗi tự do, vốn chỉ tìm được bằng chuỗi con."
       },
       {
-        "term": "correlation ID",
-        "is": "Mã định danh của cả hành trình nghiệp vụ, sinh ở trạm đầu và truyền nguyên vẹn.",
-        "not": "Nghĩ requestId của gateway, aws_request_id và messageId tự truyền sang nhau."
+        "term": "correlation_id",
+        "is": "Mã của cả hành trình nghiệp vụ, sinh ở biên và truyền sang tầng sau qua MessageAttributes.",
+        "not": "requestId của API Gateway hay aws_request_id của Lambda — mỗi cái chỉ sống trong một dịch vụ."
       },
       {
-        "term": "ngăn tủ cô lập",
+        "term": "contextvars",
         "is": "Ngăn riêng cho từng async task, nên request xen nhau không ghi đè mã của nhau.",
-        "not": "Lưu correlation_id vào biến toàn cục nên request khác ghi đè sau mỗi await."
+        "not": "Một biến toàn cục cấp module — container tái sử dụng làm nó dính sang invocation sau."
       },
       {
-        "term": "PII Redaction",
-        "is": "Bộ lọc che các trường nhạy cảm trước khi ghi log.",
-        "not": "Đưa cả body request và số thẻ vào JSON log mà ai đọc log cũng thấy."
+        "term": "PII redaction",
+        "is": "Bộ lọc che trường nhạy cảm trước khi ghi log.",
+        "not": "Một bước làm sau khi log đã ghi ra ngoài."
       }
     ]
   },
@@ -243,24 +278,19 @@
     "id": "L11",
     "rows": [
       {
-        "term": "bảng ánh xạ",
-        "is": "Dict lấy chính đối tượng hàm làm khóa để tráo bản giả khi chạy test.",
-        "not": "Override trỏ sai object nên test gọi thật mà không có cảnh báo."
+        "term": "dependency_overrides",
+        "is": "Dict của app lấy chính function object làm khóa, nên override phải trỏ đúng object mà route đã khai.",
+        "not": "Một bảng tra theo tên hàm — route giữ object từ lúc import, không tra tên lúc chạy."
       },
       {
-        "term": "cây Depends()",
-        "is": "Cách route yêu cầu FastAPI bơm tài nguyên vào tham số thay vì tự khởi tạo.",
-        "not": "Tạo client boto3 ở cấp module rồi patch boto3.client và tin là đã chặn mạng."
+        "term": "fixture teardown",
+        "is": "Bước dọn gán lại dependency_overrides rỗng sau mỗi test để test sau không nhận fake của test trước.",
+        "not": "Một bước chỉ chạy khi test đỏ."
       },
       {
-        "term": "Fixture cô lập",
-        "is": "Hàm chuẩn bị dữ liệu sạch và dọn trạng thái sau mỗi bài test.",
-        "not": "Quên clear bảng override làm test sau nhận fake của test trước."
-      },
-      {
-        "term": "chốt mạng",
-        "is": "Lớp chặn để một test lỡ tay không gửi request thật ra S3 hay SQS.",
-        "not": "Chạy suite với profile thật trên máy dev nên test lỡ tay vẫn dùng quyền của bạn."
+        "term": "assert fake được gọi",
+        "is": "Kiểm fake đã được gọi và client thật không được gọi, vì suite xanh có thể là do override không khớp.",
+        "not": "Chỉ cần suite xanh là đủ để tin override đã có tác dụng."
       }
     ]
   },
@@ -268,24 +298,29 @@
     "id": "L12",
     "rows": [
       {
-        "term": "ES6 Proxy",
-        "is": "Lớp chắn trước object thật, đánh chặn thao tác đọc và ghi.",
-        "not": "Giữ state trong object thuần rồi tự tay gọi hàm render ở mọi chỗ ghi DOM."
+        "term": "ref",
+        "is": "Object bọc giá trị trong getter/setter .value để theo dõi được cả số và chuỗi.",
+        "not": "Một biến thường đọc trực tiếp ở mọi nơi — trong script và trong object lồng phải viết .value."
       },
       {
-        "term": "track và trigger",
-        "is": "Đọc thì ghi tên effect vào sổ, ghi thì gọi các effect đã đọc chạy lại.",
-        "not": ""
+        "term": "reactive",
+        "is": "Trả về một Proxy mới quanh object; object gốc giữ nguyên và không được theo dõi.",
+        "not": "Một cờ bật trên chính object gốc."
       },
       {
-        "term": "dữ liệu lớn",
-        "is": "Mảng hàng nghìn bản ghi chỉ để đọc, mỗi object lồng nhau thành một Proxy.",
-        "not": "Bọc reactive đệ quy cả mảng 4.000 dòng rồi trả tiền cho Proxy không bao giờ đổi."
+        "term": "track",
+        "is": "Trap get ghi effect đang chạy vào Set của khóa vừa được đọc.",
+        "not": "Việc gọi lại effect khi khóa bị ghi — đó là trigger."
       },
       {
-        "term": "destructuring cắt dây",
-        "is": "Đọc giá trị qua Proxy một lần rồi chép ra biến thường, làm đứt liên kết.",
-        "not": "Tách thuộc tính khỏi object reactive rồi tưởng biến vẫn cập nhật theo."
+        "term": "trigger",
+        "is": "Trap set so sánh giá trị bằng Object.is rồi đánh dấu các effect đã đọc khóa đó.",
+        "not": "Việc ghi sổ effect lúc đọc khóa — đó là track."
+      },
+      {
+        "term": "toRefs",
+        "is": "Trả về các ref trỏ vào đúng khóa của Proxy, nên destructure vẫn giữ liên kết.",
+        "not": "Destructure thẳng object reactive — nó đọc qua Proxy một lần rồi cắt dây."
       }
     ]
   },
@@ -293,24 +328,24 @@
     "id": "L13",
     "rows": [
       {
-        "term": "computed cache",
-        "is": "Giá trị suy ra có cache, chỉ tính lại khi dependency đổi và có nơi đọc.",
-        "not": "Đặt lời gọi API trong computed nên nó trả về Promise thay vì giá trị."
+        "term": "computed",
+        "is": "Effect lười có cache: dependency đổi thì chỉ bật cờ bẩn, lần đọc kế tiếp mới tính lại.",
+        "not": "Một effect chủ động chạy callback mỗi lần dependency đổi — đó là watch."
+      },
+      {
+        "term": "watch",
+        "is": "Effect chủ động đẩy callback vào hàng đợi khi nguồn đổi; nó không cache và không trả về giá trị.",
+        "not": "Một giá trị suy ra có cache — đó là computed."
       },
       {
         "term": "deep watch",
         "is": "Theo dõi đệ quy cả cây thuộc tính, trả chi phí duyệt ở mỗi lần ghi.",
-        "not": "Bật deep watch cho chắc rồi gán state trong callback khiến watcher tự kích hoạt chính nó."
+        "not": "Một cách rẻ để không sót thay đổi — nó còn tự kích hoạt nếu callback ghi vào object đang bị watch."
       },
       {
-        "term": "tự track",
-        "is": "watchEffect tự ghi nhận mọi reactive mà hàm đọc trong lần chạy.",
-        "not": "Dùng async trong watchEffect rồi tưởng biến đọc sau await vẫn được track."
-      },
-      {
-        "term": "stale response",
-        "is": "Kết quả của request cũ về muộn và ghi đè kết quả mới hơn.",
-        "not": "Chỉ debounce mà không abort, request cũ vẫn bay về và ghi vào state."
+        "term": "response cũ",
+        "is": "Response của request cũ về muộn và ghi đè kết quả mới hơn.",
+        "not": "Hệ quả của việc thiếu debounce — debounce chỉ hoãn, không huỷ request đã bắn."
       }
     ]
   },
@@ -318,24 +353,24 @@
     "id": "L14",
     "rows": [
       {
-        "term": "file .vue",
-        "is": "Gồm template, script và style, biên dịch thành một hàm render.",
-        "not": "Nâng state lên cha cho chắc và bind một ref duy nhất vào mọi dòng."
+        "term": "props",
+        "is": "Dữ liệu một chiều cha truyền xuống; con đọc được nhưng ghi thì bản dev cảnh báo.",
+        "not": "State của con — con chỉ emit xin cha đổi."
       },
       {
-        "term": "props một chiều",
-        "is": "Cha truyền dữ liệu xuống con; con không sửa props mà chỉ emit xin đổi.",
-        "not": "Con sửa props.row.note trực tiếp nên cha đổi mà không hay biết."
+        "term": "emit",
+        "is": "Đường ngược: con phát sự kiện kèm payload, Vue gọi các listener cha đã đăng ký cho sự kiện đó.",
+        "not": "Một đường ghi thẳng vào state của cha."
       },
       {
-        "term": "key trong v-for",
-        "is": "Danh tính ổn định của dòng để Virtual DOM biết node nào là node nào.",
-        "not": "Dùng index làm key nên khi sắp xếp ghi chú dán sang dòng sai."
+        "term": "v-model",
+        "is": "Cú pháp mở thành :modelValue cộng @update:modelValue; defineModel khai báo cả hai và trả về ref.",
+        "not": "Một cơ chế hai chiều riêng — viết lại thành prop và listener tay thì hành vi không đổi."
       },
       {
-        "term": "Virtual DOM",
-        "is": "Cây đối tượng mô phỏng DOM thật, được diff theo key khi state đổi.",
-        "not": ""
+        "term": "key",
+        "is": "Danh tính instance khi render danh sách; key theo id thì instance đi theo dòng.",
+        "not": "Chỉ số trong mảng — dùng index thì instance đi theo vị trí."
       }
     ]
   },
@@ -343,24 +378,24 @@
     "id": "L15",
     "rows": [
       {
-        "term": "composable tái dùng logic",
-        "is": "Mỗi lần gọi chạy lại thân hàm và tạo ô nhớ mới cho component đang gọi.",
-        "not": "Kéo ref ra ngoài hàm để ba nơi dùng chung, biến nó thành singleton cấp module."
+        "term": "state cục bộ",
+        "is": "Ref khai trong setup thuộc về một instance, tạo mới mỗi lần component mount và chết cùng instance.",
+        "not": "Một singleton dùng chung cho mọi instance của component đó."
       },
       {
-        "term": "cây component",
-        "is": "provide/inject truyền phụ thuộc xuống cây con, khóa bằng Symbol, gọi đồng bộ trong setup.",
-        "not": "Provide một object bị ghi liên tục, tạo store ẩn không devtools và không test được."
+        "term": "provide/inject",
+        "is": "Provide ghi cặp khóa-giá trị lên instance hiện tại; inject tra ngược lên tổ tiên trong cây.",
+        "not": "Một registry toàn cục — component nằm ngoài nhánh nhận undefined."
       },
       {
-        "term": "store Pinia",
-        "is": "Một bản duy nhất cho toàn ứng dụng, sống lâu hơn một màn hình.",
-        "not": "Nhét mọi thứ vào store khiến dữ liệu trang trước lọt sang trang sau."
+        "term": "store",
+        "is": "Một instance cho mỗi app, tạo ở lần useStore() đầu tiên và gắn với app qua app.use(pinia).",
+        "not": "Một biến module toàn cục — biến module không reactive và rò trạng thái giữa các test."
       },
       {
-        "term": "destructure store",
-        "is": "Đọc giá trị tĩnh qua Proxy rồi cắt dây; phải dùng storeToRefs cho state.",
-        "not": "Destructure thẳng store ra biến rồi tưởng vẫn cập nhật theo store."
+        "term": "composable",
+        "is": "Hàm chạy lại thân mỗi lần gọi nên mọi ref bên trong là bản mới cho component gọi nó.",
+        "not": "Một cách chia sẻ dữ liệu giữa các component gọi cùng hàm."
       }
     ]
   },
@@ -369,23 +404,23 @@
     "rows": [
       {
         "term": "route record",
-        "is": "Khai báo một đường dẫn gắn với một component; router so path để chọn record khớp.",
-        "not": "Chốt route.params.id vào ref lúc setup nên dữ liệu đóng băng ở lần vào đầu."
+        "is": "Khai báo một path gắn với component; matcher so path để ra record cùng params và chưa tạo component nào.",
+        "not": "Component của trang — nó chỉ được tạo sau khi guard chạy xong."
       },
       {
-        "term": "navigation guard",
-        "is": "Hàm chạy trong chuỗi điều hướng để cho đi, chặn hoặc chuyển hướng.",
-        "not": "Viết guard chặn mọi điều hướng chưa đăng nhập mà quên trừ chính trang /login."
+        "term": "guard",
+        "is": "Hàm chạy trong chuỗi điều hướng, trả true, false hoặc một vị trí mới để đi tiếp, huỷ hay redirect.",
+        "not": "Một lớp authorization — mã chạy trên máy người dùng và không chạy khi gọi API trực tiếp."
       },
       {
-        "term": "lazy route",
-        "is": "Component khai báo bằng import() động để bundler tách chunk và tải khi vào route.",
-        "not": ""
+        "term": "dùng lại instance",
+        "is": "Cùng route record thì component không dựng lại, chỉ params đổi, nên dữ liệu phải nạp lại bằng watch kèm huỷ request cũ.",
+        "not": "Một component mới cho mỗi lần đổi params — chỉ :key trên router-view mới buộc tạo mới."
       },
       {
-        "term": "tái dùng instance",
-        "is": "Hai path cùng khớp một record thì component không dựng lại, chỉ route.params đổi.",
-        "not": "Đặt :key lên router-view mà không thấy nó xóa sạch trạng thái cục bộ của trang."
+        "term": "beforeRouteEnter",
+        "is": "Hook của route mới, chạy sau khi component được tạo và lúc đó chưa có this.",
+        "not": "Hook của component đang sống — đó là beforeRouteLeave và beforeRouteUpdate."
       }
     ]
   },
@@ -393,24 +428,24 @@
     "id": "L17",
     "rows": [
       {
-        "term": "khóa idempotency",
-        "is": "Khóa gắn với ý định gửi, giữ nguyên khi lỗi mạng và chỉ xoay sau khi thành công.",
-        "not": "Sinh khóa trong setup nên đơn sau vẫn mang khóa của đơn trước."
-      },
-      {
-        "term": "cờ submitting",
-        "is": "Biến đổi ngay khi bấm để chặn cú nhấp đúp trước khi DOM kịp khóa nút.",
-        "not": "Quên mở lại nút trong finally nên một lần lỗi làm nút chết vĩnh viễn."
-      },
-      {
         "term": "bốn trạng thái",
-        "is": "Rỗng, đang tải, lỗi và có dữ liệu, mỗi trạng thái có giao diện riêng.",
-        "not": ""
+        "is": "idle, submitting, success, error; mỗi trạng thái quyết định nút, thông báo và việc cho gửi tiếp, chỉ submitting mới khoá.",
+        "not": "Một cờ boolean loading — nó không phân biệt được lỗi với trạng thái rỗng."
       },
       {
-        "term": "mảng detail",
-        "is": "Mảng lỗi FastAPI trả về, phải chiếu từng phần tử về đúng ô nhập.",
-        "not": "Object.assign trên mảng tạo khóa theo chỉ số nên fieldErrors.sku luôn undefined."
+        "term": "inFlight",
+        "is": "Biến kiểm ở dòng đầu hàm gửi, vì disabled chỉ có hiệu lực sau khi giao diện render lại.",
+        "not": "Thuộc tính disabled của nút — nó không chặn cú bấm thứ hai trước khi render."
+      },
+      {
+        "term": "Idempotency-Key",
+        "is": "Khóa định danh ý định: giữ nguyên qua các lần retry cùng payload, chỉ đổi khi ý định đổi.",
+        "not": "Khóa định danh request — sinh mới mỗi lần retry biến mỗi lần thành một ý định mới."
+      },
+      {
+        "term": "bộ đếm phiên",
+        "is": "Số tăng mỗi lần gửi; response chỉ được áp dụng khi số phiên của nó bằng số hiện tại.",
+        "not": "Một AbortController — huỷ request đang bay nhưng không tự chặn response đã về."
       }
     ]
   },
@@ -418,24 +453,29 @@
     "id": "L18",
     "rows": [
       {
-        "term": "HTTP status code",
-        "is": "Kênh máy đọc kết quả đúng hay sai, được thư viện, cache, gateway và alert đọc trước.",
-        "not": "Trả 200 rồi nhét lỗi vào body nên Axios và dashboard đều thấy thành công."
+        "term": "status code",
+        "is": "Kết quả dành cho máy: thư viện, cache, gateway và alert đọc nó trước khi đọc body.",
+        "not": "Một trường trong body JSON — body là chi tiết dành cho người."
       },
       {
-        "term": "Pydantic BaseModel",
-        "is": "Class khai báo kiểu từng trường, chặn dữ liệu sai ngay tại biên.",
-        "not": "Thêm trường bắt buộc làm mọi client cũ vỡ ngay khi deploy."
+        "term": "envelope",
+        "is": "Một hình dạng lỗi chung cho mọi route, do exception handler chung sinh ra.",
+        "not": "Mỗi route tự định nghĩa hình dạng lỗi của riêng nó."
       },
       {
-        "term": "màng lọc đầu ra",
-        "is": "response_model ép dữ liệu trả về đúng khuôn và cắt mọi trường thừa.",
-        "not": "Không khai response_model nên trường nội bộ bị gửi thẳng ra ngoài."
+        "term": "Pydantic model",
+        "is": "Class khai kiểu từng trường, chặn dữ liệu sai ngay tại biên vào trước handler với 422.",
+        "not": "Một lớp lọc chiều ra — đó là response_model."
       },
       {
-        "term": "OpenAPI Spec",
-        "is": "Bản mô tả endpoint và schema dạng JSON, sinh từ model nên không lạc hậu.",
-        "not": "Coi hợp đồng là thứ không có vòng đời nên không có chỗ đặt v2 khi phá tương thích."
+        "term": "response_model",
+        "is": "Màng lọc chiều ra: FastAPI cắt mọi trường không khai báo nên ghi chú nội bộ không lọt ra ngoài.",
+        "not": "Một bản kiểm tra dữ liệu đi vào."
+      },
+      {
+        "term": "OpenAPI",
+        "is": "Bản mô tả endpoint và schema sinh từ chính model, dùng để sinh client và typecheck trong CI.",
+        "not": "Một file viết tay phải cập nhật song song với code."
       }
     ]
   },
@@ -444,23 +484,23 @@
     "rows": [
       {
         "term": "access token",
-        "is": "JWT sống ngắn, giữ trong RAM và gắn vào mọi request nghiệp vụ.",
-        "not": "Cất cả access token lẫn refresh token trong localStorage nên XSS đọc được và chiếm phiên."
+        "is": "JWT sống ngắn giữ trong RAM, được interceptor gắn vào mọi request nghiệp vụ.",
+        "not": "Một token cất ở localStorage để mọi request tự đọc — XSS rút được ra khỏi tab."
       },
       {
-        "term": "HttpOnly cookie",
-        "is": "Cookie JavaScript không đọc được, dùng chứa refresh token sống lâu.",
-        "not": ""
+        "term": "HttpOnly",
+        "is": "Cookie JavaScript không đọc được, dùng chứa refresh token sống dài và chỉ gửi tới Path=/auth/refresh.",
+        "not": "Một chỗ lưu access token để mọi request tự đọc."
       },
       {
-        "term": "Promise refresh dùng chung",
-        "is": "Cả đợt request 401 chờ đúng một lần gọi refresh thay vì mỗi request tự gọi.",
-        "not": "Viết interceptor ở cấp từng request nên mỗi 401 tự mở một lời gọi refresh riêng."
+        "term": "refreshPromise",
+        "is": "Biến giữ Promise refresh để mọi request 401 chờ đúng một lời gọi, và khoá được nhả trong finally.",
+        "not": "Mỗi request tự gọi refresh riêng — số lời gọi tăng theo cấp số nhân."
       },
       {
         "term": "kiểm quyền theo đối tượng",
-        "is": "Token chỉ chứng minh người gọi là ai, không chứng minh họ sở hữu bản ghi.",
-        "not": "Chỉ kiểm token mà không kiểm người gọi có sở hữu bản ghi số 999."
+        "is": "Lọc truy vấn theo danh tính lấy từ token để chỉ trả bản ghi mà người gọi sở hữu.",
+        "not": "Chỉ kiểm chữ ký và hạn token — token hợp lệ không chứng minh sở hữu bản ghi."
       }
     ]
   },
@@ -469,23 +509,23 @@
     "rows": [
       {
         "term": "presigned PUT",
-        "is": "URL mang chữ ký cho một thao tác ghi trên một object trong thời hạn nhất định.",
-        "not": "Để client tự chọn key từ body.filename nên có thể ghi đè dữ liệu tenant khác."
-      },
-      {
-        "term": "xác nhận bằng head_object",
-        "is": "Đọc metadata object sau khi PUT để đối chiếu với bản ghi đã khai.",
-        "not": "Chỉ tin đuôi file và lời khai, không kiểm nội dung thật trong bucket."
+        "is": "URL mang chữ ký cho đúng một thao tác ghi trên một key do server sinh, trong thời hạn ngắn.",
+        "not": "Một URL dùng một lần — nó dùng lại được cho tới khi hết hạn."
       },
       {
         "term": "bản ghi PENDING",
-        "is": "Trạng thái ghi trước khi cấp URL, chỉ chuyển READY sau khi xác nhận khớp.",
-        "not": "Đặt READY ngay sau khi sniff, để người dùng đọc được tệp chưa qua kiểm tra."
+        "is": "Trạng thái ghi trước khi cấp URL; chỉ chuyển READY sau khi xác nhận khớp.",
+        "not": "Trạng thái đặt ngay sau khi PUT — người dùng sẽ đọc được tệp chưa qua kiểm tra."
+      },
+      {
+        "term": "head_object",
+        "is": "Đọc metadata object sau khi PUT để đối chiếu kích thước và loại với bản ghi đã khai.",
+        "not": "Một bước kiểm ở client trước khi upload."
       },
       {
         "term": "magic bytes",
-        "is": "Dấu hiệu nhận dạng loại tệp thật, kiểm sau khi đã có byte trong bucket.",
-        "not": "Không kiểm magic bytes, chỉ tin đuôi file client khai."
+        "is": "Dấu hiệu nhận dạng loại tệp thật, đọc mười sáu byte đầu bằng Range để so với loại đã khai.",
+        "not": "Đuôi tên tệp — nó do client khai."
       }
     ]
   },
@@ -494,23 +534,28 @@
     "rows": [
       {
         "term": "Transactional Outbox",
-        "is": "Bảng outbox ghi cùng transaction với dữ liệu nghiệp vụ, relay đẩy lên SQS sau.",
-        "not": "Gửi SQS ngay trong luồng nghiệp vụ, commit xong mà gửi lỗi thì đơn không có message."
-      },
-      {
-        "term": "visibility timeout",
-        "is": "Hợp đồng thuê có hạn, không phải khóa độc quyền; hết hạn thì message hiện lại.",
-        "not": "Để 30 giây theo mặc định dù worker xử lý 45 giây, nên message thuộc về worker khác."
+        "is": "Bảng outbox ghi cùng transaction với dữ liệu nghiệp vụ, rồi relay đẩy lên SQS sau khi commit.",
+        "not": "Gửi SQS ngay trong transaction — commit xong mà gửi lỗi thì đơn không có message."
       },
       {
         "term": "FOR UPDATE SKIP LOCKED",
-        "is": "Mệnh đề giúp nhiều relay đọc song song mà không tranh cùng một hàng outbox.",
-        "not": ""
+        "is": "Mệnh đề để nhiều relay đọc song song mà không tranh cùng một hàng outbox.",
+        "not": "Một khoá toàn bảng buộc các relay chạy tuần tự."
       },
       {
-        "term": "Dead-Letter Queue",
-        "is": "Nơi message thất bại quá maxReceiveCount dừng lại để điều tra thủ công.",
-        "not": "Để DLQ thành thùng rác không ai nhìn, message im lặng hết hạn lưu trữ."
+        "term": "visibility timeout",
+        "is": "Hợp đồng thuê có hạn, không phải khoá độc quyền; hết hạn thì message hiện lại cho worker khác.",
+        "not": "Một khoá giữ message cho tới khi chính worker đó xoá."
+      },
+      {
+        "term": "idempotent worker",
+        "is": "Chèn message_id vào bảng processed trong cùng transaction với việc nghiệp vụ để bản trùng bị bỏ qua.",
+        "not": "Đọc trước rồi ghi sau — hai lần giao cùng lúc vẫn lọt."
+      },
+      {
+        "term": "DLQ",
+        "is": "Hàng đợi nhận message đã vượt maxReceiveCount để còn chỗ điều tra thủ công.",
+        "not": "Nơi lưu trữ lâu dài — message hết retention thì biến mất."
       }
     ]
   },
@@ -519,23 +564,28 @@
     "rows": [
       {
         "term": "Origin Access Control",
-        "is": "Cơ chế CloudFront ký request tới S3 khi bucket private, chặn đường vòng trực tiếp.",
-        "not": "Mở bucket public để CloudFront đọc nên ai biết tên bucket cũng tải file trực tiếp."
+        "is": "Cơ chế CloudFront ký request tới S3 khi bucket private, chặn đường vòng truy cập trực tiếp.",
+        "not": "Một bucket policy mở public để CloudFront đọc."
       },
       {
         "term": "cache phân tầng",
-        "is": "index.html luôn hỏi lại, còn file có hash được cache lâu vì nội dung không đổi.",
-        "not": "Cho index.html và file JS cùng TTL 24 giờ, HTML cũ trỏ tới JS đã xóa."
+        "is": "index.html luôn hỏi lại bằng no-cache, còn file có hash được cache một năm vì nội dung không đổi.",
+        "not": "Một TTL chung cho mọi file trong bản build."
       },
       {
         "term": "hashed asset immutable",
-        "is": "Tên file chứa hash nội dung nên gắn max-age một năm và immutable.",
-        "not": "Dùng sync --delete xóa file bản cũ ngay khi bản mới lên."
+        "is": "Tên file chứa hash nội dung nên gắn max-age một năm và immutable, trình duyệt không hỏi lại.",
+        "not": "Một tên file cố định bị ghi đè ở mỗi bản build."
       },
       {
         "term": "Expand-Contract migration",
-        "is": "Thêm cột mới trước, đọc được cả hai dạng, rồi mới xóa cột cũ ở chu kỳ sau.",
-        "not": "Chạy migration xóa cột khi code cũ còn dùng nên rollback hỏng."
+        "is": "Thêm cột mới trước, code đọc được cả hai dạng, rồi mới xoá cột cũ ở chu kỳ sau.",
+        "not": "Một migration đổi tên cột trong đúng một bước."
+      },
+      {
+        "term": "rollback bằng con trỏ",
+        "is": "Copy index.html của artifact cũ ra gốc bucket rồi invalidate biên, không build lại.",
+        "not": "Một lần build lại từ commit cũ."
       }
     ]
   },
@@ -543,24 +593,39 @@
     "id": "L23",
     "rows": [
       {
-        "term": "Asymmetric Resource Exhaustion",
-        "is": "Kẻ tấn công bỏ ít chi phí gửi request giả nhưng bắt hệ thống tiêu tốn nhiều lần hơn.",
-        "not": "Nâng trần concurrency và max_connections vì tưởng đó là đỉnh lưu lượng thật."
+        "term": "bất đối xứng tài nguyên",
+        "is": "Kẻ tấn công trả gần như không đáng kể cho mỗi request, còn bạn trả băng thông, CPU, hàng đợi và tiền.",
+        "not": "Một đỉnh lưu lượng người thật — cùng hình dạng đường cong nhưng khác bài toán."
       },
       {
-        "term": "Rate limit theo IP",
-        "is": "Giới hạn theo từng địa chỉ, mù trước botnet vì mỗi IP chỉ gửi vài request mỗi giây.",
-        "not": "Đi tìm IP kẻ tấn công để chặn, trong khi botnet phân tán không có một IP như vậy."
+        "term": "volumetric",
+        "is": "Tấn công làm cạn băng thông, đo bằng bit mỗi giây.",
+        "not": "Tấn công tầng ứng dụng — bit mỗi giây gần phẳng trong khi request mỗi giây dựng đứng."
       },
       {
-        "term": "Denial of Wallet",
-        "is": "Hệ quả khi Lambda bật hàng nghìn container và hóa đơn tăng theo request rác.",
-        "not": ""
+        "term": "protocol",
+        "is": "Tấn công làm cạn bảng trạng thái kết nối, đo bằng gói mỗi giây và số kết nối nửa mở như SYN flood.",
+        "not": "Tấn công làm cạn CPU bằng request hợp lệ — đó là tầng ứng dụng."
       },
       {
-        "term": "origin cloaking",
-        "is": "Không để lộ IP hay URL trực tiếp của origin cho công chúng gọi vòng qua CloudFront.",
-        "not": "Ban theo IP nhìn thấy ở tầng ứng dụng, nhưng đó là IP của proxy hoặc CDN."
+        "term": "tấn công tầng ứng dụng",
+        "is": "Request hợp lệ nhưng đắt tiền làm cạn CPU, hàng đợi và kết nối; request mỗi giây và p99 dựng đứng.",
+        "not": "Một đợt SYN flood làm cạn bảng trạng thái — đó là tầng protocol."
+      },
+      {
+        "term": "rate limit theo IP",
+        "is": "Bộ đếm gắn với từng địa chỉ nguồn, nên botnet chia nhỏ dưới ngưỡng không bị đếm.",
+        "not": "Một bộ đếm tổng của hệ thống."
+      },
+      {
+        "term": "gom đếm toàn bộ",
+        "is": "Chọn kiểu gom để mọi request khớp phạm vi đi vào một bộ đếm duy nhất, kèm scope-down.",
+        "not": "Rate limit theo IP nguồn, vốn là kiểu gom mặc định của rate-based rule."
+      },
+      {
+        "term": "reserved concurrency",
+        "is": "Trần số environment đồng thời của một hàm; chạm trần thì request bị throttle thay vì mở thêm container.",
+        "not": "Một cách tăng năng lực hệ thống — nó chỉ biến sập toàn phần thành từ chối có kiểm soát."
       }
     ]
   },
@@ -569,43 +634,33 @@
     "rows": [
       {
         "term": "planner",
-        "is": "Bộ tối ưu dựa trên chi phí: sinh nhiều kế hoạch khả dĩ, gán chi phí từ thống kê, chọn kế hoạch rẻ nhất.",
+        "is": "Bộ tối ưu dựa trên chi phí: lấy thống kê từ pg_class và pg_statistic, ước lượng số dòng mỗi nút rồi chọn kế hoạch rẻ nhất.",
         "not": "Một bộ luật cố định kiểu \"có index thì dùng index\"."
       },
       {
         "term": "selectivity",
         "is": "Tỉ lệ dòng khớp một điều kiện, do ANALYZE đo và lưu trong pg_statistic.",
-        "not": "Số dòng khớp thật của lần chạy hiện tại."
+        "not": "Số dòng khớp thật của lần chạy hiện tại — đó là actual rows."
       },
       {
-        "term": "EXPLAIN ANALYZE",
-        "is": "Chạy thật câu lệnh, in kế hoạch kèm actual rows và actual time để so với ước lượng.",
+        "term": "ANALYZE",
+        "is": "Chạy thật câu lệnh và in actual rows, actual time cạnh ước lượng để thấy planner lệch ở đâu.",
         "not": "EXPLAIN trần, vốn chỉ in kế hoạch dự kiến và không chạy gì."
       },
       {
-        "term": "bitmap heap scan",
-        "is": "Gom TID từ index rồi đọc heap theo thứ tự vật lý, dung hoà giữa index scan và seq scan.",
-        "not": "Index-only scan, vốn không chạm heap khi visibility map cho phép."
+        "term": "access path",
+        "is": "Bốn cách đọc bảng: Seq Scan đọc tuần tự, Index Scan ghé heap từng dòng, Bitmap Heap Scan gom TID theo trang, Index Only Scan bỏ heap nhờ visibility map.",
+        "not": "Một bảng xếp hạng cố định theo độ tốt — lựa chọn là so chi phí ước lượng."
       },
       {
         "term": "tiền tố trái nhất",
-        "is": "Index (a, b) phục vụ điều kiện trên a hoặc (a, b); không phục vụ điều kiện chỉ trên b.",
+        "is": "Index (a, b) chỉ dùng được khi điều kiện chứa a, hoặc chứa cả a và b.",
         "not": "Một tập cột không thứ tự mà planner tự sắp lại khi cần."
       },
       {
-        "term": "MVCC",
-        "is": "Cơ chế giữ nhiều phiên bản dòng để người đọc không chặn người ghi và ngược lại.",
-        "not": "Khoá đọc; đọc và ghi vẫn có thể chờ nhau ở mức dòng khi có FOR UPDATE."
-      },
-      {
-        "term": "autovacuum",
-        "is": "Tiến trình dọn dòng chết và cập nhật thống kê, bị đẩy lùi khi có transaction giữ snapshot lâu.",
-        "not": "Một job có thể tắt đi mà không ảnh hưởng gì."
-      },
-      {
-        "term": "keyset pagination",
-        "is": "Phân trang bằng điều kiện so sánh trên khoá sắp xếp, chi phí không tăng theo độ sâu.",
-        "not": "OFFSET, vốn đọc rồi bỏ toàn bộ dòng phía trước."
+        "term": "MVCC snapshot",
+        "is": "Mỗi câu lệnh ở READ COMMITTED hoặc mỗi transaction ở REPEATABLE READ chụp một snapshot và chỉ thấy phiên bản đã commit trước mốc đó.",
+        "not": "Một khoá đọc chặn người ghi — đó là khoá dòng, không phải snapshot."
       }
     ]
   },
@@ -614,43 +669,33 @@
     "rows": [
       {
         "term": "WSGI",
-        "is": "Giao thức ứng dụng đồng bộ: một callable nhận environ, trả iterable byte; mỗi request chiếm một luồng.",
-        "not": "Một framework; nó là hợp đồng giữa server và ứng dụng, Django và Flask đều nói giao thức này."
+        "is": "Hợp đồng đồng bộ: callable nhận environ trả iterable byte, một request chiếm một luồng tới khi response xong.",
+        "not": "Một framework — nó là giao thức giữa server và ứng dụng, Django và Flask đều nói giao thức này."
       },
       {
         "term": "ASGI",
-        "is": "Giao thức bất đồng bộ: coroutine nhận scope, receive, send; chờ I/O không chiếm luồng.",
-        "not": "Chỉ dùng cho WebSocket; nó cũng phục vụ HTTP thường và lifespan."
+        "is": "Hợp đồng bất đồng bộ: coroutine nhận scope, receive, send, nên chờ I/O không chiếm luồng.",
+        "not": "Chỉ dùng cho WebSocket — nó cũng phục vụ HTTP thường và lifespan."
       },
       {
-        "term": "dependency injection (Depends)",
-        "is": "Cơ chế giải cây phụ thuộc cho một lời gọi hàm, có cache theo request và teardown qua yield.",
-        "not": "Container quản lý vòng đời bean như Spring."
+        "term": "Depends",
+        "is": "Cơ chế giải đồ thị phụ thuộc cho từng request và cache kết quả trong phạm vi request đó.",
+        "not": "Container quản lý vòng đời đối tượng toàn ứng dụng như Spring."
       },
       {
-        "term": "app context / request context",
-        "is": "Nơi Flask đặt request, g và current_app trong contextvars, đóng tài nguyên khi context kết thúc.",
-        "not": "Biến toàn cục dùng chung giữa các request."
+        "term": "yield",
+        "is": "Dependency viết bằng yield có phần sau yield chạy sau khi response được gửi, để đóng tài nguyên theo request.",
+        "not": "Một finally chạy ngay khi handler trả về, trước khi response được gửi đi."
       },
       {
-        "term": "threadpool",
-        "is": "Chỗ FastAPI đẩy endpoint def vào, để lời gọi chặn chỉ chiếm một thread thay vì chặn event loop.",
-        "not": "Một cách tăng số request xử lý song song vô hạn; nó có trần theo cấu hình."
+        "term": "nguồn sự thật",
+        "is": "Chỗ định nghĩa hình dạng dữ liệu: type hint và Pydantic ở FastAPI, model và serializer ở Django, do bạn chọn ở Flask.",
+        "not": "File OpenAPI viết tay — nó nên được sinh từ chính khai báo."
       },
       {
-        "term": "nguồn sự thật của schema",
-        "is": "Chỗ định nghĩa hình dạng dữ liệu: model ORM ở Django, type hint và Pydantic ở FastAPI, do bạn chọn ở Flask.",
-        "not": "File OpenAPI viết tay; nó nên được sinh từ nguồn sự thật."
-      },
-      {
-        "term": "middleware chain",
-        "is": "Chuỗi lớp bọc quanh view ở Django, chạy vào theo thứ tự khai báo và ra theo thứ tự ngược.",
-        "not": "Một danh sách hàm độc lập không bọc nhau."
-      },
-      {
-        "term": "async giả",
-        "is": "Endpoint async def gọi driver đồng bộ, khiến event loop bị chặn đúng bằng thời gian chờ I/O.",
-        "not": "Một tối ưu hiệu năng; nó thường làm p99 tệ hơn."
+        "term": "thành phần có sẵn",
+        "is": "Django mang theo ORM, migration, admin, auth như một khối; FastAPI chỉ có routing, validation và OpenAPI.",
+        "not": "Độ trễ của API do số lớp framework quyết định — nó bị chi phối bởi database và dịch vụ ngoài."
       }
     ]
   }

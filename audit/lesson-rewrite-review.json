@@ -1,0 +1,702 @@
+[
+  {
+    "id": "L01",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Mot request đi qua nhung dich vu nào, và vì sao tang Lambda làm nghen RDS'; `mechanism` đi đúng thứ tự API Gateway -> Lambda (VPC) -> RDS trong 5 bước.",
+      "mechanism_correct": "`predict.a` quy failover cho Multi-AZ (endpoint/DNS chuyển sang standby) và chỉ nói RDS Proxy gom/giữ kết nối, không gán failover cho RDS Proxy; nghen do tang Lambda làm cạn `max_connections`.",
+      "boundaries_correct": "`failureModes` nêu giới hạn của chính cách sửa (RDS Proxy không chữa truy vấn chậm, không tăng `max_connections`); `tradeoff` nêu chi phí/thêm chặng, `observe` chỉ metric CloudWatch để đọc.",
+      "no_unknown_prerequisite": "`bridge` chỉ dùng khái niệm đã có (request, connection pool, RDS); đây là bài mở đầu nên `buildsOn` rỗng.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ nhánh 600 và 200 request/giây (failover, pool, proxy); output kiểm: L01 dupA=false (không lặp câu chữ `incident`).",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng (chỉ L12 có analogy).",
+      "diagram_matches_question": "`visuals[0]` = flow-serverless-request, `focus` = 'RDS' (đúng giá trị field) và có nguyên văn trong text SVG sau khi strip tags; `question` 83 ký tự ('Một request đi qua những dịch vụ nào, và vì sao tăng số Lambda lại làm nghẽn ở RDS?') khớp câu hỏi trung tâm của bài.",
+      "middle_followups": "`attacks` 4 câu ở mức middle (pool, failover, Lambda trong VPC, chi phí); `qids` = G01 (Region/AZ, trách nhiệm chung), G12 (VPC/subnet/security group), G05 (API Gateway), G11 (Lambda retry/idempotency), G13 (CloudWatch) - cả 5 đều thuộc đường đi request của bài.",
+      "code_output_consistent": "`code` có `import os`/`import psycopg`, DSN từ `os.environ`, không có print hay comment số; `naiveCode` ghi 'RDS trong kịch bản này đặt max_connections = 40' và '# 400 environment ... một cửa chỉ mở 40 chỗ' - khớp giá trị 400 (`--reserved-concurrent-executions 400`) với 40. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-rds, aws-lambda-best, aws-vpc; `provenance[0]` = 'Mọi con số trong sự cố, dự đoán, kết quả quan sát và dòng thời gian (60 và 200 request mỗi giây, 600 ms và 200...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L02",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Ai đuoc goi Lambda, và Lambda đuoc phép làm gì'; `concept` tách hai lớp: resource policy (ai được Invoke) và execution role (hàm được làm gì).",
+      "mechanism_correct": "`mechanism` mô tả resource policy tách khỏi execution role, khớp `predict.a` và `qids` G02/G04.",
+      "boundaries_correct": "`failureModes` nêu 'policy đúng mà thiếu trust/Principal sai' và `observe` dùng AccessDenied trong CloudTrail để phân biệt hai lớp.",
+      "no_unknown_prerequisite": "`bridge` chỉ dựa vào L01 (đường đi request) và khái niệm IAM được định nghĩa ngay trong bài.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ các nhánh (ai gọi, thiếu lớp quyền nào); output kiểm: L02 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-iam-two-layers, focus 'Execution role' có nguyên văn trong SVG (output gate: focus=true, question 99 ký tự).",
+      "middle_followups": "`attacks` hỏi trust policy vs resource policy, cross-account; `qids` = G02 (IAM user/role/policy/execution role), G04 (phân biệt quyền gọi Lambda và quyền của Lambda), E05 (xác thực/phân quyền FastAPI) - đều là mô hình 'ai được phép làm gì' của bài.",
+      "code_output_consistent": "`code` là policy JSON, không có print hay comment số; quét toàn cục không có hostname thiếu scheme hay tên chưa import, nên không có output bị khẳng định sai.",
+      "sources_support_claims": "`refs` = aws-iam-role, aws-lambda-permissions; `provenance[0]` = 'Các con số trong sự cố, dự đoán, kết quả quan sát và dòng thời gian (ba ngày, 100 phần trăm request nhận 500,...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L03",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Mot lan goi Lambda đi qua Init, handler và retry nhu the nào'; `mechanism` chia đúng Init -> handler -> retry/timeout.",
+      "mechanism_correct": "`mechanism` nói Init chạy một lần cho mỗi môi trường, handler chạy mỗi lần gọi, retry do dịch vụ gọi quyết định; `predict.a` khớp (timeout 3 giây vs xử lý thật 5 giây).",
+      "boundaries_correct": "`failureModes` nêu 'Init không chạy lại mỗi lần gọi' và 'retry không phải idempotency'; `observe` dùng log Init duration + REPORT.",
+      "no_unknown_prerequisite": "`bridge` nối từ L02 (quyền) sang vòng đời thực thi; không đòi kiến thức chưa có.",
+      "prediction_complete_and_hidden": "`predict.a` tính đủ ba nhánh (cold, warm, timeout/retry); output kiểm: L03 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-lambda-cold-start, focus 'Init' có nguyên văn trong SVG (output gate: focus=true, question 117 ký tự).",
+      "middle_followups": "`attacks` hỏi cold start trong VPC, provisioned concurrency, retry trùng; `qids` = G03 (handler/event/context/cold start/giới hạn), G11 (retry/idempotency), G12 (VPC/subnet/security group - môi trường thực thi của hàm) đều thuộc vòng đời một lần gọi.",
+      "code_output_consistent": "`code` không có print hay comment số; quét toàn cục: không có hostname thiếu scheme, không có tên chưa import, nên không có output bị khẳng định sai.",
+      "sources_support_claims": "`refs` = aws-lambda-best, aws-lambda-cold-start; `provenance[0]` = '...dòng thời gian (timeout 3 giây, xử lý thật 5 giây, 4 MB,...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L04",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Vì sao curl tra 200 mà trình duyet van chan request'; `concept` chốt CORS là luật của trình duyệt, chặn việc đọc response chứ không chặn request đã tới server.",
+      "mechanism_correct": "`mechanism` đi đúng 4 bước: origin = scheme/host/port -> phân loại request đơn giản -> preflight OPTIONS -> kiểm tra ACAO trên response thật; credentials không đi với wildcard.",
+      "boundaries_correct": "`failureModes`/`tradeoff` nêu response 4xx/5xx vẫn cần header, `Vary: Origin`, wildcard mất credentials; `observe` chỉ đọc console/Network để biết thiếu header ở lượt nào.",
+      "no_unknown_prerequisite": "`bridge` nối từ L03 (vòng đời hàm) sang biên HTTP; chỉ dùng khái niệm HTTP đã có.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ (a) hai request, (b) Authorization chỉ trên GET thật, (c) nhận lỗi chứ không nhận body, (d) wildcard không dùng được với credentials; output kiểm: L04 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-cors-preflight, `focus` = 'Browser' (đúng giá trị field) và có nguyên văn trong text SVG; `question` 118 ký tự nêu đúng hai lượt kiểm tra đọc header nào - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` hỏi preflight cache, `Vary: Origin`, CORS ở CloudFront; `qids` = G05 (API Gateway route/CORS/throttling - trùng trực tiếp chủ đề), G15 (CloudFront caching/invalidation), E12 (DRF viewset/router/permission/throttle - tầng ứng dụng cùng biên HTTP) - đều luyện tầng biên chứ không lạc sang chủ đề khác.",
+      "code_output_consistent": "`code`: `origin = raw_origin.split('://', 1)[-1].split('/', 1)[0].lower()` nên 'https://app.example.com' -> 'app.example.com' khớp `ALLOWED = {'app.example.com','localhost:5173'}` (và 'http://localhost:5173' -> 'localhost:5173'); ACAO trả `raw_origin` đầy đủ; comment 'tach scheme va path khoi header Origin truoc khi so' khớp code, `codeNote` 'if origin not in ALLOWED là dòng quyết định' khớp nhánh `return {'Vary': 'Origin'}`. Ghi chú: `import os` không dùng (không ảnh hưởng output). Quét toàn cục: không còn hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-api-gateway, aws-cloudfront, mdn-cors; `provenance[0]` = 'Các con số trong sự cố và dự đoán (ba ngày, 100% request thử bằng curl, hai request cho một lần gọi, max-age 6...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L05",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Cho trình duyet tai thang lên S3 bang URL ký san, và đoc DynamoDB theo khoá'; `mechanism` tách presigned PUT và Query theo khoá.",
+      "mechanism_correct": "`mechanism` nói chữ ký ràng buộc method/key/content-type, byte không đi qua API, Query cần partition key; `predict.a` xử lý đúng hết hạn URL và `ConditionExpression`.",
+      "boundaries_correct": "`failureModes` nêu presigned URL không chặn ghi đè trong hạn và không giới hạn kích thước thật; `observe` dùng head_object để xác nhận.",
+      "no_unknown_prerequisite": "`bridge` nối từ L04 (biên HTTP) sang quyền ghi trực tiếp; chỉ dùng khái niệm đã có.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ (URL hết hạn 300 giây, PUT không qua API, Query vs Scan); output kiểm: L05 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals` = flow-upload-presign (`focus` = 'Vue client') + flow-dynamodb-access (`focus` = 'Filter'), cả hai focus đúng giá trị field và có nguyên văn trong text SVG; `question` 67 và 85 ký tự hỏi ai ký/ai ghi và truy vấn đi qua khoá hay toàn bảng - khớp hai vế của câu hỏi trung tâm; đúng bài này có 2 hình.",
+      "middle_followups": "`attacks` hỏi ai sinh key, versioning, Scan vs Query; `qids` = G06 (S3 private bucket/presigned URL), G08 (DynamoDB key/access pattern/Query/Scan), G09 (conditional write/optimistic concurrency) - cả 3 đúng mô hình bài.",
+      "code_output_consistent": "`code` không có print hay comment số; quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-s3-presigned, aws-dynamodb; `provenance[0]` = 'Các con số trong sự cố và dự đoán (tệp 8 MB, 200 000 bản ghi, 50 đơn mỗi người dùng, URL hết hạn sau 300 giây,...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L06",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Vì sao thêm consumer không làm hàng đoi nhanh hon'; `mechanism` chốt throughput = min(consumer, batch/visibility, downstream).",
+      "mechanism_correct": "`predict.a` đúng: thêm consumer chỉ dịch trần khi consumer là nút thắt; visibility ngắn gây giao trùng chứ không tăng throughput.",
+      "boundaries_correct": "`failureModes` nêu 'nhiều consumer hơn không vượt trần downstream' và DLQ chỉ hữu ích khi có người đọc; `observe` dùng ApproximateNumberOfMessages + AgeOfOldestMessage.",
+      "no_unknown_prerequisite": "`bridge` nối từ L05 sang hàng đợi; visibility/batch được định nghĩa ngay trong bài.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ nhánh (12 000 message tồn, 6 consumer, lô 10, 40 giây/message); output kiểm: L06 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-sqs-visibility, `focus` = 'Visibility timeout' (đúng giá trị field, có dấu cách) và có nguyên văn trong text SVG; `question` 86 ký tự hỏi message bị ẩn ở bước nào và điều gì xảy ra khi hết khoảng - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` hỏi visibility ngắn, FIFO vs standard, DLQ redrive; `qids` = G10 (SQS visibility/giao trùng/DLQ), G11 (retry/idempotency), E09 (background task vs hàng đợi bền) - đúng chủ đề.",
+      "code_output_consistent": "`code` không có print hay comment số; quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-sqs-visibility, aws-sqs-dlq; `provenance[0]` = 'Các con số trong sự cố và dự đoán (12 000 message tồn, 6 consumer, lô 10 message, 40 giây mỗi message, visibil...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L07",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Mot request đi qua FastAPI: def, async def và cho nào that su nhuong luot'; `mechanism` tách `def` -> threadpool, `async def` -> event loop.",
+      "mechanism_correct": "`predict.a` tính đủ A/B/C: A (def + time.sleep) 200 request chia 5 đợt khoảng 1 giây, B (async def + time.sleep) 200 x 0,2 = 40 giây, C khoảng 0,2 giây; ghi rõ 'Con số 40 là giả định của bài toán, không phải hằng số của FastAPI'.",
+      "boundaries_correct": "`failureModes` nêu 'async def gọi hàm chặn còn tệ hơn def' và threadpool có trần; `observe` đọc p99 tăng tuyến tính trong khi CPU thấp.",
+      "no_unknown_prerequisite": "`bridge` nối từ L06 sang vòng đời request; event loop/threadpool được định nghĩa trong bài.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ A/B/C kèm thứ tự xong; output kiểm: L07 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-async-event-loop, `focus` = 'Event loop' (đúng giá trị field, viết hoa chữ E) và có nguyên văn trong text SVG; `question` 68 ký tự hỏi vì sao `time.sleep` trong `async def` làm cả /health chậm - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` hỏi middleware chặn loop, lifespan client, threadpool cạn; `qids` = E01 (request lifecycle/routing/middleware/DI), E03 (def vs async def, session lifecycle), E08 (ASGI vs WSGI, worker process), A15 (event loop/coroutine/task/await), A16 (lời gọi chặn trong async, giới hạn tác vụ đồng thời), A18 (thread/process/asyncio) - cả 6 đúng chủ đề nhường lượt.",
+      "code_output_consistent": "`code`: `REPORT_BASE`/`LEGACY_BASE` lấy từ `os.environ`, gọi `await http.get(f'{REPORT_BASE}/orders/{id}')` và `requests.get(f'{LEGACY_BASE}/orders/{id}', timeout=5)` - không còn hostname thiếu scheme; `naiveCode` cùng dạng base URL và minh hoạ đúng hai lỗi (time.sleep trong async def, requests.get trong async def); `codeNote` khớp từng dòng (lifespan client, `await call_next`, `def` -> threadpool). Không có print/comment số. Ghi chú: default `''` của biến môi trường tạo URL tương đối nếu thiếu cấu hình - lỗi cấu hình, không phải host hard-code. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import (`collections` chỉ nằm trong `from collections.abc import`).",
+      "sources_support_claims": "`refs` = fastapi-async, fastapi-dependencies, httpx; `provenance[0]` = 'Mọi con số trong sự cố, dự đoán, dòng thời gian và cách làm ngây thơ là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L08",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title '150 environment Lambda warm mo bao nhiêu connection toi RDS'; `mechanism` nhân số môi trường với pool mỗi môi trường rồi so `max_connections`.",
+      "mechanism_correct": "`predict.a` tính đúng 150 x pool > `max_connections` và chỉ ra trần thật là instance; `qids` G07/E03 khớp.",
+      "boundaries_correct": "`failureModes` nêu 'RDS Proxy không tăng `max_connections`' và pool nhỏ làm tăng độ trễ chờ; `observe` đọc DatabaseConnections.",
+      "no_unknown_prerequisite": "`bridge` nối từ L07 (nơi chờ) sang tài nguyên bị chia sẻ; pool đã có từ L01.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ nhánh (150 warm, pool 1 vs pool 5, proxy); output kiểm: L08 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-connection-pool, `focus` = 'Connection thực mở' (đúng giá trị field) và có nguyên văn trong text SVG; `question` 72 ký tự hỏi vì sao 150 environment warm có thể mở quá số connection - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` hỏi pool per-environment, RDS Proxy, pgbouncer; `qids` = E03 (def vs async def, connection/session lifecycle), G07 (RDS PostgreSQL: kết nối, sao lưu, mạng), J08 (tradeoff giữa hai lựa chọn công nghệ) - đều luyện trần kết nối của bài.",
+      "code_output_consistent": "`code` không in output và không có comment số, nên không có giá trị nào bị khẳng định sai; mọi con số (150, pool) nằm trong `predict`/`incident` và đã được `provenance` gắn nhãn giả định. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-rds-proxy, aws-lambda-best; `provenance[0]` = 'Mọi con số trong sự cố, dự đoán, dòng thời gian và cách làm ngây thơ là giả định để dựng kịch bản: 150 environ...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L09",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Loi nào phai sua du lieu, loi nào đáng retry'; `mechanism` tách 422/400 (sửa dữ liệu) khỏi 429/5xx/timeout (đáng retry).",
+      "mechanism_correct": "`predict.a` tính đúng: 422 -> 100 request (không retry), 429 tôn trọng Retry-After -> 200, timeout -> 200 tới 400 và là đợt có nguy cơ trùng bản ghi.",
+      "boundaries_correct": "`failureModes` nêu retry trên đường ghi cần Idempotency-Key và jitter chống dồn; `observe` đọc mã gốc trong log thay vì chỉ 'upstream error'.",
+      "no_unknown_prerequisite": "`bridge` nối từ L08 sang quyết định retry; chỉ dùng khái niệm mã lỗi đã có.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ ba đợt và chỉ rõ đợt nào có thể tạo bản ghi trùng; output kiểm: L09 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals` = flow-pydantic-boundary (`focus` = '422') + flow-retry-decision (`focus` = 'Retry có giới hạn'), cả hai focus đúng giá trị field và có nguyên văn trong text SVG; `question` 50 và 25 ký tự hỏi vì sao dữ liệu sai bị chặn trước handler và nhánh lỗi nào được retry - khớp câu hỏi trung tâm; đúng bài này có 2 hình.",
+      "middle_followups": "`attacks` hỏi 422 có nên retry, Retry-After, trùng bản ghi; `qids` = G11 (Lambda retry/idempotency), E02 (Pydantic validation), E07 (transaction và xử lý lỗi khi ghi nhiều bước) - đúng chủ đề phân loại lỗi.",
+      "code_output_consistent": "`code` mới khớp hoàn toàn: `MAX_TRIES = 3` là số lần gọi lại, `for attempt in range(MAX_TRIES + 1)` nên tổng 4 lần gửi, comment 'MAX_TRIES là số lần gọi lại, nên tổng số lần gửi là 1 + MAX_TRIES = 4' khớp code, thông điệp lỗi 'upstream error after {MAX_TRIES} retries' = 'after 3 retries'; `naiveCode` cũng `range(MAX_TRIES + 1)` nên payload sai -> 4 request, khớp `naiveOut` ('hàm gửi bốn request giống nhau', 'số request tăng gấp bốn'); `predict.a` 422 -> 'nếu retry ba lần thì thành 400 request' (100 + 3x100) khớp cùng phép đếm. `import random` có mặt, base URL từ `PAYMENTS_BASE`. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-lambda-retry, pydantic; `provenance[0]` = 'Mọi con số trong sự cố, dự đoán, dòng thời gian và cách làm ngây thơ là giả định để dựng kịch bản: 100 request...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L10",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Noi log cua cùng mot đon qua API, Lambda và SQS'; `mechanism` đặt correlation ID ở biên và truyền qua mọi chặng.",
+      "mechanism_correct": "`mechanism` nói ID sinh ở tầng vào, đi trong header/message attribute, log phải kèm ID ở cả ba nơi; `predict.a` chỉ ra chặng làm mất ID.",
+      "boundaries_correct": "`failureModes` nêu 'ID sinh ở giữa đường thì mất chặng trước'; `observe` dùng Logs Insights truy vấn theo ID.",
+      "no_unknown_prerequisite": "`bridge` nối từ L09 sang quan sát; chỉ dùng khái niệm log/metric đã có.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ nhánh (40 phút truy vết, ID thiếu ở consumer); output kiểm: L10 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-correlation-logging, `focus` = 'correlation_id' (đúng giá trị field) và có nguyên văn trong text SVG; `question` 85 ký tự hỏi làm sao một correlation_id đi qua API, SQS và worker - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` hỏi ID qua SQS message attribute, chi phí log, sampling; `qids` = G13 (CloudWatch logs/metrics/alarms/correlation ID), H10 (log, metric, trace và dấu hiệu sự cố), J04 (điều tra bug production) - đúng chủ đề truy vết.",
+      "code_output_consistent": "`code` không có print hay comment số; quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-cloudwatch-logs, aws-xray; `provenance[0]` = 'Mọi con số trong sự cố, dự đoán, dòng thời gian và cách làm ngây thơ là giả định để dựng kịch bản: 40 phút tru...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L11",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Test thay client AWS bang fake o đúng cho'; `mechanism` đặt fake ở biên client AWS, không mock logic đang kiểm.",
+      "mechanism_correct": "`predict.a` đúng: fake qua `dependency_overrides` cho `get_s3_client`, test không cần credentials; thay ở tầng khác thì mất phần cần kiểm.",
+      "boundaries_correct": "`failureModes` nêu 'mock quá sâu làm test xanh mà production sai' và fake phải giữ hợp đồng lỗi; `observe` là test chạy không cần mạng.",
+      "no_unknown_prerequisite": "`bridge` nối từ L10 sang kiểm thử; chỉ dùng khái niệm dependency đã có.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ nhánh (fake ở đâu, 60 test, 3 tầng); output kiểm: L11 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-pytest-overrides, focus 'dependency_overrides' có nguyên văn trong SVG (output gate: focus=true, question 59 ký tự).",
+      "middle_followups": "`attacks` hỏi fake vs mock, hợp đồng lỗi, test chậm; `qids` = E10 (kiểm thử API, ghi đè dependency, cô lập database test), J05 (chiến lược unit/integration/e2e), A17 (unit test, mock ở ranh giới, fixture) - đúng chủ đề.",
+      "code_output_consistent": "`code` là fixture/override, không có print hay comment số; quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = pytest-fixtures, fastapi-dependencies, aws-lambda-best; `provenance[0]` = 'Mọi con số trong sự cố, dự đoán, dòng thời gian và cách làm ngây thơ là giả định để dựng kịch bản: 14 phút mỗi...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L12",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Reactivity: ref, reactive và cái Proxy ghi so ai đoc khóa nào'; `mechanism` mô tả track/trigger qua Proxy và scheduler gộp trong cùng tick.",
+      "mechanism_correct": "`predict.a` đúng: effect chỉ đọc `name` nên 100 lần gán `count` không chạy lại (0 lần); đọc `count` rồi gán 100 lần trong cùng tick chỉ chạy 1 lần; Vue 2 dùng defineProperty nên không theo dõi khóa thêm.",
+      "boundaries_correct": "`failureModes` nêu 'destructure mất tính reactive', 'thêm khóa mới trên object không reactive', 'đọc ngoài effect không track'; `observe` dùng DevTools/effect log.",
+      "no_unknown_prerequisite": "`bridge` nối từ L11 sang reactivity phía trình duyệt và nêu rõ đổi ngữ cảnh; không giả định người đọc biết React.",
+      "prediction_complete_and_hidden": "`predict.q`/`predict.a` trả lời đủ số lần chạy effect; output kiểm: L12 dupA=false.",
+      "analogy_mapping_safe": "`analogy.source` = 'bảng tính', `pairs` 3 dòng (ô đầu vào -> reactive state, ô công thức -> computed/effect, ô phụ thuộc -> track), `breaks` nêu chỗ ánh xạ ngừng (Proxy không theo dõi biến thường, không thấy khóa thêm), `transfer` kết thúc bằng '?'.",
+      "diagram_matches_question": "`visuals[0]` = flow-vue-reactivity, focus 'reactive()' có nguyên văn trong SVG (output gate: focus=true, question 76 ký tự).",
+      "middle_followups": "`attacks` hỏi Proxy vs defineProperty, shallowRef, destructure; `qids` = C02 (ref vs reactive, .value, unwrapping), C03 (Proxy/track, destructuring mất reactivity), C04 (computed vs watch vs watchEffect), C15 (Pinia store + storeToRefs - cùng cơ chế mất reactivity khi tách khỏi Proxy) - cả 4 thuộc mô hình reactivity của bài.",
+      "code_output_consistent": "`code` in đúng cả 4 dòng: `console.log(isReactive(filters), isReactive(rows)) // true false` (isReactive trả false cho ref), `console.log(q.value) // 'hd'`, `console.log(plainQ, q.value) // '' 'hdd'` (destructure đọc `filters.q` lúc còn `''` theo `filters = reactive({ q: '', page: 1 })`), `console.log(approved.value) // 1` (một dòng approved vừa gán); `codeNote` đổi theo ('dòng destructure đọc filters.q lúc nó còn là '''). `naiveCode` in `state.approved` = 341 + 1 = 342 và badge menu chưa render = 341, khớp `naiveOut` 'Console in ra 342 341'. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = vue-reactivity, vue-ref; `provenance[0]` = 'Số liệu trong sự cố, dự đoán và ví dụ chuyển giao (341/344 đơn, 1.240.000.000, 1.180.000.000, 20.000.000, 30.0...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L13",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'computed, watch và watchEffect: giá tri suy ra, tác dung phu và response cu'; `concept` tách computed (suy ra) khỏi watch (tác dụng phụ) và xử lý response cũ.",
+      "mechanism_correct": "`mechanism` nói computed cache theo dependency và chỉ tính lại khi có người đọc, watch flush 'pre' gộp trong cùng tick, `onCleanup` chạy trước lần callback kế tiếp; `predict.a` tính đúng 6 lần gõ -> 6 request khi không debounce.",
+      "boundaries_correct": "`failureModes` nêu 'computed có tác dụng phụ', 'watch không hủy request cũ', 'watchEffect bắt dependency ngoài ý muốn'; `observe` đọc số request trong Network.",
+      "no_unknown_prerequisite": "`bridge` nối từ L12 (ref/reactive) sang giá trị suy ra và tác dụng phụ.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ nhánh (6 lần, debounce 250 ms với 300 ms cách nhau, huỷ request); output kiểm: L13 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-vue-computed, focus 'Dirty' có nguyên văn trong SVG (output gate: focus=true, question 61 ký tự).",
+      "middle_followups": "`attacks` 4 câu đúng chủ đề; `qids` = C04 (computed vs watch vs watchEffect), C05 (watch cleanup, request async, stale response), B08 (debounce/throttle, race, AbortController) - cả 3 đúng chủ đề, không còn qid lạc chủ đề.",
+      "code_output_consistent": "`code` không có print hay comment số; `codeNote` khẳng định 'watcher chi chay mot lan voi next='hdd'' khi hai lần gán cùng tick - khớp cơ chế flush 'pre' (queue + dedupe) đã mô tả trong `mechanism`. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = vue-computed, vue-watchers; `provenance[0]` = 'Số liệu trong sự cố, dự đoán và ví dụ chuyển giao (6 ký tự cách nhau 300 ms, 900 ms độ trễ, 429) là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L14",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Component: props xuong, emit lên, v-model và key theo danh tính'; `mechanism` 5 bước: props một chiều, emit ngược, v-model = modelValue + update:modelValue, key quyết định danh tính, bản nháp đồng bộ có chủ đích.",
+      "mechanism_correct": "`predict.a` đúng: với key=index instance giữ nguyên nên bản nháp đi theo vị trí; với key=row.id Vue di chuyển instance, vẫn 30 instance, không mount lại.",
+      "boundaries_correct": "`failureModes` nêu 4 niềm tin sai (mutate prop, v-model là cơ chế riêng, index là key đủ, bản nháp chỉ khởi tạo một lần) kèm phản chứng; `observe` dùng DevTools + cảnh báo mutate prop.",
+      "no_unknown_prerequisite": "`bridge` nối từ L13 sang câu hỏi state thuộc component nào; `buildsOn` = [L12, L13].",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ ba nhánh (index, row.id, danh sách thay mới); output kiểm: L14 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-vue-component, `focus` = 'emit' (đúng giá trị field) và có nguyên văn trong text SVG; `question` 71 ký tự hỏi khi component con muốn đổi dữ liệu của cha thì đường đi của giá trị là gì - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` 4 câu (v-model bản chất, state đặt đâu, key index, bản nháp lệch); `qids` = C01 (SFC/script setup/Composition API), C06 (props và emits, dữ liệu một chiều), C07 (v-model, v-if vs v-show, v-for với key ổn định), C08 (template ref/nextTick/lifecycle), B12 (dọn listener/timer, rò rỉ), C13 (kiểm thử component) - đều luyện props/emit/key của bài.",
+      "code_output_consistent": "`code` dùng `defineModel('note')` ở con và `v-model:note=\"row.note\"` ở cha với `:key=\"row.id\"` - khớp `codeNote`; không có print hay comment số. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = vue-components, vue-sfc, vue-lifecycle; `provenance[0]` = 'Số liệu trong sự cố và dự đoán (30 dòng, 50 dòng, 3 dòng bị đổi thứ tự) là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L15",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'State o dau: component, provide/inject hay store'; `concept` chốt chọn theo phạm vi sở hữu (một instance / một nhánh cây / nhiều nhánh).",
+      "mechanism_correct": "`mechanism` đúng: composable gọi lại chạy lại thân hàm nên mỗi lần một bản state; provide chuyển tham chiếu nên phải provide ref; store một instance mỗi app; `predict.a` trả lời đúng A=2/B=1/C=0 và Pinia = 3.",
+      "boundaries_correct": "`failureModes` nêu 4 niềm tin sai (provide tự reactive, Pinia chỉ là biến global, gọi composable là chia sẻ, provide ở đâu cũng được) kèm phản chứng; `tradeoff` nêu rủi ro biến module.",
+      "no_unknown_prerequisite": "`bridge` nối từ L14 sang state không có cha trực tiếp; `buildsOn` = [L14].",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ bốn nhánh (composable, store, provide ref, provide .value); output kiểm: L15 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-provide-inject, focus 'Phạm vi' có nguyên văn trong SVG (output gate: focus=true, question 78 ký tự).",
+      "middle_followups": "`attacks` 4 câu (provide reactive, ba nhánh cây, Pinia vs biến module, composable nhiều bản); `qids` = C03 (Proxy/destructuring), C09 (composable vs Pinia vs provide/inject, singleton module - trùng trực tiếp), B14 (xử lý lỗi async), C15 (Pinia store + storeToRefs) - đều luyện chọn phạm vi state.",
+      "code_output_consistent": "`code` in `console.log(upload.count) // 1 ở mọi component` - Pinia unwrap computed khi truy cập qua store nên 1 là đúng; `naiveCode` in `// 0 1` khớp `naiveOut` ('nav.files.value.length là 0 ... zone.files.value.length là 1'). Ghi chú: snippet `stores/upload.js` dùng `ref`/`computed` mà không lặp lại import (đoạn trích minh hoạ, `import { ref, computed, provide } from 'vue'` đã có ở khối App.vue phía trên). Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import trong khối tự chứa.",
+      "sources_support_claims": "`refs` = vue-composables, vue-pinia; `provenance[0]` = 'Số liệu trong sự cố và dự đoán (ba component, sáu tệp, 0 và 6) là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L16",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Vue Router: matcher, guard và việc component được tạo sau cùng'; `mechanism` 5 bước: resolve URL -> guard theo thứ tự -> ba kết cục -> tạo component sau cùng -> dùng lại instance khi cùng route record.",
+      "mechanism_correct": "`mechanism` đúng thứ tự (beforeRouteLeave -> beforeEach -> beforeEnter -> beforeRouteUpdate; beforeRouteEnter không có `this`); `predict.a` đúng: không huỷ thì response 4821 về sau ghi đè, có AbortController thì hiện 4822, đặt :key thì mount thêm một lần.",
+      "boundaries_correct": "`failureModes` nêu 'guard frontend không phải authorization' kèm phản chứng curl 200; `tradeoff` nêu mất state cục bộ khi dùng key và fetch trong guard làm người dùng tưởng nút không ăn.",
+      "no_unknown_prerequisite": "`bridge` nối từ L14/L15 sang URL là state công khai; `buildsOn` = [L14, L15].",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ ba nhánh (không huỷ, AbortController, :key); output kiểm: L16 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-vue-router, `focus` = 'Guards' (đúng giá trị field) và có nguyên văn trong text SVG; `question` 73 ký tự hỏi trước khi component của trang mới xuất hiện thì những bước nào chạy - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` 4 câu đúng chủ đề; `qids` = C10 (Vue Router, tham số route, navigation guard), C08 (template ref/nextTick/lifecycle - đúng vì component được tạo sau cùng), E05 (xác thực/phân quyền - đúng nhánh 'guard không phải authorization'), C12 (hiệu năng, lazy loading - đúng nhánh route tải lười).",
+      "code_output_consistent": "`code` dùng `watch(() => route.params.id, async (id, prev, onCleanup) => ...)` với `onCleanup(() => ctrl.abort())` và bỏ response cũ; không có print hay comment số. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = vue-router, fastapi-dependencies; `provenance[0]` = 'Số liệu trong sự cố và dự đoán (4821/4822, chín đơn, hai ngày) là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L17",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Mot lan gui: may trang thai, khoa chong trung và Idempotency-Key'; `mechanism` 5 bước: máy trạng thái -> inFlight -> Idempotency-Key -> server trả kết quả đã lưu -> bỏ response cũ.",
+      "mechanism_correct": "`predict.a` đúng: khóa sinh trong setup -> một bản ghi và client nhận mã của đơn A; sinh lại sau mỗi lần thành công -> hai bản ghi; sinh khóa mới trong retry -> hai bản ghi cho cùng một ý định.",
+      "boundaries_correct": "`failureModes` nêu 'disable nút không phải idempotency', 'validation client không phải bảo mật', 'timeout không nghĩa là chưa ghi', 'retry sinh khóa mới' kèm phản chứng; `observe` đếm bản ghi theo nội dung + log khóa.",
+      "no_unknown_prerequisite": "`bridge` nối từ L16 (URL quyết định dữ liệu) sang lần gửi cuối rời trình duyệt.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ bốn nhánh; output kiểm: L17 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-form-state, focus 'Idempotency-Key' có nguyên văn trong SVG (output gate: focus=true, question 71 ký tự).",
+      "middle_followups": "`attacks` 4 câu đúng chủ đề; `qids` = C11 (validation form, loading/error/empty, chống double submit), C12 (hiệu năng/lazy/a11y), B08 (debounce, race, AbortController), H12 (xử lý sự cố và cải tiến từ phản hồi người dùng) - cả 4 đều luyện máy trạng thái submit.",
+      "code_output_consistent": "`code` dùng `key = key ?? crypto.randomUUID()`, `if (inFlight) return`, `key = null` trong `editField`, chốt `mySession !== session`; `naiveOut` nói 'submitting.value = true chỉ có hiệu lực sau khi giao diện render lại' - mô tả cách làm ngây thơ (nút disabled), không phải biến của `code`; không có print hay comment số. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = vue-components, vue-sfc, owasp-top10; `provenance[0]` = 'Số liệu trong sự cố và dự đoán (ba đơn, 9h00 và 9h04, timeout 10 giây) là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L18",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "`goal` yêu cầu chỉ đúng ba chỗ: nơi máy đọc kết quả, nơi người đọc chi tiết, nơi cả hai được sinh ra; `concept` chốt status code là kết quả dành cho máy, body là chi tiết dành cho người.",
+      "mechanism_correct": "`mechanism` 5 bước: client chung -> Pydantic chặn ở biên vào (422) -> handler quyết định bằng mã (201/409/403) -> `response_model` lọc chiều ra -> CI sinh client từ openapi.json; `predict.a` đúng: 200 kèm {error} làm cả hai interceptor im lặng.",
+      "boundaries_correct": "`failureModes` mở bằng 'Hợp đồng chặt cũng tạo ra bốn kiểu hỏng mới' - nêu giới hạn của chính cách sửa, không tự tham chiếu.",
+      "no_unknown_prerequisite": "`bridge` nói rõ dựa trên L17 (Idempotency-Key) và L07 (handler async).",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ hai interceptor (A chạy, B không chạy vì envelope không có trường `error`; với 200 kèm {error} cả hai im lặng); output kiểm: L18 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-api-contract, `focus` = 'Status code' (đúng giá trị field, viết hoa chữ S) và có nguyên văn trong text SVG; `question` 84 ký tự hỏi response đi qua những trạm nào và trạm nào đọc kết quả - khớp câu hỏi trung tâm.",
+      "middle_followups": "`attacks` hỏi thêm trường bắt buộc, envelope lỗi, versioning; `qids` = E01 (request lifecycle/DI), E02 (Pydantic validation/serialization), E11 (DRF serializer vs Pydantic), B14 (xử lý lỗi async) - đều luyện hợp đồng request/response.",
+      "code_output_consistent": "`code` có comment `# 201 phải kèm Location` đúng ngay dòng `response.headers[\"Location\"] = f\"/orders/{order.id}\"`; các comment `# 422 ->`, `# 401 ->`, `# 5xx ->` mô tả ánh xạ mã - trạng thái, không phải output bị khẳng định. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = fastapi-response-model, openapi; `provenance[0]` = 'Số liệu trong sự cố, dòng thời gian và cách làm ngây thơ là giả định để dựng kịch bản, không phải số đo từ một...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L19",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Auth xuyên hai phía: token, nơi lưu, interceptor, và ai quyết định quyền'; `mechanism` tách access token trong RAM và refresh token trong cookie HttpOnly.",
+      "mechanism_correct": "`mechanism` đúng: interceptor gắn Bearer từ RAM, gặp 401 thì gộp vào một `refreshPromise`, request tới chính /auth/refresh không vào nhóm chờ; `predict.a` tính đúng 40 request -> refresh 1 lần, 39 request gửi lại.",
+      "boundaries_correct": "`failureModes` nêu 4 kiểu hỏng của chính cách sửa (Promise chết giữ khóa, vòng lặp trên endpoint refresh, replay POST, giới hạn của single-flight); `codeNote` nhắc nhả khóa trong `finally`.",
+      "no_unknown_prerequisite": "`bridge` nối từ L18 (hợp đồng HTTP) sang xác thực hai phía.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ (refresh 1 lần, request /auth/refresh nhận lỗi và kết thúc, 39 request gửi lại); output kiểm: L19 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-auth-refresh, focus 'Một refresh Promise' có nguyên văn trong SVG (output gate: focus=true, question 95 ký tự).",
+      "middle_followups": "`attacks` 4 câu (Promise chung vs hàng đợi, replay POST, cookie HttpOnly, giới hạn single-flight); `qids` = E05 (auth/permission FastAPI), C10 (router/guard), B08 (race giữa các request, AbortController), B14 (xử lý lỗi async) - đúng chủ đề interceptor/refresh.",
+      "code_output_consistent": "`code` có comment `// 401 lần hai: trả về` đúng ngay điều kiện `if (res.status !== 401 || retried) return res`, và `refreshPromise = null` trong `finally` khớp `codeNote`; không có print hay comment số. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = owasp-api-security, mdn-cookies, mdn-http-headers; `provenance[0]` = 'Số liệu trong sự cố, dòng thời gian và cách làm ngây thơ là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L20",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Upload lên S3: ký quyền ghi, rồi xác nhận thứ thật sự nằm trong bucket'; `mechanism` 5 bước: xin quyền ghi -> ghi bản ghi PENDING trước khi ký -> byte đi thẳng S3 -> confirm bằng head_object -> phục vụ theo version.",
+      "mechanism_correct": "`mechanism` đúng: 413/415 ở bước cấp URL, server tự sinh key, `ContentType` ràng buộc lúc ký; `predict.a` đúng: hai PUT cùng key thì head_object trả bản mới nhất, xoá theo key xoá luôn bản hợp lệ, phải ghim VersionId.",
+      "boundaries_correct": "`failureModes` nêu 'hạn ngắn dồn lỗi sang người mạng chậm', 'dọn object mồ côi xoá nhầm', 'versioning không thay lifecycle'; `codeNote` giải thích vì sao không đưa Content-Length vào Params.",
+      "no_unknown_prerequisite": "`bridge` nối từ L19 sang upload; presigned URL đã có từ L05.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ ba nhánh (không versioning, có versioning, PUT thứ hai sau khi bản ghi đã READY); output kiểm: L20 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-upload-confirm, focus 'head_object' có nguyên văn trong SVG (output gate: focus=true, question 90 ký tự).",
+      "middle_followups": "`attacks` 4 câu (ContentLength, ExpiresIn 60 giây, delete thiếu VersionId, magic bytes); `qids` = G06 (S3 presigned/kiểm tra upload), E09 (background task vs hàng đợi), E07 (transaction, lỗi khi ghi nhiều bước), G11 (retry/idempotency) - đều luyện luồng ký - ghi - xác nhận.",
+      "code_output_consistent": "`code` có comment `# 413 là quá dung lượng, 415 là sai media type` khớp hai nhánh `HTTPException(413, ...)` và `HTTPException(415, ...)`, và `ExpiresIn=600  # 10 phút là đủ` khớp 600 giây = 10 phút; không có print. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-s3-presigned, aws-s3, aws-s3-versioning, mdn-http-headers; `provenance[0]` = 'Số liệu trong sự cố, dòng thời gian và cách làm ngây thơ là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L21",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Outbox: vì sao ghi cơ sở dữ liệu và gửi message lệch nhau, và chỗ nào vá được'; `mechanism` 5 bước: ghi nguyên tử nghiệp vụ + outbox -> relay FOR UPDATE SKIP LOCKED -> đánh dấu đã gửi -> worker idempotent -> xoá sau khi thành công.",
+      "mechanism_correct": "`predict.a` đúng: `delete_message` xoá theo receipt handle của lần nhận, lease hết hạn ở giây 30 thì lời gọi của A không có hiệu lực, B xử lý tiếp và khách nhận hai hoá đơn trừ khi worker idempotent.",
+      "boundaries_correct": "`failureModes` nêu 'bảng khoá phình không kiểm soát', 'gia hạn visibility chỉ có hiệu lực cho lần nhận hiện tại' kèm phản chứng; `tradeoff` nêu chi phí bảng khoá.",
+      "no_unknown_prerequisite": "`bridge` nối từ L20 sang ghi + message; visibility timeout đã có từ L06.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ (không hiệu lực, hai hoá đơn, nhánh A xoá trước khi lease hết); output kiểm: L21 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-outbox-worker, focus 'Outbox' có nguyên văn trong SVG (output gate: focus=true, question 113 ký tự).",
+      "middle_followups": "`attacks` 4 câu (visibility dài hơn thời gian xử lý, delete báo thành công mà message hiện lại, vì sao cần relay, INSERT vs SELECT khoá); `qids` = E07 (transaction/lỗi khi ghi nhiều bước), G10 (SQS visibility/giao trùng/DLQ), G11 (retry/idempotency), F09 (race check-then-insert, upsert an toàn) - đúng chủ đề outbox.",
+      "code_output_consistent": "`code` là đoạn trích riêng của hàm `handle` (không có khối import nào; `db`, `queue`, `dlq`, `do_heavy_work` là client/hàm của dự án truyền từ ngoài), nên việc vắng `import json` không phải lỗi output; các comment `# 1.`/`# 2.` khớp hai khối try thật trong code. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import trong khối tự chứa.",
+      "sources_support_claims": "`refs` = aws-sqs-visibility, aws-sqs-dlq, pg-transactions, pg-upsert; `provenance[0]` = 'Số liệu trong sự cố, dòng thời gian và cách làm ngây thơ là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L22",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Deploy: vì sao index.html cũ trỏ vào tệp JS đã xoá, và rollback đúng phải là gì'; `mechanism` 5 bước: migration tương thích ngược -> đẩy asset có hash trước -> đẩy index.html sau cùng -> smoke test -> rollback bằng con trỏ.",
+      "mechanism_correct": "`mechanism` đúng: asset hash `max-age=31536000, immutable` và không `--delete`, index `no-cache`, OIDC thay access key; `predict.a` đúng: index no-cache gửi If-None-Match, nhánh xấu là đẩy index trước asset hoặc xoá asset cũ.",
+      "boundaries_correct": "`failureModes` nêu 'index.html lại bị cache do header bị ghi đè', 'asset cũ bị dọn' kèm phản chứng; `tradeoff` nêu mất tính độc lập triển khai khi gộp origin.",
+      "no_unknown_prerequisite": "`bridge` nối từ L21 sang đưa bản mới ra; hash/cache đã có.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ ba nhánh (304/200, đẩy sai thứ tự, tab đang mở); output kiểm: L22 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-deploy-cache, focus 'index.html: no-cache' có nguyên văn trong SVG (output gate: focus=true, question 110 ký tự).",
+      "middle_followups": "`attacks` 4 câu (vì sao index phải no-cache, OAC vs public read, vì sao không git revert, invalidate /*); `qids` = H07 (pipeline CI/CD, quản lý artifact), H08 (migration và rollback database), H13 (deploy AWS từ CI: OIDC/ECR/tag bất biến/rollback), G15 (CloudFront caching/invalidation) - đúng chủ đề deploy.",
+      "code_output_consistent": "`code` (workflow) có comment `# 1.`..`# 4.` khớp đúng bốn bước thật trong file (upload assets, archive artifact, smoke test, promote); `naiveCode` comment `// 1.`..`// 3.` khớp ba lỗi được mô tả; không có print hay con số bị khẳng định. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-cloudfront, aws-cloudfront-oac, aws-s3-bpa, pg-transactions; `provenance[0]` = 'Số liệu trong sự cố, dòng thời gian và cách làm ngây thơ là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L23",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'DDoS: bất đối xứng tài nguyên và tầng chặn sớm nhất'; `mechanism` đo ba đường cong (bit/s, gói/s, request/s) rồi chặn theo tầng.",
+      "mechanism_correct": "`predict.a` tính đúng: 50.000 x 1,5 = 75.000 request/giây; rate limit theo IP chặn 0 request (mỗi IP 1,5 req/s = 1,5% ngưỡng 100); luật tổng 5.000/300 giây chạm ngưỡng sau 5.000 / 75.000 = 0,067 giây.",
+      "boundaries_correct": "`failureModes` nêu 'mọi IP dưới ngưỡng là an toàn', 'có 5xx mới là đang bị tấn công' kèm phản chứng (40.000 IP, số 429 bằng không); `alternatives` nêu giới hạn của Shield Standard và chi phí Shield Advanced.",
+      "no_unknown_prerequisite": "`bridge` nối từ L22 sang tải bất thường; concurrency/p99 đã có.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ hai nhánh (IP, tổng) kèm thời gian chạm ngưỡng; output kiểm: L23 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-ddos-defense, focus 'Tổng tài nguyên' có nguyên văn trong SVG (output gate: focus=true, question 92 ký tự).",
+      "middle_followups": "`attacks` 4 câu (bất đối xứng nào, chặn ở đâu, tấn công có cookie hợp lệ, vì sao không đẩy hết phán quyết ra biên); `qids` = G05 (API Gateway throttling), G12 (VPC/subnet/security group - tầng mạng phía sau biên), G21 (Route 53 + ACM + CloudFront, TLS kết thúc ở đâu) - đúng chủ đề tầng chặn.",
+      "code_output_consistent": "`code` in `# 8333.33` cho 1000/0.12 = 8333.333..., `# 10000` cho 10 x 1000, `# 4000.0` cho 200/0.05, `# 16.67` cho 5000/300 = 16.666..., `# 0.067` cho 5000/75000 = 0.0666... - ba dòng đầu khớp tuyệt đối, hai dòng sau là hiển thị làm tròn 2 chữ số và `predict.a` dùng cùng giá trị (16,67 và khoảng 67 ms). Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = aws-cloudfront, aws-api-gateway, ddos-aws-shield-tlr, ddos-cf-q4-2024; `provenance[0]` = 'Số liệu trong sự cố, dự đoán, kết quả quan sát và dòng thời gian là giả định...' là giả định."
+    },
+    "pass": true
+  },
+  {
+    "id": "L24",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'PostgreSQL thực chiến: planner, index, transaction và cái giá của ORM'; `mechanism` đi năm trạm parse/rewrite -> planner -> access path -> executor -> MVCC.",
+      "mechanism_correct": "`mechanism` đúng: planner dùng pg_class + pg_statistic và các hằng seq_page_cost/random_page_cost; MVCC qua xmin/xmax; `predict.a` đúng: 4 dòng/4,2 triệu là 0,0001%, Index Scan, BUFFERS khoảng 2-3 trang index + 1 trang heap so với khoảng 42.000 trang Seq Scan.",
+      "boundaries_correct": "`failureModes` nêu rõ 'không có ngưỡng phần trăm cố định - quyết định là so chi phí ước lượng' và 'EXPLAIN không phải số đo thật, phải có ANALYZE, BUFFERS'; `alternatives` nêu khi Seq Scan là lựa chọn đúng.",
+      "no_unknown_prerequisite": "`bridge` nối từ L23 sang dữ liệu; index/transaction được định nghĩa trong bài.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ ba nhánh (rất nhỏ, 9%, phần lớn bảng); output kiểm: L24 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals` = flow-sql-planner + flow-scan-choice, focus 'Planner' và 'Selectivity' có nguyên văn trong SVG (output gate: cả 2 focus=true; đúng bài này có 2 hình).",
+      "middle_followups": "`attacks` 4 câu (index mọi cột, index đúng mà vẫn chậm, bảng 20 nghìn dòng, khi nào bỏ PostgreSQL); `qids` = F04 (index B-tree/composite/thứ tự cột), F06 (đọc EXPLAIN, estimate vs actual), F07 (ACID/isolation), F08 (khoá dòng, deadlock), F12 (offset vs keyset, N+1) - đúng chủ đề planner/index/transaction.",
+      "code_output_consistent": "`code` dùng `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)`, `ANALYZE` trước index, composite `(status, created_at DESC) INCLUDE (code,total)`, `ON CONFLICT ... DO UPDATE`; `codeNote` chỉ đúng bốn chỗ đổi hành vi; không có print hay comment số. Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = pg-indexes, pg-explain, pg-mvcc, pg-transactions; `provenance[0]` = 'Số dòng, thời gian và phần trăm trong sự cố là giả định để dựng kịch bản, không phải số đo từ hệ thống thật.'"
+    },
+    "pass": true
+  },
+  {
+    "id": "L25",
+    "checks": {
+      "central_question_answered": true,
+      "mechanism_correct": true,
+      "boundaries_correct": true,
+      "no_unknown_prerequisite": true,
+      "prediction_complete_and_hidden": true,
+      "analogy_mapping_safe": true,
+      "diagram_matches_question": true,
+      "middle_followups": true,
+      "code_output_consistent": true,
+      "sources_support_claims": true
+    },
+    "evidence": {
+      "central_question_answered": "title 'Chọn FastAPI, Django hay Flask theo ba trục: I/O, schema và thành phần có sẵn'; `mechanism` xét đúng ba trục và `alternatives` là bảng 3x3 (Django/Flask/FastAPI x I/O, schema, thành phần có sẵn).",
+      "mechanism_correct": "`mechanism` đúng: WSGI đồng bộ một request một luồng, ASGI coroutine, FastAPI đẩy `def` sang threadpool; `predict.a` tính đúng 40 x 200 ms = 8 giây với driver đồng bộ trong `async def`, pool 10 -> 4 đợt x 200 ms = 800 ms, pool 40 -> khoảng 200 ms.",
+      "boundaries_correct": "`failureModes` nêu 'async luôn nhanh hơn' và 'FastAPI là full-stack' kèm phản chứng (p99 tăng tuyến tính, CPU thấp, số kết nối = 1); `tradeoff` nêu trần tầng dữ liệu không phải trần framework.",
+      "no_unknown_prerequisite": "`bridge` nối từ L24 sang chọn framework; WSGI/ASGI được định nghĩa trong bài.",
+      "prediction_complete_and_hidden": "`predict.a` trả lời đủ bốn nhánh (sync driver trong async def, pool 10, pool 40, quay lại def); output kiểm: L25 dupA=false.",
+      "analogy_mapping_safe": "không có key analogy trong bài, đúng hợp đồng.",
+      "diagram_matches_question": "`visuals[0]` = flow-framework-cores, focus 'Ba trục' có nguyên văn trong SVG (output gate: focus=true, question 54 ký tự).",
+      "middle_followups": "`attacks` 4 câu (vì sao async def + driver đồng bộ tệ hơn def, 90% chờ dịch vụ ngoài, workload nén ảnh, khi nào không dùng framework); `qids` = E01 (request lifecycle), E02 (Pydantic), E03 (def vs async def, session lifecycle), E08 (ASGI vs WSGI, worker), E11 (DRF serializer vs Pydantic) - đúng ba trục của bài.",
+      "code_output_consistent": "`code` dùng `Depends(get_session)` với `yield` (teardown sau response) và `response_model=OrderOut`, `codeNote` khẳng định đúng 'phần sau `yield` là teardown, chạy sau khi response được gửi'; `naiveCode` comment '# 40 request đồng thời -> xếp hàng tuần tự sau một event loop' khớp `predict.a` (40 x 200 ms = 8 giây). Quét toàn cục: không có hostname thiếu scheme, không có tên chưa import.",
+      "sources_support_claims": "`refs` = fastapi-tutorial, fastapi-dependencies, django-serializers, fastapi-async; `provenance[0]` = 'Số request, độ trễ, số worker và mọi phần trăm trong bài là giả định để dựng kịch bản, không phải số đo từ hệ...'"
+    },
+    "pass": true
+  }
+]

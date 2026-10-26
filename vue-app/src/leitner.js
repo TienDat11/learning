@@ -1,21 +1,21 @@
 // Leitner boxes for Drill cards. Pure helpers; the only side effect is localStorage.
 // Shape: { [qid]: { box: 1..5, due: 'YYYY-MM-DD' } }. A never-rated question is unseen and counts as due.
+// The schedule formula lives in LOGIC.leitnerGrade so HTML, Drill, Flashcard and Today share one.
 
 export const KEY = 'hcp-leitner-v1';
-export const CAP_DUE = '2026-10-19';       // day before the interview; nothing is scheduled past it
 
-function _leitnerIntervals() {
-  return window.__HCP_DATA?.LOGIC?.LEITNER_INTERVALS || [1, 2, 4, 8, 16];
+function logic() {
+  const L = window.__HCP_DATA?.LOGIC;
+  if (!L || typeof L.leitnerGrade !== 'function') {
+    throw new Error('leitner: LOGIC.leitnerGrade thiếu — __HCP_DATA chưa được inject');
+  }
+  return L;
 }
+
 let cache = null; // in-memory copy, so the session still works when localStorage is blocked or full
 
 export function todayISO(d = new Date()) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-function addDays(iso, n) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return todayISO(new Date(y, m - 1, d + n));
 }
 
 function load() {
@@ -46,16 +46,18 @@ export function getState() {
 
 // r: 1 = can't explain -> box 1; 2 = explain with example -> box unchanged; 3 = real situation -> box + 1.
 export function rate(qid, r, today = todayISO()) {
-  const state = getState();
-  const prev = state[qid] ? Number(state[qid].box) : NaN;
-  let box = prev >= 1 && prev <= 5 ? prev : 1;
-  if (r === 1) box = 1;
-  else if (r === 3) box = Math.min(5, box + 1);
-  let due = addDays(today, _leitnerIntervals()[box - 1]);
-  if (due > CAP_DUE) due = CAP_DUE;
-  state[qid] = { box, due };
+  const state = logic().leitnerGrade(getState(), qid, r, today);
   save(state);
   return state[qid];
+}
+
+export function reset() {
+  cache = {};
+  try {
+    localStorage.removeItem(KEY);
+  } catch (e) {
+    // blocked: the cleared cache is still authoritative for this session
+  }
 }
 
 export function dueIds(allIds, today = todayISO()) {

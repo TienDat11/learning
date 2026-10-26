@@ -220,13 +220,20 @@ LOGIC.leitnerPick = function (ids, state, todayISO, rnd) {
   return list[Math.floor(rnd() * list.length)];
 };
 
-LOGIC.leitnerGrade = function (state, qid, ok, todayISO) {
+// result: boolean (true = nhớ, false = chưa nhớ) hoặc 1/2/3.
+//   1 hoặc false -> về hộp 1, đến hạn ngay hôm nay.
+//   2            -> giữ nguyên hộp, đến hạn sau interval của hộp hiện tại.
+//   3 hoặc true  -> lên một hộp (tối đa 5), đến hạn sau interval của hộp mới.
+// Trả về toàn bộ state mới; không sửa state truyền vào.
+LOGIC.leitnerGrade = function (state, qid, result, todayISO) {
   var out = {};
   if (state && typeof state === 'object' && !Array.isArray(state)) {
     for (var k in state) if (Object.prototype.hasOwnProperty.call(state, k)) out[k] = state[k];
   }
   var box = LOGIC.leitnerBox(state, qid);
-  if (ok) {
+  if (result === 2) {
+    out[qid] = { box: box, due: LOGIC.addDaysISO(todayISO, LOGIC.LEITNER_INTERVALS[box - 1]) };
+  } else if (result === true || result === 3) {
     box = Math.min(box + 1, 5);
     out[qid] = { box: box, due: LOGIC.addDaysISO(todayISO, LOGIC.LEITNER_INTERVALS[box - 1]) };
   } else {

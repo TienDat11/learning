@@ -142,7 +142,6 @@ Content-clarity rule (lesson and question prose):
 - Pre-existing keys `hcp-progress-v1`, `hcp-theme-v1`, `hcp-lessons-v1` are unchanged and
   never reused for new data; the two new keys are `hcp-leitner-v1` (today's drill) and
   `hcp-recall-v1` (lesson recall cues).
-- Lesson schematics (`src/07-lesson-images.js`) are data and are not restyled.
 
 ## Known gaps
 

@@ -26,7 +26,13 @@ for (const required of ['assets/style.css', 'assets/fonts.css', 'assets/body.htm
 }
 
 const parts = files.map((f) => ({ f, code: readFileSync(join(SRC, f), 'utf8') }));
-const APP_JS = parts.map((p) => `\n/* ==== src/${p.f} ==== */\n${p.code}`).join('\n');
+const SRC_JS = parts.map((p) => `\n/* ==== src/${p.f} ==== */\n${p.code}`).join('\n');
+// ---- 0. inject the lesson glossary ---------------------------------------
+// The glossary is data, not a src module: prepend it so the single-file HTML ships it.
+// `<` is escaped so a term can never open a tag inside the inline <script>.
+const GLOSSARY_JSON = JSON.stringify(JSON.parse(readFileSync(join(root, 'lesson-glossary.json'), 'utf8')))
+  .replace(/</g, '\\u003c');
+const APP_JS = `var LESSON_GLOSSARY = ${GLOSSARY_JSON};\n${SRC_JS}`;
 
 // ---- 1. syntax check of the whole bundle -------------------------------
 try {
@@ -89,7 +95,7 @@ const store = () => {
 };
 
 const EXPORTS = ['QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'CASE_STUDY', 'SOURCES',
-  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LOGIC', 'LESSONS', 'LESSON_IMAGES'];
+  'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LOGIC', 'LESSONS', 'LESSON_GLOSSARY'];
 let data;
 try {
   const loader = new Function(
@@ -110,7 +116,7 @@ try {
 }
 
 const { QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, CASE_STUDY, SOURCES, GROUP_INTROS,
-  SOURCE_CHECKED, FLOW_SVGS, LOGIC, LESSONS, LESSON_IMAGES } = data;
+  SOURCE_CHECKED, FLOW_SVGS, LOGIC, LESSONS, LESSON_GLOSSARY } = data;
 
 // ---- 3. content validation ---------------------------------------------
 const errors = [];
@@ -202,7 +208,7 @@ for (const q of QUESTIONS || []) {
     });
   }
   // Fields the app renders through esc() must be plain text: an HTML tag here is
-  // shown to the reader verbatim. Mirrors the lesson rules for bridge/spine.
+  // shown to the reader verbatim. Mirrors the lesson rules for bridge.
   for (const f of PLAIN_Q) {
     if (q[f] == null) continue;
     if (TAG_RE.test(q[f])) err(`${q.id}: ${f} must be plain text (found HTML tag)`);
@@ -350,6 +356,7 @@ for (const q of QUESTIONS || []) {
 }
 
 if (!Array.isArray(FLOW_SVGS) || FLOW_SVGS.length < 10) err(`FLOW_SVGS length ${(FLOW_SVGS || []).length} < 10`);
+const markerOwner = new Map();
 for (const f of FLOW_SVGS || []) {
   if (!t(f.id)) err('flow missing id');
   if (!/<svg[\s>]/.test(f.svg || '')) err(`flow ${f.id}: not an inline <svg>`);
@@ -357,13 +364,31 @@ for (const f of FLOW_SVGS || []) {
   if (/<script/i.test(f.svg || '')) err(`flow ${f.id}: svg contains <script`);
   if (/\son[a-z]+\s*=/i.test(f.svg || '')) err(`flow ${f.id}: svg contains inline event handler`);
   if (!/role="img"/.test(f.svg || '')) err(`flow ${f.id}: svg missing role="img"`);
+  if (!/aria-label=/.test(f.svg || '')) err(`flow ${f.id}: svg missing aria-label`);
+  if (!/<title[\s>]/i.test(f.svg || '')) err(`flow ${f.id}: svg missing <title>`);
+  if (!/<desc[\s>]/i.test(f.svg || '')) err(`flow ${f.id}: svg missing <desc>`);
+  if (/<(?:iframe|object|embed|foreignObject)\b/i.test(f.svg || '')) err(`flow ${f.id}: svg contains embedded frame/object`);
+  if (/(?:xlink:)?href\s*=\s*["'](?:https?:)?\/\//i.test(f.svg || '')) err(`flow ${f.id}: svg contains an external href`);
   if (!t(f.caption) || f.caption.length < 30) err(`flow ${f.id}: caption missing or <30 chars`);
+  // Marker ids must be unique across the whole set: two SVGs sharing id "arrow" makes
+  // url(#arrow) resolve to whichever marker the browser saw first.
+  for (const m of String(f.svg || '').matchAll(/<marker\b[^>]*\bid=["']([^"']+)["']/gi)) {
+    const id = m[1];
+    if (markerOwner.has(id)) err(`marker id "${id}" duplicated in ${markerOwner.get(id)} and ${f.id}`);
+    else markerOwner.set(id, f.id);
+  }
+  // Every url(#x) reference must resolve inside the same SVG.
+  for (const m of String(f.svg || '').matchAll(/url\(#([^)]+)\)/g)) {
+    const id = m[1].trim();
+    if (!new RegExp(`\\bid=["']${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`).test(String(f.svg || ''))) {
+      err(`flow ${f.id}: url(#${id}) has no matching id in the same SVG`);
+    }
+  }
 }
 
 const LESSON_ARR = LESSONS || [];
 const LESSON_POS = new Map(LESSON_ARR.map((l, i) => [l && l.id, i]));
 const LESSON_BY_ID = new Map(LESSON_ARR.filter((l) => l && l.id).map((l) => [l.id, l]));
-const SPINE_NODES = ['client', 'gateway', 'compute', 'data', 'queue', 'all'];
 const LESSON_IDS = new Set();
 for (const [li, l] of LESSON_ARR.entries()) {
   if (!t(l.id)) { err('lesson missing id'); continue; }
@@ -376,10 +401,19 @@ for (const [li, l] of LESSON_ARR.entries()) {
   if (!Number.isInteger(l.stage) || l.stage < 1) err(`${l.id}: bad stage`);
   if (!Array.isArray(l.sayIt) || l.sayIt.length < 3) err(`${l.id}: needs >=3 sayIt lines`);
   if (!Array.isArray(l.qids) || !l.qids.length) err(`${l.id}: needs qids`);
-  else for (const q of l.qids) if (!byId.has(q)) err(`${l.id}: unknown question id "${q}"`);
+  else {
+    for (const q of l.qids) if (!byId.has(q)) err(`${l.id}: unknown question id "${q}"`);
+    if (l.qids.length < 3 || l.qids.length > 6) {
+      err(`${l.id}: qids has ${l.qids.length} entries, gate allows 3-6`);
+    }
+  }
   if (!Array.isArray(l.refs) || !l.refs.length) err(`${l.id}: needs refs`);
-  else for (const r of l.refs) if (!srcKeys.has(r)) err(`${l.id}: unknown source ref "${r}"`);
-  if (l.flow && !FLOW_SVGS.some((f) => f.id === l.flow)) err(`${l.id}: unknown flow "${l.flow}"`);
+  else {
+    for (const r of l.refs) if (!srcKeys.has(r)) err(`${l.id}: unknown source ref "${r}"`);
+    if (l.refs.length < 1 || l.refs.length > 4) {
+      err(`${l.id}: refs has ${l.refs.length} entries, gate allows 1-4`);
+    }
+  }
   // The lesson chain is the product: every lesson carries all beats. A lesson that
   // skips one renders as a visibly thinner card than its neighbours.
   for (const f of LESSON_CHAIN) {
@@ -413,7 +447,6 @@ for (const [li, l] of LESSON_ARR.entries()) {
     });
   }
   if (typeof l.bridge !== 'string' || l.bridge.length < 120) err(`${l.id}: bridge missing or <120 chars (${typeof l.bridge === 'string' ? l.bridge.length : 0})`);
-  else if (/[<>]/.test(l.bridge)) err(`${l.id}: bridge must be plain text (no < or >)`);
   if (!Array.isArray(l.buildsOn)) err(`${l.id}: buildsOn must be an array`);
   else {
     for (const dep of l.buildsOn) {
@@ -424,11 +457,6 @@ for (const [li, l] of LESSON_ARR.entries()) {
     }
     if (li !== 0 && l.buildsOn.length < 1) err(`${l.id}: buildsOn empty (must link to at least one earlier lesson)`);
   }
-  if (typeof l.spine !== 'string' || l.spine.length < 60) err(`${l.id}: spine missing or <60 chars (${typeof l.spine === 'string' ? l.spine.length : 0})`);
-  else if (/[<>'"]/.test(l.spine)) err(`${l.id}: spine must be plain text`);
-  if (!SPINE_NODES.includes(l.spineNode)) err(`${l.id}: bad spineNode "${l.spineNode}"`);
-  else if (li === 0 && l.spineNode !== 'all') err(`${l.id}: first lesson spineNode must be "all"`);
-  else if (li !== 0 && l.spineNode === 'all') err(`${l.id}: only the first lesson may use spineNode "all"`);
 }
 
 // L01 reachability: every lesson must hang off the backbone ("tới bài 10 vẫn thuộc bài 1").
@@ -450,23 +478,198 @@ for (const l of LESSON_ARR) {
   if (!reached) err(`${l.id}: buildsOn chain does not reach L01`);
 }
 
-// LESSON_IMAGES: one schematic per lesson, ids exactly L01..L23 in ascending order.
-const LESSON_IMAGES_ARR = LESSON_IMAGES || [];
-const LESSON_IMAGE_IDS = Array.from({ length: 23 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
-const LESSON_IMAGE_RE = /^data:image\/webp;base64,[A-Za-z0-9+/]+=*$/;
-if (!Array.isArray(LESSON_IMAGES_ARR) || LESSON_IMAGES_ARR.length !== 23) {
-  err(`LESSON_IMAGES length ${(Array.isArray(LESSON_IMAGES_ARR) ? LESSON_IMAGES_ARR.length : typeof LESSON_IMAGES)} !== 23`);
-} else {
-  LESSON_IMAGES_ARR.forEach((e, i) => {
-    const want = LESSON_IMAGE_IDS[i];
-    if (!e || e.id !== want) err(`LESSON_IMAGES[${i}]: want id ${want}, got ${(e && e.id) || typeof e}`);
-    if (!e || !Number.isInteger(e.w) || e.w <= 0) err(`${(e && e.id) || i}: bad w`);
-    if (!e || !Number.isInteger(e.h) || e.h <= 0) err(`${(e && e.id) || i}: bad h`);
-    if (!e || typeof e.alt !== 'string' || !e.alt.trim()) err(`${(e && e.id) || i}: bad alt`);
-    if (!e || typeof e.caption !== 'string' || !e.caption.trim()) err(`${(e && e.id) || i}: bad caption`);
-    if (!e || typeof e.src !== 'string' || !LESSON_IMAGE_RE.test(e.src)) err(`${(e && e.id) || i}: bad src`);
-    if (typeof (e && e.src) === 'string' && (e.src.includes('<') || /https?:\/\//.test(e.src))) err(`${(e && e.id) || i}: src must be a bare data URI`);
-  });
+// ---- 3b. plain-text vs HTML field gates (every lesson) -------------------
+// Plain fields go through esc(); a tag there is shown to the reader verbatim. HTML
+// fields go through the whitelist sanitizer, so any tag outside it is silently dropped.
+const LESSON_PLAIN = ['title', 'goal', 'stageTitle', 'bridge', 'anchor', 'say30', 'say90', 'naiveCode'];
+const LESSON_HTML = ['incident', 'naive', 'naiveOut', 'rootCause', 'concept', 'mechanism',
+  'failureModes', 'tradeoff', 'alternatives', 'observe', 'codeNote', 'body'];
+// Same whitelist as ALLOWED in vue-app/src/utils.js — one set, not two.
+const ALLOWED_TAGS = new Set(['p', 'ul', 'ol', 'li', 'strong', 'em', 'code', 'br',
+  'pre', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h3', 'h4']);
+const HTML_TAG_RE = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
+const FORBIDDEN_HTML = [/<script/i, /<img/i, /<iframe/i, /<style/i, /\son[a-z]+\s*=/i, /javascript:/i];
+for (const l of LESSON_ARR) {
+  if (!l || !l.id) continue;
+  const plain = [
+    ...LESSON_PLAIN.map((f) => [f, l[f]]),
+    ...arr(l.askFirst).map((s, i) => [`askFirst[${i}]`, s]),
+    ...arr(l.sayIt).map((s, i) => [`sayIt[${i}]`, s]),
+    ...arr(l.provenance).map((s, i) => [`provenance[${i}]`, s]),
+    ...arr(l.timeline).map((r, i) => [`timeline[${i}][0]`, arr(r)[0]]),
+  ];
+  for (const [f, v] of plain) {
+    if (typeof v !== 'string') continue;
+    if (TAG_RE.test(v)) err(`${l.id}: ${f} must be plain text (found HTML tag)`);
+    if (ENTITY_RE.test(v)) err(`${l.id}: ${f} must be plain text (found entity)`);
+  }
+  const html = [
+    ...LESSON_HTML.map((f) => [f, l[f]]),
+    ['predict.q', l.predict && l.predict.q], ['predict.a', l.predict && l.predict.a],
+    ...arr(l.attacks).flatMap((a, i) => [[`attacks[${i}].q`, a && a.q], [`attacks[${i}].a`, a && a.a]]),
+  ];
+  for (const [f, v] of html) {
+    if (typeof v !== 'string') continue;
+    for (const re of FORBIDDEN_HTML) {
+      const m = v.match(re);
+      if (m) err(`${l.id}: ${f} contains forbidden markup "${String(m[0]).slice(0, 40)}"`);
+    }
+    for (const m of v.matchAll(HTML_TAG_RE)) {
+      if (!ALLOWED_TAGS.has(m[1].toLowerCase())) err(`${l.id}: ${f} uses tag <${m[1]}> outside the sanitizer allowlist`);
+    }
+  }
+}
+
+// ---- 3c. new-schema content gate ----------------------------------------
+const stripTags = (s) => String(s || '').replace(/<[^>]*>/g, '');
+const liCount = (s) => (String(s || '').match(/<li\b/gi) || []).length;
+const tokenCount = (s) => String(s || '').split(/\s+/).filter(Boolean).length;
+const SAY90_LABELS = ['[Nêu vấn đề (30s)]:', '[Cơ chế (45s)]:', '[Ranh giới (15s)]:'];
+const BANNED_PHRASES = ['Xem Bài này', 'quen React', 'Giống useMemo', 'Giống Zustand', 'custom hook trong React'];
+const SELF_REF_FIELDS = ['title', 'goal', 'bridge', 'incident', 'askFirst', 'predict', 'naive', 'naiveCode',
+  'naiveOut', 'timeline', 'rootCause', 'concept', 'mechanism', 'failureModes', 'tradeoff', 'alternatives',
+  'observe', 'codeNote', 'body', 'attacks', 'anchor', 'say30', 'say90', 'sayIt', 'provenance'];
+const visualOwner = new Map();
+for (const l of LESSON_ARR) {
+  for (const k of ['spine', 'spineNode', 'flow']) {
+    if (k in l) err(`${l.id}: legacy key "${k}" must be removed after migration`);
+  }
+  if (!Array.isArray(l.visuals)) err(`${l.id}: visuals must be an array`);
+  else {
+    const want = ['L05', 'L09', 'L24'].includes(l.id) ? 2 : 1;
+    if (l.visuals.length !== want) err(`${l.id}: visuals has ${l.visuals.length} entries, gate allows ${want}`);
+    const seenV = new Set();
+    for (const v of l.visuals) {
+      if (!v || !t(v.id)) { err(`${l.id}: visual missing id`); continue; }
+      const svg = (FLOW_SVGS || []).find((f) => f.id === v.id);
+      if (!svg) err(`${l.id}: visual id "${v.id}" does not resolve in FLOW_SVGS`);
+      if (seenV.has(v.id)) err(`${l.id}: duplicate visual id "${v.id}"`);
+      seenV.add(v.id);
+      if (visualOwner.has(v.id)) err(`${v.id}: bound by both ${visualOwner.get(v.id)} and ${l.id}`);
+      else visualOwner.set(v.id, l.id);
+      if (typeof v.question !== 'string' || v.question.length < 20 || !v.question.trim().endsWith('?')) {
+        err(`${l.id}: visual ${v.id} question must be >=20 chars and end with "?"`);
+      }
+      if (typeof v.focus !== 'string' || !v.focus.trim()) err(`${l.id}: visual ${v.id} focus must be non-empty`);
+      else if (svg && !stripTags(svg.svg).includes(v.focus)) {
+        err(`${l.id}: visual ${v.id} focus "${v.focus}" not found in its SVG text`);
+      }
+    }
+  }
+  if (l.id === 'L12') {
+    const a = l.analogy;
+    if (!a || typeof a !== 'object') err('L12: analogy missing');
+    else {
+      if (!t(a.source)) err('L12: analogy.source must be non-empty');
+      if (!Array.isArray(a.pairs) || a.pairs.length < 3) err(`L12: analogy.pairs has ${arr(a.pairs).length} rows, gate allows >=3`);
+      else for (const [i, pr] of a.pairs.entries()) {
+        if (!pr || !t(pr.from) || !t(pr.to)) err(`L12: analogy.pairs[${i}] needs non-empty from/to`);
+      }
+      if (typeof a.breaks !== 'string' || a.breaks.length < 40) err(`L12: analogy.breaks has ${typeof a.breaks === 'string' ? a.breaks.length : 0} chars, gate allows >=40`);
+      if (typeof a.transfer !== 'string' || !a.transfer.trim().endsWith('?')) err('L12: analogy.transfer must end with "?"');
+    }
+  } else if ('analogy' in l) {
+    err(`${l.id}: analogy is only allowed on L12`);
+  }
+  const conceptLen = typeof l.concept === 'string' ? l.concept.length : 0;
+  if (conceptLen < 120 || conceptLen > 250) err(`${l.id}: concept has ${conceptLen} chars, gate allows 120-250`);
+  if (typeof l.incident !== 'string' || !l.incident.startsWith('<p>')) err(`${l.id}: incident must start with <p>`);
+  if (typeof l.incident === 'string' && l.incident.length > 1800) err(`${l.id}: incident has ${l.incident.length} chars, gate allows <=1800`);
+  if (typeof l.mechanism === 'string') {
+    if (l.mechanism.length > 3500) err(`${l.id}: mechanism has ${l.mechanism.length} chars, gate allows <=3500`);
+    if (!/<ol\b/i.test(l.mechanism)) err(`${l.id}: mechanism must contain an <ol> list`);
+    const n = liCount(l.mechanism);
+    if (n < 3 || n > 5) err(`${l.id}: mechanism has ${n} <li>, gate allows 3-5`);
+  }
+  if (typeof l.failureModes === 'string') {
+    const n = liCount(l.failureModes);
+    if (n < 2 || n > 4) err(`${l.id}: failureModes has ${n} <li>, gate allows 2-4`);
+    if (l.failureModes.length > 2500) err(`${l.id}: failureModes has ${l.failureModes.length} chars, gate allows <=2500`);
+  }
+  for (const f of ['tradeoff', 'alternatives']) {
+    if (typeof l[f] === 'string' && l[f].length > 2500) err(`${l.id}: ${f} has ${l[f].length} chars, gate allows <=2500`);
+  }
+  if (!t(l.observe)) err(`${l.id}: observe must be non-empty`);
+  const bodyLen = typeof l.body === 'string' ? l.body.length : 0;
+  if (bodyLen < 600 || bodyLen > 2200) err(`${l.id}: body has ${bodyLen} chars, gate allows 600-2200`);
+  if (!Array.isArray(l.attacks) || l.attacks.length !== 4) err(`${l.id}: attacks has ${arr(l.attacks).length} entries, gate allows 4`);
+  else for (const [i, a] of l.attacks.entries()) {
+    if (!t(a && a.q)) err(`${l.id}: attacks[${i}].q must be non-empty`);
+    if (!t(a && a.a)) err(`${l.id}: attacks[${i}].a must be non-empty`);
+    if (a && typeof a.a === 'string' && a.a.length > 1600) err(`${l.id}: attacks[${i}].a has ${a.a.length} chars, gate allows <=1600`);
+  }
+  if (!Array.isArray(l.timeline) || l.timeline.length < 3 || l.timeline.length > 6) {
+    err(`${l.id}: timeline has ${arr(l.timeline).length} rows, gate allows 3-6`);
+  } else for (const [i, r] of l.timeline.entries()) {
+    if (!Array.isArray(r) || r.length !== 2 || !t(r[0]) || !t(r[1])) err(`${l.id}: timeline[${i}] must be exactly [when, what]`);
+  }
+  if (!Array.isArray(l.askFirst) || l.askFirst.length !== 3) err(`${l.id}: askFirst has ${arr(l.askFirst).length} entries, gate allows 3`);
+  else for (const [i, s] of l.askFirst.entries()) {
+    if (/Giải mã|Đáp án|→/.test(s)) err(`${l.id}: askFirst[${i}] must not contain "Giải mã", "Đáp án" or "→"`);
+  }
+  if (!l.predict || !t(l.predict.q)) err(`${l.id}: predict.q must be non-empty`);
+  if (!l.predict || !t(l.predict.a)) err(`${l.id}: predict.a must be non-empty`);
+  else if (typeof l.incident === 'string' && stripTags(l.incident).includes(stripTags(l.predict.a))) {
+    err(`${l.id}: predict.a repeats text already present in incident`);
+  }
+  const n30 = tokenCount(l.say30);
+  if (n30 < 60 || n30 > 85) err(`${l.id}: say30 has ${n30} tokens, gate allows 60-85`);
+  const n90 = tokenCount(l.say90);
+  if (n90 < 160 || n90 > 210) err(`${l.id}: say90 has ${n90} tokens, gate allows 160-210`);
+  for (const lab of SAY90_LABELS) {
+    if (typeof l.say90 !== 'string' || !l.say90.includes(lab)) err(`${l.id}: say90 missing label "${lab}"`);
+  }
+  if (!Array.isArray(l.sayIt) || l.sayIt.length < 4 || l.sayIt.length > 6) {
+    err(`${l.id}: sayIt has ${arr(l.sayIt).length} entries, gate allows 4-6`);
+  }
+  if (typeof l.anchor === 'string' && l.anchor.length > 180) err(`${l.id}: anchor has ${l.anchor.length} chars, gate allows <=180`);
+  const blob = JSON.stringify(l);
+  for (const bad of BANNED_PHRASES) if (blob.includes(bad)) err(`${l.id}: banned phrase "${bad}"`);
+  const selfRe = new RegExp(`\\b${l.id}\\b`);
+  for (const f of SELF_REF_FIELDS) {
+    if (selfRe.test(JSON.stringify(l[f]))) err(`${l.id}: ${f} references its own id (${l.id})`);
+  }
+}
+
+// ---- 3d. glossary gate --------------------------------------------------
+const normText = (s) => stripTags(s).toLowerCase().replace(/\s+/g, ' ').trim();
+const GLOSSARY_ARR = LESSON_GLOSSARY || [];
+if (!Array.isArray(LESSON_GLOSSARY)) err('LESSON_GLOSSARY is not an array');
+const glossaryById = new Map();
+for (const entry of arr(GLOSSARY_ARR)) {
+  if (!entry || !t(entry.id)) { err('glossary entry missing id'); continue; }
+  if (glossaryById.has(entry.id)) err(`glossary duplicate entry ${entry.id}`);
+  glossaryById.set(entry.id, entry);
+  if (!/^L\d{2}$/.test(entry.id)) err(`glossary bad id "${entry.id}"`);
+}
+for (const l of LESSON_ARR) {
+  const entry = glossaryById.get(l.id);
+  if (!entry) { err(`${l.id}: glossary entry missing`); continue; }
+  if (!Array.isArray(entry.rows) || entry.rows.length < 3 || entry.rows.length > 8) {
+    err(`${l.id}: glossary has ${arr(entry.rows).length} rows, gate allows 3-8`);
+  }
+  const terms = new Set();
+  const failLis = (String(l.failureModes || '').match(/<li\b[^>]*>[\s\S]*?<\/li>/gi) || []).map(normText);
+  for (const [i, row] of arr(entry.rows).entries()) {
+    if (!row || !t(row.term) || !t(row.is) || !t(row.not)) {
+      err(`${l.id}: glossary row ${i} "${(row && row.term) || '?'}" needs non-empty term/is/not`);
+      continue;
+    }
+    if (terms.has(row.term)) err(`${l.id}: glossary duplicate term "${row.term}"`);
+    terms.add(row.term);
+    if (failLis.includes(normText(row.not))) err(`${l.id}: glossary row "${row.term}" repeats a failureModes bullet`);
+  }
+}
+
+// ---- 3e. orphan flow gate ----------------------------------------------
+const flowConsumers = new Set();
+for (const l of LESSON_ARR) {
+  for (const v of arr(l.visuals)) if (v && v.id) flowConsumers.add(v.id);
+}
+for (const s of arr((CASE_STUDY || {}).sections)) if (s && s.flow) flowConsumers.add(s.flow);
+for (const f of FLOW_SVGS || []) {
+  if (!t(f.id) || flowConsumers.has(f.id)) continue;
+  err(`flow ${f.id}: orphan (no lesson visual, no case section)`);
 }
 
 // ---- 4. self-containment ------------------------------------------------
@@ -568,11 +771,10 @@ const metrics = {
   case_sections: ((CASE_STUDY || {}).sections || []).length,
   flow_svgs: (FLOW_SVGS || []).length,
   lessons: (LESSONS || []).length,
+  lessons_migrated: LESSON_ARR.length,
+  lesson_visual_bindings: LESSON_ARR.reduce((n, l) => n + arr(l.visuals).length, 0),
   lessons_with_bridge: (LESSONS || []).filter((l) => typeof l.bridge === 'string' && l.bridge.length > 0).length,
-  lesson_images: (LESSON_IMAGES_ARR || []).length,
-  lesson_images_bytes: (LESSON_IMAGES_ARR || []).reduce((n, e) => n + (e && typeof e.src === 'string' ? e.src.length : 0), 0),
   lessons_linked: (LESSONS || []).filter((l) => Array.isArray(l.buildsOn) && l.buildsOn.length > 0).length,
-  lessons_with_spine: (LESSONS || []).filter((l) => typeof l.spine === 'string' && l.spine.length > 0).length,
   lessons_with_incident: (LESSONS || []).filter((l) => typeof l.incident === 'string' && l.incident.length > 0).length,
   lessons_with_anchor: (LESSONS || []).filter((l) => typeof l.anchor === 'string' && l.anchor.length > 0).length,
   lessons_with_attacks: (LESSONS || []).filter((l) => Array.isArray(l.attacks) && l.attacks.length > 0).length,

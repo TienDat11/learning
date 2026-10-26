@@ -27,8 +27,6 @@ function safeJson(obj) {
 
 // ---- 1. loader: run src/*.js in a vm, keep JSON-safe exports ----
 // LOGIC is kept out of the payload: its functions would be dropped by JSON.stringify.
-// LESSON_IMAGES is excluded too: the Vue app renders diagrams from FLOW_SVGS instead, so
-// shipping the 2.26 MB of base64 WebP schematics would be dead weight in every page load.
 const VM_EXPORTS = ['QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'CASE_STUDY', 'SOURCES',
   'GROUP_INTROS', 'SOURCE_CHECKED', 'FLOW_SVGS', 'LESSONS'];
 const files = readdirSync(SRCROOT).filter((f) => f.endsWith('.js')).sort();

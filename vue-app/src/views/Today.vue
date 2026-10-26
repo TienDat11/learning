@@ -1,11 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { dateISO, addDaysISO } from '../utils.js';
-import store from '../store.js';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import * as spaced from '../leitner.js';
 
 const QUESTIONS = window.__HCP_DATA?.QUESTIONS || [];
 const LOGIC = window.__HCP_DATA?.LOGIC || {};
-const LEITNER_KEY = store.KEYS.leitner;
 
 const P0_IDS = computed(() => {
   const out = [];
@@ -36,35 +34,10 @@ function pickLabel(pick) {
 }
 
 // ---------- Leitner ----------
-const leitner = ref({});
-const todayISO = ref(dateISO());
+const leitner = ref(spaced.getState());
+const todayISO = ref(spaced.todayISO());
 const todayQid = ref(null);
 const todayOpen = ref(false);
-
-// ---------- persistence (old key, read-only compat) ----------
-function loadLeitner() {
-  const raw = localStorage.getItem(LEITNER_KEY);
-  if (!raw) return;
-  try {
-    const s = JSON.parse(raw);
-    if (s && typeof s === 'object' && !Array.isArray(s)) {
-      const clean = {};
-      for (const k of Object.keys(s)) {
-        const v = s[k];
-        if (v && typeof v === 'object' && isFinite(v.box) && v.box >= 1 && v.box <= 5) {
-          clean[k] = v;
-        }
-      }
-      leitner.value = clean;
-    }
-  } catch {}
-}
-function saveLeitner() {
-  localStorage.setItem(LEITNER_KEY, JSON.stringify(leitner.value));
-}
-loadLeitner();
-
-function boxInfo(b) { return { box: b, due: addDaysISO(todayISO.value, b - 1) }; }
 
 function countBox(n) {
   let c = 0;
@@ -90,18 +63,34 @@ function drawToday() { todayQid.value = draw(); todayOpen.value = false; }
 function toggleAnswer() { if (todayQid.value) todayOpen.value = !todayOpen.value; }
 function grade(ok) {
   if (!todayQid.value) return;
-  const state = {};
-  state[todayQid.value] = LOGIC.leitnerGrade?.(leitner.value, todayQid.value, ok, todayISO.value);
-  leitner.value = Object.assign({}, leitner.value, state);
-  saveLeitner();
+  spaced.rate(todayQid.value, ok ? 3 : 1, todayISO.value);
+  leitner.value = spaced.getState();
   drawToday();
 }
 function resetConfirm() {
   if (!confirm('Xóa toàn bộ tiến độ hộp Leitner hôm nay?')) return;
-  localStorage.removeItem(LEITNER_KEY);
-  leitner.value = {};
+  spaced.reset();
+  leitner.value = spaced.getState();
   drawToday();
 }
+
+function onKey(e) {
+  const t = e.target;
+  const tag = t && t.tagName ? String(t.tagName).toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'Enter') { e.preventDefault(); drawToday(); return; }
+  if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); toggleAnswer(); return; }
+  if (e.key === '1') { grade(true); return; }
+  if (e.key === '2') { grade(false); return; }
+  if (e.key === 'Escape') { resetConfirm(); }
+}
+
+onMounted(() => {
+  drawToday();
+  window.addEventListener('keydown', onKey);
+});
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
 const currentCard = computed(() => {
   if (!todayQid.value) return null;

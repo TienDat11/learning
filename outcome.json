@@ -1,0 +1,64 @@
+{
+  "task": "lesson-pedagogy-rebuild",
+  "tier": "XL",
+  "date": "2026-10-26",
+  "acceptance": [
+    {
+      "id": "A1",
+      "claim": "25 bài theo nhịp mới: incident → naive → rootCause → concept → mechanism → visuals → code → failureModes → tradeoff/alternatives/observe → attacks → say30/say90/anchor",
+      "pass": true,
+      "evidence": "build.mjs: lessons=25, lessons_migrated=25, lessons_with_incident=25, lessons_with_predict=25, lessons_with_attacks=25, lessons_with_anchor=25, lessons_with_spoken=25, lessons_with_bridge=25, lessons_linked=24, invalid=0. Đọc trực tiếp src/3[5-9]-lessons-*.js + 41-lessons-deep.js trong vm: cả 25 bài L01–L25 có đủ 17 key (incident, naive, naiveCode, rootCause, concept, mechanism, visuals, code, failureModes, tradeoff, alternatives, observe, attacks, say30, say90, anchor, predict) — 25/25 dòng 'all 17 present'. render-smoke: 'learn articles: 25 (want 25)' và 10 PASS label trên cả 25 bài (Sự cố / Cách làm ngây thơ / Bây giờ mới gọi tên khái niệm / Cơ chế bên trong / Dự đoán trước khi đọc / Interviewer sẽ đào tiếp / Câu neo / 30-90 giây / glossary)."
+    },
+    {
+      "id": "A2",
+      "claim": "Mỗi bài có visual đúng trọng tâm; L05/L09/L24 có hai",
+      "pass": true,
+      "evidence": "build.mjs: lesson_visual_bindings=28, flow_svgs=35, lessons=25, invalid=0. Đọc lesson data trong vm: bindings total=28; bài có ≥2 visual đúng là L05 [flow-upload-presign, flow-dynamodb-access], L09 [flow-pydantic-boundary, flow-retry-decision], L24 [flow-sql-planner, flow-scan-choice]; bài 0 visual = không có. Kiểm focus nguyên văn: 0 problem (mọi chuỗi focus của 28 binding xuất hiện nguyên văn trong SVG tương ứng). render-smoke: 'PASS figure count matches visuals.length on every lesson'. final-browser-smoke.json desktop: L07:1, L12:1, L24:2, L21:1, L22:1 đều ok; case_route.figure_count=21."
+    },
+    {
+      "id": "A3",
+      "claim": "Deterministic gates + semantic review pass",
+      "pass": true,
+      "evidence": "build.mjs: invalid=0, 'OK: harness valid'. tests/smoke.cjs: smoke_checks=115, smoke_failures=0, 'OK: smoke passed'. tools/render-smoke.mjs: PASS=26, FAIL=0, 'OK: every pedagogical block renders' + 'OK: learn view matches the new schema'. tools/validate-artifact.mjs: PASS=25, FAIL=0, 'OK: artifact valid'. audit/lesson-rewrite-review.json: 25/25 pass (mỗi bài đủ 10 check: central_question_answered, mechanism_correct, boundaries_correct, no_unknown_prerequisite, prediction_complete_and_hidden, analogy_mapping_safe, diagram_matches_question, middle_followups, code_output_consistent, sources_support_claims)."
+    },
+    {
+      "id": "A4",
+      "claim": "Leitner dùng một công thức (LOGIC.leitnerGrade), không còn CAP_DUE",
+      "pass": true,
+      "evidence": "src/05-logic.js: leitnerGrade định nghĩa đúng 1 lần, CAP_DUE xuất hiện 0 lần. vue-app/src/leitner.js: CAP_DUE 0, leitnerGrade 4 tham chiếu; header ghi 'The schedule formula lives in LOGIC.leitnerGrade so HTML, Drill, Flashcard and Today share one'. tests/smoke.cjs: 26 check Leitner PASS (leitnerGrade box1->2, due=today+2, sai->box1, box5 giữ hộp, 'due không bị cắt về mốc cố định', không mutate state, leitnerLoad/Dump reject box 7 / due sai format) — nằm trong 115 smoke_checks, 0 failure. Today.vue, Drill.vue, Flashcard.vue đều import từ ../leitner.js và đọc leitner.getState() (Today dòng 37/67/73, Drill dòng 67, Flashcard dòng 40)."
+    },
+    {
+      "id": "A5",
+      "claim": "Hai artifact build được và UI thật được kiểm chứng",
+      "pass": true,
+      "evidence": "build.mjs chạy exit 0 → hitechcloud-interview-prep.html 4073005 bytes (= METRIC html_bytes=4073005, khớp byte-for-byte với 'file bytes on disk' của validate-artifact). index.html 4082206 bytes, mtime 2026-10-26T11:38:22Z mới hơn file nguồn mới nhất vue-app/src (11:38:03Z); vue-app/build.mjs đọc SRCROOT='../src' + lesson-glossary.json rồi writeFileSync thẳng ra <repo>/index.html (PUBLISH), nên index.html và bản legacy dùng chung một nguồn lesson; chứa marker nhịp mới ('Bây giờ mới gọi tên khái niệm', 'Cách làm ngây thơ', 'Câu neo', flow-deploy-cache, flow-sql-planner) và không còn hook đã nghỉ (lesson-fig=false). audit/final-browser-smoke.json (11:42:48Z): desktop L07:1ok L12:1ok L24:2ok L21:1ok L22:1ok, mobile L07/L12/L24/L21/L22 đều ok, console_errors=0, case_route figure_count=21 fail=[], 10 screenshot đều tồn tại trên đĩa."
+    }
+  ],
+  "artifacts": {
+    "index_html_bytes": 4082206,
+    "legacy_html_bytes": 4073005,
+    "audit_review": "audit/lesson-rewrite-review.json",
+    "browser_smoke": "audit/final-browser-smoke.json",
+    "screenshots": 10
+  },
+  "deleted_legacy": [
+    "src/07-lesson-images.js",
+    "vue-app/src/diagrams.js",
+    "vue-app/src/assets/diagrams/",
+    "tools/dg-validate.mjs",
+    "tools/dg-server.mjs",
+    "tools/dg-crop.mjs",
+    "tools/dg-encode-browser.js",
+    "tools/.dg-map.json",
+    "tools/.dg-export.js",
+    "tools/.dg-enum.js"
+  ],
+  "notes": [
+    "Cả 10 đường dẫn trong deleted_legacy đã kiểm tra bằng fs.existsSync: 'gone' 10/10.",
+    "index.html (4082206 bytes) lớn hơn hitechcloud-interview-prep.html (4073005 bytes) đúng 9201 bytes: bản legacy không còn nhúng base64 ảnh/diagram, còn index.html là bản Vue build kèm payload __HCP_DATA. Không phải drift ngược chiều.",
+    "Số liệu đo thật khác vài chỗ so với mẫu: flow_svgs=35 (không phải 35 lesson dùng — validate-artifact in 'inline SVG diagrams present — 35 svg'), render-smoke PASS=26, validate-artifact PASS=25, smoke_checks=115, code_examples=120, questions=147.",
+    "tools/depth-audit.mjs (read-only: chỉ readFileSync/readdirSync) chạy được: 'P0 questions: 69 / fully covering all 9 dimensions: 23 / with at least one gap: 46' — đúng 23/69 P0 đủ 9 chiều; 46 gap còn lại thuộc QUESTIONS chứ không thuộc acceptance của plan viết lại lesson.",
+    "index.html không được build lại trong lần đo này (chỉ chạy node build.mjs theo yêu cầu); độ mới của nó được chứng minh bằng mtime sau nguồn vue-app/src và bằng final-browser-smoke.json chạy trên chính file đó lúc 11:42:48Z.",
+    "Render-smoke có 1 NOTE không phải lỗi: '\"Cách làm ngây thơ\" is a lesson-only block: 0/131 questions carry naive' — khớp hợp đồng, naive chỉ thuộc lesson."
+  ]
+}

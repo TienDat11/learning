@@ -27,9 +27,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var FLOWS = arr(typeof FLOW_SVGS === 'undefined' ? [] : FLOW_SVGS);
     var CHECKED = typeof SOURCE_CHECKED === 'undefined' ? '' : SOURCE_CHECKED;
     var LESSONSARR = arr(typeof LESSONS === 'undefined' ? [] : LESSONS);
-    var LESSON_IMAGES_ARR = arr(typeof LESSON_IMAGES === 'undefined' ? [] : LESSON_IMAGES);
-    var LESSON_IMAGE_BY_ID = {};
-    LESSON_IMAGES_ARR.forEach(function (e) { if (e && e.id) LESSON_IMAGE_BY_ID[e.id] = e; });
+    var GLOSSARY = (typeof LESSON_GLOSSARY === 'undefined' || !LESSON_GLOSSARY) ? null : LESSON_GLOSSARY;
     var FLOW_BY_ID = {};
     FLOWS.forEach(function (f) { if (f && f.id) FLOW_BY_ID[f.id] = f; });
     var SRC_BY_KEY = {};
@@ -39,8 +37,6 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     var LESSON_BY_ID = {};
     var LESSON_POS = {};
     LESSONSARR.forEach(function (l, i) { if (l && l.id) { LESSON_BY_ID[l.id] = l; LESSON_POS[l.id] = i; } });
-    // The L01 backbone: every later bài hangs off exactly one of these nodes.
-    var LESSON_NODES = [['client', 'Trình duyệt'], ['gateway', 'API Gateway'], ['compute', 'Lambda / code'], ['data', 'DB / S3'], ['queue', 'SQS / worker']];
     var shortLessonTitle = function (t) {
       t = str(t);
       if (t.length <= 40) return t;
@@ -807,13 +803,48 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       return '<figure class="svg-wrap">' + sanitize(f.svg) +
         '<figcaption>' + esc(str(f.caption)) + '</figcaption></figure>';
     };
-    var LESSON_IMAGE_RE = /^data:image\/webp;base64,[A-Za-z0-9+/]+=*$/;
-    var lessonFig = function (id) {
-      var e = obj(LESSON_IMAGE_BY_ID[id]);
-      if (!e || typeof e.src !== 'string' || !LESSON_IMAGE_RE.test(e.src)) return '';
-      return '<figure class="lesson-fig"><img src="' + e.src + '" width="' + e.w + '" height="' + e.h +
-        '" alt="' + esc(str(e.alt)) + '" loading="lazy" decoding="async">' +
-        '<figcaption><span class="fig-id">' + esc(str(e.id)) + '</span>' + esc(str(e.caption)) + '</figcaption></figure>';
+
+    // Glossary rows for one bài. LESSON_GLOSSARY arrives either as [{ id, rows }]
+    // or as { id: rows }; both shapes are accepted so the renderer never blanks.
+    var glossaryRows = function (id) {
+      var g = GLOSSARY;
+      if (!g) return [];
+      var entry;
+      if (Array.isArray(g)) {
+        for (var i = 0; i < g.length; i++) {
+          if (g[i] && str(g[i].id) === str(id)) { entry = g[i]; break; }
+        }
+      } else {
+        entry = g[str(id)];
+      }
+      var rows = Array.isArray(entry) ? entry : (entry && Array.isArray(entry.rows) ? entry.rows : []);
+      return arr(rows).filter(function (r) { return r; });
+    };
+    var glossaryBox = function (id) {
+      var rows = glossaryRows(id);
+      if (!rows.length) return '';
+      return '<div class="block"><div class="pb-h">Thuật ngữ</div>' +
+        '<table class="gloss"><thead><tr><th>Khái niệm</th><th>Là gì</th><th>Không phải là gì</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          r = obj(r) || {};
+          return '<tr><td>' + esc(str(r.term)) + '</td><td>' + esc(str(r.is)) +
+            '</td><td>' + esc(str(r.not)) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    };
+
+    // Every diagram for one bài, in authored order.
+    // A missing id is skipped — never substitute another bài's diagram.
+    var lessonVisuals = function (l) {
+      l = obj(l) || {};
+      var list = arr(l.visuals);
+      return arr(list).map(function (v) {
+        var item = typeof v === 'string' ? { id: v } : (obj(v) || {});
+        var id = str(item.id);
+        if (!id || !obj(FLOW_BY_ID[id])) return '';
+        return when(str(item.question), '<p class="figure-q">' + esc(str(item.question)) + '</p>') +
+          flowFigure(id) +
+          when(str(item.focus), '<p class="figure-focus">Nhìn vào: ' + esc(str(item.focus)) + '</p>');
+      }).join('');
     };
 
     var renderCase = function () {
@@ -1060,34 +1091,6 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
     };
 
     // ---- lessons: one Cornell sheet per lesson ----
-    // BFS over buildsOn parent edges from every lesson back to the L01 anchor.
-    // Computed ONCE per renderLearn pass (id -> ordered path of ids), never per card.
-    var buildChainMap = function () {
-      var map = {};
-      LESSONSARR.forEach(function (raw) {
-        var l = obj(raw);
-        if (!l || !l.id) return;
-        var id = str(l.id);
-        var queue = [[id]];
-        var seen = {};
-        seen[id] = true;
-        while (queue.length) {
-          var path = queue.shift();
-          var last = path[path.length - 1];
-          if (last === 'L01') { map[id] = path; return; }
-          var node = obj(LESSON_BY_ID[last]);
-          arr(node && node.buildsOn).forEach(function (dep) {
-            var d = str(dep);
-            if (seen[d] || !obj(LESSON_BY_ID[d])) return;
-            seen[d] = true;
-            queue.push(path.concat([d]));
-          });
-        }
-        // no path found — leave undefined; never invent edges
-      });
-      return map;
-    };
-
     var recallCount = function (id) {
       var list = arr(recall[str(id)]);
       var n = 0;
@@ -1123,7 +1126,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       return '<div class="cornell-cue"><p class="cue-label">Gợi nhớ</p>' + html + '</div>';
     };
 
-    var notesColumn = function (l, id, chainMap) {
+    var notesColumn = function (l, id) {
       var cueTotal = arr(l.askFirst).length;
       var p = obj(l.predict) || {};
       var predictHtml = str(p.q).trim()
@@ -1160,25 +1163,6 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         (next && next.id
         ? '<button type="button" class="btn lesson-link" data-lesson="' + esc(str(next.id)) + '">Bài sau: ' + esc(str(next.id)) + ' →</button>'
         : '');
-      var node = str(l.spineNode);
-      var isAll = node === 'all';
-      var pathItems = LESSON_NODES.map(function (nd) {
-        var on = isAll || node === nd[0];
-        return '<li class="spine-node' + (on ? ' is-on' : '') + '"' + (on ? ' aria-current="true"' : '') + '>' +
-          esc(nd[1]) + (on ? '<span class="sr-only"> (bài này)</span>' : '') + '</li>';
-      }).join('');
-      var chain = chainMap[str(id)];
-      var chainHtml = (str(id) !== 'L01' && arr(chain).length)
-        ? '<div class="spine-chain"><span class="lb-h">Đường về L01</span>' +
-          arr(chain).map(function (cid) {
-            return '<button type="button" class="lesson-link" data-lesson="' + esc(str(cid)) + '">' + esc(str(cid)) + '</button>';
-          }).join('<span class="chain-sep">→</span>') + '</div>'
-        : '';
-      var spineHtml = '<div class="lesson-spine"><div class="lb-h">Sợi chỉ từ L01</div>' +
-        '<ol class="spine-path">' + pathItems + '</ol>' +
-        when(l.spine, '<p class="spine-say">' + esc(str(l.spine)) + '</p>') +
-        chainHtml + '</div>';
-
       // The rail keeps the causal teaching chain. askFirst lives in the cue column and
       // predict in its own card, so neither is repeated here.
       var rail = '';
@@ -1188,7 +1172,9 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       rail += timelineBox(l.timeline);
       rail += when(l.rootCause, blockBox('pb pb-root', 'Nguyên nhân gốc', l.rootCause));
       rail += when(l.concept, blockBox('pb pb-concept', 'Bây giờ mới gọi tên khái niệm', l.concept));
+      rail += glossaryBox(id);
       rail += when(l.mechanism, blockBox('pb pb-mech', 'Cơ chế bên trong', l.mechanism));
+      rail += lessonVisuals(l);
       rail += when(l.failureModes, blockBox('pb pb-fail', 'Những kiểu hỏng mới mà cách sửa này tạo ra', l.failureModes));
       rail += when(l.tradeoff, blockBox('pb pb-tradeoff', 'Đánh đổi', l.tradeoff));
       rail += when(l.alternatives, blockBox('pb pb-alt', 'Lựa chọn thay thế', l.alternatives));
@@ -1197,11 +1183,10 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       rail = '<div class="lesson-rail">' + rail + '</div>';
 
       var body = '<div class="notes-body" id="notes-' + esc(id) + '" hidden>' +
-        spineHtml + lessonFig(str(id)) + rail +
+        rail +
         when(l.body, '<div class="deep">' + sanitize(l.body) + '</div>') +
         when(l.code, '<pre><code>' + esc(str(l.code)) + '</code></pre>') +
         when(l.codeNote, '<p class="small">' + sanitize(str(l.codeNote)) + '</p>') +
-        flowFigure(l.flow) +
         when(say, '<div class="sayit"><div class="sc-h">Bạn phải nói được</div><ul class="tight">' + say + '</ul></div>') +
         spokenBox('Trả lời 30 giây', 'spoken-30', l.say30) +
         spokenBox('Trả lời 90 giây', 'spoken-90', l.say90) +
@@ -1225,7 +1210,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
       return '<div class="provenance"><div class="pb-h">Ghi chú nguồn</div><ul class="tight">' +
         list.map(function (s) { return '<li>' + esc(str(s)) + '</li>'; }).join('') + '</ul></div>';
     };
-    var lessonCard = function (l, chainMap) {
+    var lessonCard = function (l) {
       l = obj(l) || {};
       var id = str(l.id);
       var idx = LESSON_POS[id] == null ? 0 : LESSON_POS[id];
@@ -1240,7 +1225,7 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         '<button type="button" class="btn lesson-done" data-lesson-done="' + esc(id) + '" aria-pressed="' +
         (lessonsDone[id] ? 'true' : 'false') + '">' + (lessonsDone[id] ? '✓ Đã học' : 'Đánh dấu đã học') + '</button></div>' +
         when(l.bridge, '<p class="lesson-bridge"><span class="lb-h">Nối tiếp bài trước</span>' + esc(str(l.bridge)) + '</p>') +
-        '<div class="cornell">' + cueColumn(l, id) + notesColumn(l, id, chainMap) + '</div>' +
+        '<div class="cornell">' + cueColumn(l, id) + notesColumn(l, id) + '</div>' +
         when(l.anchor, '<div class="lesson-anchor"><p class="anchor-label">Tóm tắt · Câu neo</p>' +
           '<p class="anchor">' + esc(str(l.anchor)) + '</p></div>') +
         '</article>';
@@ -1261,13 +1246,12 @@ if (typeof __BUILD_CHECK__ === 'undefined' || !__BUILD_CHECK__) {
         byStage[n].items.push(l);
       });
       var order = Object.keys(byStage).map(Number).sort(function (a, b) { return a - b; });
-      var chains = buildChainMap();
       body.innerHTML = order.map(function (n) {
         var st = byStage[n];
         // The stage label is the string the data carries — never shortened.
         return '<h3 class="sub learn-stage">' + esc(st.title) + '</h3>' +
           when(st.intro, '<div class="deep">' + sanitize(st.intro) + '</div>') +
-          st.items.map(function (l) { return lessonCard(l, chains); }).join('');
+          st.items.map(function (l) { return lessonCard(l); }).join('');
       }).join('');
       decorate(body);
       renderLessonBar(currentLessonId());

@@ -43,7 +43,7 @@ const mem = () => {
 const fails = [];
 let checkCount = 0;
 let crashed = false;
-let LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES, LESSON_IMAGES;
+let LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES;
 
 const check = (name, cond, detail = '') => {
   checkCount++;
@@ -86,7 +86,7 @@ const finish = (fatal) => {
 try {
   let data;
   try {
-    const EXPORTS = ['LOGIC', 'QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'FLOW_SVGS', 'LESSONS', 'SOURCES', 'LESSON_IMAGES'];
+    const EXPORTS = ['LOGIC', 'QUESTIONS', 'QUIZ', 'MOCK_SETS', 'STUDY_PLANS', 'FLOW_SVGS', 'LESSONS', 'SOURCES'];
     // Same `typeof` guards build.mjs uses: a bundle that has not shipped LOGIC yet must
     // still load, so the missing export is a check failure rather than a fatal error.
     data = new Function('document', 'window', 'localStorage', 'navigator', 'console', '__BUILD_CHECK__', APP + `
@@ -99,7 +99,7 @@ try {
     fails.push('app.js failed to load: ' + (e && e.message ? e.message : String(e)));
     finish(true);
   }
-  ({ LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES, LESSON_IMAGES } = data || {});
+  ({ LOGIC, QUESTIONS, QUIZ, MOCK_SETS, STUDY_PLANS, FLOW_SVGS, LESSONS, SOURCES } = data || {});
 
 // ---- LOGIC must exist and be callable ----------------------------------
 const need = ['normalize', 'stripTags', 'esc', 'haystack', 'matchQuery', 'filterQuestions', 'quizScore', 'resolvePick'];
@@ -263,6 +263,50 @@ if (LOGIC) {
   check('leitnerDump bỏ box 7', d.Q002 === undefined);
   check('leitnerDump bỏ due sai', d.Q003 === undefined);
   check('leitnerDump bỏ thiếu due', d.Q004 === undefined);
+
+  // ---- leitnerGrade behaviour: result is boolean or 1/2/3 --------------
+  // Exercises the shipped function; expectations are the documented contract.
+  var LG = LOGIC.leitnerGrade;
+  var LG_TODAY = '2026-10-26';
+  var lgGrade = function (state, result) { return LG(state, 'A01', result, LG_TODAY); };
+
+  var lg1 = lgGrade({ A01: { box: 2, due: LG_TODAY } }, 3);
+  check('leitnerGrade box2 + 3 -> box3, due today+4',
+    lg1.A01 && lg1.A01.box === 3 && lg1.A01.due === '2026-10-30', JSON.stringify(lg1.A01));
+
+  var lg2 = lgGrade({ A01: { box: 3, due: LG_TODAY } }, 2);
+  check('leitnerGrade box3 + 2 giữ hộp, due today+4',
+    lg2.A01 && lg2.A01.box === 3 && lg2.A01.due === '2026-10-30', JSON.stringify(lg2.A01));
+
+  var lg3 = lgGrade({ A01: { box: 3, due: LG_TODAY } }, 1);
+  check('leitnerGrade box3 + 1 -> box1, due today',
+    lg3.A01 && lg3.A01.box === 1 && lg3.A01.due === LG_TODAY, JSON.stringify(lg3.A01));
+
+  var lg4 = lgGrade({ A01: { box: 2, due: LG_TODAY } }, true);
+  check('leitnerGrade box2 + true -> box3, due today+4',
+    lg4.A01 && lg4.A01.box === 3 && lg4.A01.due === '2026-10-30', JSON.stringify(lg4.A01));
+
+  var lg5 = lgGrade({ A01: { box: 5, due: LG_TODAY } }, true);
+  check('leitnerGrade box5 + true giữ box5, due today+16',
+    lg5.A01 && lg5.A01.box === 5 && lg5.A01.due === '2026-11-11', JSON.stringify(lg5.A01));
+
+  var lg6 = lgGrade({ A01: { box: 2, due: LG_TODAY } }, false);
+  check('leitnerGrade box2 + false -> box1, due today',
+    lg6.A01 && lg6.A01.box === 1 && lg6.A01.due === LG_TODAY, JSON.stringify(lg6.A01));
+
+  var lg7 = lgGrade({ A01: { box: 2, due: LG_TODAY } }, 3);
+  check('leitnerGrade due không bị cắt về mốc cố định',
+    lg7.A01 && lg7.A01.due === '2026-10-30' && lg7.A01.due !== '2026-10-19', JSON.stringify(lg7.A01));
+
+  var lgInput = { A01: { box: 2, due: LG_TODAY } };
+  LG(lgInput, 'A01', true, LG_TODAY);
+  check('leitnerGrade không mutate state đầu vào',
+    lgInput.A01.box === 2 && lgInput.A01.due === LG_TODAY, JSON.stringify(lgInput.A01));
+
+  var lgMixed = { A01: { box: 2, due: LG_TODAY }, B02: { box: 4, due: '2026-11-01' } };
+  var lgOut = LG(lgMixed, 'A01', true, LG_TODAY);
+  check('leitnerGrade giữ nguyên qid khác trong state',
+    lgOut.B02 && lgOut.B02.box === 4 && lgOut.B02.due === '2026-11-01', JSON.stringify(lgOut.B02));
 }
 
 // ---- data-level invariants the UI relies on ----------------------------
@@ -308,13 +352,13 @@ try {
   const srcKeySet = new Set(arr(SOURCES).filter((s) => s && s.key).map((s) => s.key));
   const flowIdSet = new Set(FS.filter((f) => f && f.id).map((f) => f.id));
 
-  const EXPECTED_LESSON_IDS = Array.from({ length: 23 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
+  const EXPECTED_LESSON_IDS = Array.from({ length: 25 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
   const gotIds = LL.map((l) => (l ? l.id : undefined));
   const idSet = new Set(gotIds);
   const missingIds = EXPECTED_LESSON_IDS.filter((id) => !idSet.has(id));
   const extraIds = gotIds.filter((id) => !EXPECTED_LESSON_IDS.includes(id));
 
-  check('lessons_complete', Array.isArray(LESSONS) && LL.length === 23, `got ${LL.length}, want exactly 23`);
+  check('lessons_complete', Array.isArray(LESSONS) && LL.length === 25, `got ${LL.length}, want exactly 25`);
   check('lesson_ids_exact', missingIds.length === 0 && extraIds.length === 0,
     `missing [${missingIds.join(', ')}] extra [${extraIds.join(', ')}]`);
   check('lesson_ids_unique', LL.every((l) => l && l.id) && idSet.size === LL.length,
@@ -325,9 +369,28 @@ try {
   check('lesson_refs_resolve',
     LL.every((l) => l && arr(l.refs).every((r) => srcKeySet.has(r))),
     LL.flatMap((l) => (l ? arr(l.refs).filter((r) => !srcKeySet.has(r)).map((r) => `${l.id}:${r}`) : [])).join(', '));
-  check('lesson_flows_resolve',
-    LL.every((l) => l && (!l.flow || flowIdSet.has(l.flow))),
-    LL.filter((l) => l && l.flow && !flowIdSet.has(l.flow)).map((l) => `${l.id}:${l.flow}`).join(', '));
+  // Two visuals are intentional on these lessons; everything else carries exactly one.
+  const TWO_VISUALS = ['L05', 'L09', 'L24'];
+
+  check('lesson_visuals_no_legacy_keys',
+    LL.every((l) => !('spine' in l) && !('spineNode' in l) && !('flow' in l)),
+    LL.filter((l) => 'spine' in l || 'spineNode' in l || 'flow' in l).map((l) => l.id).join(', '));
+  check('lesson_visuals_is_array', LL.every((l) => Array.isArray(l.visuals)),
+    LL.filter((l) => !Array.isArray(l.visuals)).map((l) => l.id).join(', '));
+  check('lesson_visuals_count',
+    LL.every((l) => arr(l.visuals).length === (TWO_VISUALS.includes(l.id) ? 2 : 1)),
+    LL.filter((l) => arr(l.visuals).length !== (TWO_VISUALS.includes(l.id) ? 2 : 1))
+      .map((l) => `${l.id}:${arr(l.visuals).length}`).join(', '));
+  check('lesson_visuals_resolve',
+    LL.every((l) => arr(l.visuals).every((v) => v && flowIdSet.has(v.id))),
+    LL.flatMap((l) => arr(l.visuals).filter((v) => !v || !flowIdSet.has(v.id))
+      .map((v) => `${l.id}:${(v && v.id) || '?'}`)).join(', '));
+  const visualUse = new Map();
+  LL.forEach((l) => arr(l.visuals).forEach((v) => {
+    if (v && v.id) visualUse.set(v.id, (visualUse.get(v.id) || 0) + 1);
+  }));
+  check('lesson_visuals_unique', Array.from(visualUse.values()).every((n) => n === 1),
+    Array.from(visualUse.entries()).filter(([, n]) => n > 1).map(([id, n]) => `${id}×${n}`).join(', '));
   check('lesson_bridges_present', LL.every((l) => l && str(l.bridge).length >= 120),
     LL.filter((l) => !(l && str(l.bridge).length >= 120)).map((l) => (l && l.id) || '?').join(', '));
   check('lesson_bridges_plain', LL.every((l) => l && !/[<>]/.test(str(l.bridge))));
@@ -341,15 +404,6 @@ try {
   let crossStage = 0;
   LL.forEach((l) => { if (l) arr(l.buildsOn).forEach((id) => { if (stageById[id] !== undefined && stageById[id] !== l.stage) crossStage++; }); });
   check('lesson_cross_stage_links', crossStage >= 6, `got ${crossStage}`);
-  check('lesson_spine_present', LL.every((l) => l && str(l.spine).length >= 60),
-    LL.filter((l) => !(l && str(l.spine).length >= 60)).map((l) => (l && l.id) || '?').join(', '));
-  check('lesson_spine_plain', LL.every((l) => l && !/[<>'"]/.test(str(l.spine))));
-  check('lesson_spineNode_valid',
-    LL.every((l) => l && ['client', 'gateway', 'compute', 'data', 'queue', 'all'].includes(l.spineNode)));
-  check('lesson_spine_anchor_all',
-    LL.every((l, i) => l && (i === 0 ? l.spineNode === 'all' : l.spineNode !== 'all')));
-  const spineUsed = new Set(LL.map((l) => (l ? l.spineNode : undefined)).filter((n) => n && n !== 'all'));
-  check('lesson_spine_nodes_used', spineUsed.size >= 5, `got ${spineUsed.size}`);
   const unreachable = [];
   LL.forEach((l) => {
     if (!l || !l.id) return;
@@ -374,14 +428,6 @@ try {
   const missingStages = [1, 2, 3, 4].filter((s) => !stages.has(s));
   check('lesson_stages_cover', missingStages.length === 0,
     `missing stage(s) [${missingStages.join(', ')}], got [${Array.from(stages).sort((a, b) => a - b).join(', ')}]`);
-  const IM = arr(LESSON_IMAGES);
-  const wantIds = Array.from({ length: 23 }, (_, i) => 'L' + String(i + 1).padStart(2, '0'));
-  check('lesson_images_complete', IM.length === 23, `got ${IM.length}, want exactly 23`);
-  check('lesson_images_ids_order', IM.map((e) => e && e.id).join(',') === wantIds.join(','),
-    `got [${IM.map((e) => (e && e.id) || '?').join(', ')}]`);
-  check('lesson_images_src', IM.every((e) => e && typeof e.src === 'string' && e.src.startsWith('data:image/webp;base64,')));
-  check('lesson_images_text', IM.every((e) => e && typeof e.alt === 'string' && e.alt.length > 0 && typeof e.caption === 'string' && e.caption.length > 0));
-  check('lesson_images_dims', IM.every((e) => e && Number.isInteger(e.w) && e.w > 0 && Number.isInteger(e.h) && e.h > 0));
 } catch (e) {
   fails.push('data invariants crashed: ' + (e && e.message ? e.message : String(e)));
 }

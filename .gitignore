@@ -41,3 +41,69 @@ artifact_*.txt
 # content-review working dirs — backups and per-question review dumps, never published
 backup/
 local/
+.omp/work/
+
+# exports / screenshots / pen review — large post-publish cache only
+exports/
+shots/
+pen-review/
+
+# OMP harness local state
+.omp/
+
+# lesson authoring worktree dirs (review + pipeline — see note below)
+.ua/
+
+# tools/ pipeline junk — keep tracked verification scripts (render-smoke.mjs,
+# validate-artifact.mjs, depth-audit.mjs, qa-mobile-hang10.mjs, verify-claims.mjs)
+tools/out/
+tools/content/
+tools/lessons/
+tools/.b1-*
+tools/.b2-*
+tools/.b3-*
+tools/b2-*
+tools/b3-*
+tools/b4-*
+tools/pen-*
+tools/dgm-*
+tools/_tmp-*
+tools/*.log
+tools/*.png
+tools/.*
+tools/b1-*
+tools/brief-text.mjs
+tools/build-*.mjs
+tools/export-l01-l12.mjs
+tools/extract-lessons.mjs
+tools/fix-*.mjs
+tools/frame-builder.js
+tools/gen-lesson.mjs
+tools/lesson-runtime.js
+tools/probe-*.mjs
+tools/probe.mjs
+tools/qa-final*
+tools/rebuild-table1.mjs
+tools/run-snippet.mjs
+tools/runtime-l09.js
+tools/tmp-*
+
+# audit artifact snapshots
+audit/*.png
+audit/final-browser-smoke.json
+
+# literal temp dir, always-unnamed
+%TEMP%/
+tmp_*.cjs
+tmp_check.js
+tmp-deep.txt
+dump-compact.js
+.ans1.txt
+.verify-fields.json
+lessons-brief-tmp.json
+lesson-briefs.json
+pen-tree-before.json
+prototype-l01.html
+pen-lesson-spec.md
+pen-lesson-*.md
+mobile-*.md

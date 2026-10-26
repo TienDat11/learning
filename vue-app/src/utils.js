@@ -1,5 +1,5 @@
 // ---------- escaping / html-safe ----------
-// Plain-text fields (oral, expected, say30, askFirst, attacks.a, sayIt, bridge, spine)
+// Plain-text fields (oral, expected, say30, askFirst, attacks.a, sayIt, bridge)
 // are escaped; HTML fields (body, deep, incident, naive, rootCause, concept...) pass
 // through a whitelist sanitizer only. Never render plain text as HTML.
 

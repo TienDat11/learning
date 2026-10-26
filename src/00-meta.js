@@ -47,6 +47,7 @@ SOURCES.push(
   { key: 'fastapi-dependencies', name: 'FastAPI — Dependencies', url: 'https://fastapi.tiangolo.com/tutorial/dependencies/', checked: '2026-10-01', group: 'E' },
   { key: 'fastapi-background', name: 'FastAPI — Background Tasks', url: 'https://fastapi.tiangolo.com/tutorial/background-tasks/', checked: '2026-10-01', group: 'E' },
   { key: 'fastapi-testing', name: 'FastAPI — Testing', url: 'https://fastapi.tiangolo.com/tutorial/testing/', checked: '2026-10-01', group: 'E' },
+  { key: 'fastapi-async', name: 'FastAPI — Concurrency and async / await', url: 'https://fastapi.tiangolo.com/async/', checked: '2026-10-01', group: 'E' },
   { key: 'django-queries', name: 'Django — QuerySet API', url: 'https://docs.djangoproject.com/en/stable/topics/db/queries/', checked: '2026-10-01', group: 'E' },
   { key: 'django-serializers', name: 'Django REST framework — Serializers', url: 'https://www.django-rest-framework.org/api-guide/serializers/', checked: '2026-10-01', group: 'E' },
   { key: 'django-permissions', name: 'Django REST framework — Permissions', url: 'https://www.django-rest-framework.org/api-guide/permissions/', checked: '2026-10-01', group: 'E' },
