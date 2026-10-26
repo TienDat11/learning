@@ -7,7 +7,7 @@ Implementation values live in `assets/style.css` (tokens at the top of the file)
 ## What this is
 
 A single self-contained HTML study tool for one person preparing for one interview
- (Fullstack Engineer, AWS / Python / VueJS). 147 questions with answers, 23 lesson
+ (Fullstack Engineer, AWS / Python / VueJS). 147 questions with answers, 25 lesson
 schematics, quiz, flashcards, mock interview, case study, study plan, sources.
 It must open offline from disk, print cleanly, and be read for long stretches.
 
@@ -37,7 +37,7 @@ Colour tokens (light / dark, see `:root` and `html[data-theme="dark"]`):
 Structure and information:
 - **Priority is a top rule** on each question card (3px inset line, red for P0, amber for P1),
   plus a pill chip with a dot. The card body is not tinted.
-- **Lessons are numbered chapters.** The header is a crumb `Vở ôn · <stageTitle> · Bài n/23`,
+- **Lessons are numbered chapters.** The header is a crumb `Vở ôn · <stageTitle> · Bài n/25`,
   then the title `<id> · <title>` (e.g. `L01 · Đọc một kiến trúc serverless từ trái sang phải`),
   then the goal, with the "Đánh dấu đã học" toggle on the right. The lesson id is the prefix
   of the title, not a separate large number. Blocks still sit on a vertical rail inside the
@@ -69,8 +69,8 @@ Structure and information:
   constant, the only place the schedule lives.
 - **"Lộ trình học" (`view-learn`): one Cornell sheet per lesson.** A sticky position bar at
   top: `#lp-id` (`Vở ôn · <stageTitle>` verbatim), `#lp-t` (short lesson title),
-  `#lp-bar` (23 segments, done = green, current = indigo, rest neutral), `#lp-n` (`n / 23`).
-  Each card carries a crumb `Vở ôn · <stageTitle> · Bài n/23`, the title `L01 · <title>`,
+  `#lp-bar` (25 segments, done = green, current = indigo, rest neutral), `#lp-n` (`n / 25`).
+  Each card carries a crumb `Vở ôn · <stageTitle> · Bài n/25`, the title `L01 · <title>`,
   the goal, and the unchanged "Đánh dấu đã học" toggle (`hcp-lessons-v1`). The Cornell grid:
   left "Gợi nhớ" lists the 3 `askFirst` cues, numbered 01/02/03, each with its own toggle
   button; right "Ghi chú" holds a `n / 3 gợi nhớ đã trả lời` counter, the `predict.q` card
@@ -123,9 +123,9 @@ Content-clarity rule (lesson and question prose):
   in `assets/style.css` therefore sets the box label, the big count and the interval line to
   `#0B0B0D` (6.59:1), the same literal used by the dark primary button.
 - **Sticky position bar carries one element the reference design lacks.** `#lp-t`
-   (`shortLessonTitle`) shows a short lesson title between the stage label and the 23-segment
+   (`shortLessonTitle`) shows a short lesson title between the stage label and the 25-segment
    bar. The reference design assumed a per-lesson page, so its bar needs only the stage label;
-   here all 23 lessons live on one scrolling page, so the stage label alone cannot tell the
+   here all 25 lessons live on one scrolling page, so the stage label alone cannot tell the
    reader which lesson they are in. The stage label (`#lp-id`) is rendered as a small sunken
    pill rather than plain text — kept because the bar is translucent over content and the
    label needs a stable backing.
@@ -197,7 +197,7 @@ a proposal and not established Leitner practice.
 - 23 memory anchors (memory-palace style) were drafted at `.scratch/anchors-proposal.md`.
    They are not in the app and are not approved; gating is explicit. The app carries no
    field for them — none of `memo`/`image`/`scene`/`place`/`visual`/`mnemonic`/`palace`
-   exists on any of the 23 lessons — so shipping them is a data-shape change, not a render
+   exists on any of the 25 lessons — so shipping them is a data-shape change, not a render
    change.
 - The content audit (`node build.mjs` METRIC lines) is the source of truth for counts.
    Do not hand-copy numbers that could drift — where a count is quoted here, the file or

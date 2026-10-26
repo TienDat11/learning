@@ -8,8 +8,8 @@ agent working on this artifact.
 ## 1. What the artifact is
 
 A single-file, fully offline interview-preparation web app for a **Fullstack Engineer
-(AWS, Python, VueJS)** interview. It contains 147 interview questions, 23 lessons
-(L01–L23), 28 quiz items, 6 mock-interview sets, 3 study plans, a 24-section case study,
+(AWS, Python, VueJS)** interview. It contains 147 interview questions, 25 lessons
+(L01–L25), 28 quiz items, 6 mock-interview sets, 3 study plans, a 24-section case study,
 13 SVG flow diagrams, flashcards, localStorage progress, filters, dark mode and search.
 
 The product infrastructure is **already good**. Do not propose rewriting the UI, the
@@ -65,14 +65,14 @@ with stable, small line numbers that the Lead can act on directly. Cite location
 | `src/35-lessons-aws.js` | LESSONS (AWS-related) |
 | `src/36-lessons-py.js` | LESSONS (Python-related) |
 | `src/37-lessons-vue.js` | LESSONS (Vue-related) |
-| `src/38-lessons-link.js` | LESSONS (linking/design) + the 23-lesson backbone |
+| `src/38-lessons-link.js` | LESSONS (linking/design) + the 25-lesson backbone |
 | `src/39-lessons-security.js` | LESSONS (security) |
 | `src/40-plans.js` | STUDY_PLANS |
 | `src/50-case.js` | CASE_STUDY (24 sections) |
 | `src/60-flows.js` | FLOW_SVGS (13 inline SVG diagrams) |
 | `src/90-app.js` | app engine: render, filter, flashcard, quiz, mock, localStorage |
 
-There are **23 lessons, ids L01–L23**. Find them with `grep -n '"id": "L' src/*.js`.
+There are **25 lessons, ids L01–L25**. Find them with `grep -n '"id": "L' src/*.js`.
 
 ---
 
@@ -196,14 +196,14 @@ record of coverage, not a list of holes to fill:
 
 | Gap | Measured |
 |---|---|
-| `attacks` field | present on **147 / 147** questions and 23 / 23 lessons |
+| `attacks` field | present on **147 / 147** questions and 25 / 25 lessons |
 | `incident` | present on **147 / 147** questions |
 | `anchor` | present on **147 / 147** questions |
 | `say30` / `say90` | present on **147 / 147** questions |
 | `naive`, `rootCause`, `tradeoff`, `alternatives`, `observe` | present on **147 / 147** questions |
 | Quiz | 28 items. `answer` is an index into `options`; `90-app.js` shuffles display order. Measured on the rendered artifact 2026-10-16: the correct option lands in display slot 1/2/3/4 **7/4/10/7** times, i.e. first-slot 25% — the guess baseline. Re-measure on the DOM, not by re-running `orderFor()` in isolation |
-| Lesson depth | All 23 lessons carry the full chain (incident → naive → rootCause → concept → mechanism → failureModes → tradeoff → alternatives → observe → attacks → anchor → say30/say90). L07/L08/L13–L16 were the last to be filled; no `RESEARCH_GAP` markers remain |
-| Lesson `buildsOn` | 22 / 23 — L01 is the root and correctly has none. `build.mjs` requires every other lesson to name only *earlier* lessons |
+| Lesson depth | All 25 lessons carry the full chain (incident → naive → rootCause → concept → mechanism → failureModes → tradeoff → alternatives → observe → attacks → anchor → say30/say90). L07/L08/L13–L16 were the last to be filled; no `RESEARCH_GAP` markers remain |
+| Lesson `buildsOn` | 22 / 25 — L01 is the root and correctly has none. `build.mjs` requires every other lesson to name only *earlier* lessons |
 
 Build gates that now exist in `build.mjs` (do not report these as defects):
 `PLAIN_Q` fields must be plain text, `TRUNC_Q` fields may not end in an ellipsis,

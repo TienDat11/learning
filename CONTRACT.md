@@ -369,6 +369,45 @@ bằng chứng đã đo riêng cho Vue hay AWS**: không nguồn nào trong số
 học của chính giáo trình này, và không được trích chúng để bảo chứng một khẳng định kỹ
 thuật về Vue, AWS hay PostgreSQL.
 
+## Build và kiểm chứng
+
+### Hai sản phẩm, hai lệnh, không thay thế nhau
+
+Hai artifact sinh ra từ hai lệnh build khác nhau; chúng không thay thế nhau:
+
+```bash
+cd D:/research && node build.mjs              # -> hitechcloud-interview-prep.html (bản single-file cũ)
+cd D:/research/vue-app && node build.mjs      # -> index.html (bản publish GitHub Pages)
+```
+
+`vue-app/build.mjs` đọc lại `../src/*.js` qua VM nên nó luôn phản ánh src mới nhất; chạy nó sau mọi thay đổi nội dung. Chỉnh sửa src rồi chỉ chạy `build.mjs` root là chưa đủ — `index.html` ở root sẽ vẫn là bản cũ.
+
+### Build là deterministic
+
+Không dùng network, không đọc đồng hồ. Chạy lại hai lần sau cùng nội dung phải ra byte giống nhau:
+
+```bash
+cd D:/research && node build.mjs && cd vue-app && node build.mjs
+cd D:/research && git status --porcelain        # rỗng nếu thành công
+```
+
+Nếu `git status --porcelain` không rỗng: nguyên nhân là build không deterministic, hoặc có file chưa được commit từ trước.
+
+### Ba lệnh kiểm chứng (chạy sau khi build)
+
+```bash
+cd D:/research && node tools/validate-artifact.mjs     # exit 0 + PASS/FAIL
+cd D:/research && node tools/render-smoke.mjs          # exit 0 + PASS/FAIL
+cd D:/research && node tools/depth-audit.mjs           # báo cáo read-only, không có PASS/FAIL
+```
+
+- Hai lệnh đầu phải `exit 0` và in `PASS` hoặc `FAIL`.
+- Lệnh thứ ba chỉ là báo cáo read-only; không có dòng `PASS`/`FAIL`.
+
+### Bẫy publish
+
+`index.html` ở root là artifact sinh ra, phải commit cùng `src/`. Nếu chỉ chạy `build.mjs` root mà không chạy `vue-app/build.mjs`, Pages sẽ phục vụ bản cũ. Khi commit: chạy cả hai build, hoặc commit `hitechcloud-interview-prep.html` + `index.html` cùng `src/`.
+
 ## Definition of done
 
 0. **Chain fields are mandatory.** Every question carries `incident`, `askFirst`,
