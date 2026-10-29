@@ -16,6 +16,7 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # raw PNG originals for lesson images — the build embeds the optimised webp
 # (see src/07-lesson-images.js and assets/images/webp/); 35 MB of raw source
@@ -107,3 +108,9 @@ prototype-l01.html
 pen-lesson-spec.md
 pen-lesson-*.md
 mobile-*.md
+
+# per-lesson scratch dumps from the rewrite passes (fragments of the real
+# lesson bodies; the published text lives in lessons/)
+tmp_L*.txt
+tmp_mech_L*.txt
+tmpw_L*.txt

@@ -1,0 +1,12 @@
+{"ts": "2026-10-29T10:00:00.00Z", "layer": "api-gateway", "event": "request_received", "correlation_id": "corr-a1", "requestId": "req-aaa"}
+{"ts": "2026-10-29T10:00:00.00Z", "layer": "api-gateway", "event": "request_received", "correlation_id": "corr-b2", "requestId": "req-bbb"}
+{"ts": "2026-10-29T10:00:00.05Z", "layer": "lambda-api", "event": "order_accepted", "correlation_id": "corr-a1", "aws_request_id": "lam-a-1", "order_id": "A-1001"}
+{"ts": "2026-10-29T10:00:00.06Z", "layer": "lambda-api", "event": "order_accepted", "correlation_id": "corr-b2", "aws_request_id": "lam-b-1", "order_id": "B-2002"}
+{"ts": "2026-10-29T10:00:00.09Z", "layer": "lambda-api", "event": "message_sent", "correlation_id": "corr-a1", "aws_request_id": "lam-a-1", "messageId": "msg-aaa", "MessageAttributes": {"correlation_id": "corr-a1"}}
+{"ts": "2026-10-29T10:00:00.11Z", "layer": "lambda-api", "event": "message_sent", "correlation_id": "corr-b2", "aws_request_id": "lam-b-1", "messageId": "msg-bbb", "MessageAttributes": {"correlation_id": "corr-b2"}}
+{"ts": "2026-10-29T10:00:01.20Z", "layer": "lambda-worker", "event": "message_received", "correlation_id": "corr-b2", "aws_request_id": "lam-b-2", "messageId": "msg-bbb"}
+{"ts": "2026-10-29T10:00:01.24Z", "layer": "lambda-worker", "event": "message_received", "correlation_id": "corr-a1", "aws_request_id": "lam-a-2", "messageId": "msg-aaa"}
+{"ts": "2026-10-29T10:00:01.30Z", "layer": "lambda-worker", "event": "order_completed", "correlation_id": "corr-b2", "aws_request_id": "lam-b-2", "messageId": "msg-bbb"}
+{"ts": "2026-10-29T10:00:01.35Z", "layer": "lambda-worker", "event": "payment_failed", "correlation_id": "corr-a1", "aws_request_id": "lam-a-2", "messageId": "msg-aaa", "error": "upstream 503"}
+{"ts": "2026-10-29T10:00:02.40Z", "layer": "lambda-worker", "event": "message_redelivered", "correlation_id": "corr-a1", "aws_request_id": "lam-a-3", "messageId": "msg-aaa"}
+{"ts": "2026-10-29T10:00:02.46Z", "layer": "lambda-worker", "event": "order_completed", "correlation_id": "corr-a1", "aws_request_id": "lam-a-3", "messageId": "msg-aaa"}
