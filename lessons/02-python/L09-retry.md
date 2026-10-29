@@ -1,89 +1,80 @@
 # L09: Lỗi nào phải sửa dữ liệu, lỗi nào đáng retry
 
-> **Trạng thái:** bản đủ bảy bước, nằm ngoài `src/`. Chưa nối vào `Lesson.vue`, chưa qua Goldfish, chưa đo với người đọc thứ hai.
-> **Số liệu:** mọi con số trong bài là giả định của kịch bản, được ghi "Giả sử" ở chỗ dùng. Không phải số đo từ hệ thống thật, không phải mặc định của dịch vụ nào.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-**Tiên quyết:** biết gọi một API bằng HTTP và đọc mã trạng thái; biết `try`/`except` trong Python; biết một giao dịch ghi dữ liệu là gì.
+- **Nhảy bước:** bản cũ vào "Bước 3. Một ví dụ có số" với phép nhân "100 request thành 400" trước khi giải thích vì sao 422 sinh ra **trước** handler. Người đọc chưa có nền để hiểu vì sao gửi lại không đổi kết quả.
+- **Thuật ngữ chưa giải thích:** `exponential backoff`, `jitter`, `idempotency key`, `retry storm`, `circuit breaker`, `Retry-After` xuất hiện lần đầu không kèm tiếng Việt trong ngoặc.
+- **Thiếu ví von / ví dụ trực diện:** bản cũ không có sơ đồ chữ cho cây quyết định "lỗi này có đáng gọi lại không"; không đặt "Cách tệ" cạnh "Cách tốt" trong cùng một khối.
+- **Câu quá dài / khô:** kiểu câu như "Vòng retry được đặt trên mọi mã khác 200, nên nó áp cả cho lỗi dữ liệu và lỗi quyền, hai nhóm mà lần gọi sau không thể khác lần trước." — mệnh đề phụ lồng trong mệnh đề chính.
 
-## Bước 1. Đoán trước
+---
 
-Giả sử dịch vụ đơn hàng gọi API thanh toán của đối tác. Client đang retry tối đa ba lần cho **mọi** mã khác 200, không chờ giữa các lần.
+## Phần 2. Bài học viết lại
 
-Có ba đợt, mỗi đợt 100 request:
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-- Đợt 1: đối tác trả 422 vì payload thiếu một trường.
-- Đợt 2: đối tác trả 429 kèm header `Retry-After: 2`.
-- Đợt 3: request bị timeout, không rõ đối tác đã ghi hay chưa.
+Dịch vụ đơn hàng gọi API thanh toán của đối tác. Một lập trình viên bọc lời gọi trong vòng retry ba lần cho **mọi** mã trạng thái khác 200. Ý định tốt: hệ thống chịu lỗi hơn.
 
-Trước khi đọc tiếp, trả lời hai câu:
+Ba tuần sau đối tác gửi bảng lỗi:
 
-1. Nếu client tôn trọng `Retry-After` và **không** retry 422, mỗi đợt gửi bao nhiêu request tới đối tác?
-2. Đợt nào có thể tạo bản ghi trùng, và vì sao?
+- **62 phần trăm** request của dịch vụ này là **422**, và mỗi 422 được gửi **bốn lần**.
+- Trong một sự cố cấu hình, 100 request nhận **429** và bị đẩy thành **400 request trong cùng một giây**.
+- Đối tác hạ hạn mức của dịch vụ xuống.
 
-Viết đáp án ra giấy. Đáp án nằm ở cuối bước 3.
+Log phía mình chỉ ghi `upstream error` và số lần thử. Không có mã trạng thái gốc, nên đội trực không phân biệt được lỗi dữ liệu với lỗi tạm thời. `(Các con số của kịch bản — cần kiểm tra lại trên hệ thống thật.)`
 
-## Bước 2. Điều bạn đã biết
+**Câu hỏi dự đoán:** nếu gửi lại **cùng một payload sai**, kết quả mong đợi khác gì lần đầu?
 
-Bạn đã từng viết một hàm gọi API và bọc nó trong `try`/`except`. Trên máy bạn, đối tác luôn trả 200, nên nhánh lỗi gần như không bao giờ chạy. Khi chạy, bạn thêm một vòng `for` thử lại vài lần — vì ai cũng nói retry làm hệ thống bền hơn.
+**Đáp án:** không khác gì. Cùng payload sai thì cùng kết quả sai. Retry chỉ có nghĩa khi **lần gọi sau có thể khác lần trước** — tức khi lỗi là tạm thời.
 
-Bài này giữ nguyên vòng lặp đó và thay đúng một khớp: **điều kiện vào vòng lặp**. Thay "mọi mã khác 200" bằng một quyết định dựa trên việc lần gọi sau có thể khác lần trước hay không.
+Thuật ngữ dùng trong bài:
 
-Câu hỏi quyết định rất cụ thể: nếu tôi gửi lại **y nguyên** request này, kết quả có thể khác không?
+- `exponential backoff` — tăng thời gian chờ theo cấp số nhân sau mỗi lần thử lại.
+- `jitter` — độ lệch ngẫu nhiên cộng thêm vào thời gian chờ để tránh các máy thử lại cùng một khắc.
+- `retry storm` — bão thử lại làm sập hẳn dịch vụ đang yếu.
+- `idempotency key` — khóa do phía gọi gửi kèm, để server nhận ra "đây là cùng một giao dịch" và không ghi hai lần.
 
-- Không thể khác → retry chỉ nhân số request, không đổi kết quả.
-- Có thể khác → retry có nghĩa, nhưng phải có giới hạn và phải an toàn.
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-## Bước 3. Một ví dụ có số
+Gửi lại request giống gọi lại tổng đài khi máy bận. Máy bận thì gọi lại có ích. Nhưng nếu bạn **quay sai số** thì gọi lại một nghìn lần vẫn là số sai — chỉ làm tổng đài kẹt thêm.
 
-Giả sử mỗi đợt có 100 request, client thử tối đa 4 lần (1 lần đầu + 3 lần lại).
+*Giới hạn của phép ví von:* tổng đài biết bạn là ai; server thì không, trừ khi bạn gửi kèm `idempotency key`.
 
-**Đợt 1 — 422.** Tài liệu MDN nói thẳng: client nhận 422 thì nên hiểu rằng gửi lại request **không sửa gì** sẽ nhận đúng lỗi đó. Vậy số request đúng là 100. Nếu retry ba lần thì thành 400 request hoàn toàn vô ích, và tỉ lệ lỗi không đổi một chút nào.
-
-**Đợt 2 — 429.** Đối tác nói "chờ 2 giây". Tôn trọng header nghĩa là chờ 2 giây rồi gửi lại **một** lần. Giả sử lần thứ hai thành công, số request là 100 + 100 = 200. Nếu bỏ qua `Retry-After` và thử ngay, 100 request thành 400 request trong cùng một giây — đúng lúc đối tác đang yêu cầu giảm tải. Đây là cách một "cải tiến độ bền" biến thành hành vi tấn công chính đối tác của mình.
-
-**Đợt 3 — timeout.** Timeout **không** chứng minh server chưa ghi. Nó chỉ nói "tôi không nhận được trả lời trong 5 giây". Server có thể đã trừ tiền và chết ở bước ghi log. Số request là 200 đến 400 tuỳ số lần timeout, và đợt này là đợt duy nhất có nguy cơ tạo hai bản ghi cho cùng một đơn.
-
-**Đáp án bước 1:** 422 là 100 request (không retry); 429 là 200 request nếu tôn trọng `Retry-After`; đợt timeout là đợt có nguy cơ trùng bản ghi, vì timeout không nói được server đã ghi hay chưa.
-
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-flowchart TD
-  A[Response loi] --> B{Ma nao}
-  B -->|4xx do du lieu| C[Sua payload, khong retry]
-  B -->|401 / 403| D[Sua credential hoac quyen]
-  B -->|409| E[Doc lai trang thai roi quyet dinh]
-  B -->|429 / 5xx / timeout| F[Retry co gioi han]
-  F --> G{Idempotent hoac co key}
-  G -->|khong| H[Khong retry duong ghi]
-  G -->|co| I[Backoff + jitter + Retry-After]
+```text
+  response lỗi
+      │
+      ├── 422, 400 ────→ dữ liệu sai. Sửa payload. KHÔNG gọi lại.
+      ├── 401, 403 ────→ credential/quyền sai. Sửa ở phía mình. KHÔNG gọi lại.
+      ├── 409 ─────────→ trạng thái đã đổi. Đọc lại rồi quyết. KHÔNG gửi y nguyên.
+      ├── 429 ─────────→ tạm thời. Chờ đúng Retry-After rồi gọi lại.
+      ├── 5xx ─────────→ tạm thời. Backoff + jitter, có trần số lần.
+      └── timeout ─────→ KHÔNG BIẾT server đã ghi hay chưa.
+                         Chỉ gọi lại nếu có idempotency key.
+                                   │
+                    ┌──────────────┴──────────────┐
+                    │  mọi client cùng chờ 1s     │  ← không jitter:
+                    │  rồi cùng gửi lại           │    dồn thành 1 đỉnh
+                    └─────────────────────────────┘
 ```
 
-1. **Nhóm sửa đầu vào (4xx do dữ liệu).** Request sai: thiếu trường, sai kiểu, sai định dạng. Lần gọi sau với cùng bytes đi đúng đường cũ và cho đúng kết quả cũ. Việc phải làm là sửa payload hoặc sửa validator, không phải gọi lại. [CHƯA KIỂM: FastAPI trả 422 ở tầng validation trước khi handler chạy — trang tài liệu FastAPI về lỗi validation chưa mở trong phiên này. Điều đã kiểm là MDN nói gửi lại y nguyên sẽ lặp lại đúng lỗi.]
-2. **Nhóm sửa quyền (401, 403).** Credential hết hạn hoặc thiếu quyền. Retry không đổi gì; refresh token hoặc sửa policy mới là việc phải làm. Một biến thể đáng nhớ: 403 do clock skew của chữ ký — sửa đồng hồ, không sửa request.
-3. **Nhóm xung đột (409).** Tài nguyên đã đổi từ lúc client đọc. Gửi lại y nguyên là ghi đè dựa trên trạng thái cũ. Phải đọc lại, tính lại, rồi gửi bản mới.
-4. **Nhóm tạm thời (429, 5xx, timeout, lỗi mạng).** Đây là nhóm duy nhất mà lần gọi sau có thể khác. Retry có nghĩa, với ba điều kiện:
-   - **Có trần.** Số lần và tổng thời gian đều có giới hạn. Không trần thì một đối tác sập biến client thành máy bắn request.
-   - **Có backoff và jitter.** Chờ tăng dần theo `base × 2^k`, và mỗi client cộng thêm một lượng ngẫu nhiên. Không có jitter, 200 client cùng lỗi sẽ cùng thử lại ở đúng một thời điểm; đó là bão retry (retry storm), tự tạo ra đợt quá tải thứ hai ngay sau đợt đầu.
-   - **Tôn trọng `Retry-After`** khi đối tác gửi. Đây là tín hiệu tốt hơn mọi công thức mình tự nghĩ, vì chỉ đối tác biết họ cần bao lâu.
-5. **Idempotency là điều kiện, không phải chi tiết.** Thao tác idempotent (gọi lại cho cùng kết quả: `GET`, `PUT` có nội dung đầy đủ) retry được. Thao tác không idempotent (`POST` tạo đơn) chỉ retry được khi mang **idempotency key**: một khoá do phía gọi sinh, giữ nguyên qua các lần thử, để server nhận ra "à, giao dịch này tôi đã làm rồi" và trả lại kết quả cũ thay vì tạo bản ghi thứ hai.
-6. **Retry budget.** Đặt một tỉ lệ trần cho lưu lượng retry so với lưu lượng gốc, ví dụ 10 phần trăm. Vượt tỉ lệ đó thì thôi retry và trả lỗi. Không có ngân sách này, một sự cố của đối tác biến thành đòn tự đánh vào mình: mọi tầng đều retry, và tải nhân lên theo số tầng.
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ)
 
-**Cái gì phải ghi vào log.** Mã trạng thái **gốc**, số lần thử, và khoá idempotency. Ghi `upstream error` là ghi một câu không phân loại được gì: người trực không biết nên sửa payload hay chờ. Sự cố trong bài gốc kéo dài ba tuần chủ yếu vì log không có mã gốc.
+- **Bước 1 — Kiểm dữ liệu xảy ra ở biên.** FastAPI đọc body theo schema **trước** khi gọi handler. Body sai kiểu hoặc thiếu trường bị trả 422 ngay. Handler không chạy, nên không có tác dụng phụ nào để gọi lại.
+- **Bước 2 — Sau biên là quyền.** Nếu handler đã chạy mà vẫn lỗi thì nhóm tiếp theo là 401/403: credential hoặc quyền sai. Sửa ở phía gọi, không phải gọi lại.
+- **Bước 3 — 409 là xung đột trạng thái.** Tài nguyên đã đổi từ lúc client đọc. Client phải đọc lại trạng thái rồi quyết định, không gửi lại y nguyên.
+- **Bước 4 — Chỉ nhóm tạm thời đáng gọi lại.** Đó là 429, 5xx và timeout. 429 phải tôn trọng `Retry-After`; các lỗi còn lại dùng backoff tăng dần kèm `jitter`. Và timeout chỉ an toàn khi request **idempotent** hoặc mang `idempotency key` — vì timeout không chứng minh server chưa ghi.
 
-**Dạng câu hỏi phỏng vấn bài này trả lời được:** "Khi nào thì retry, khi nào thì không?", "Vì sao retry mà không có jitter lại làm hệ thống tệ hơn?", "Timeout có nghĩa là request chưa tới server không?", "Làm sao retry một `POST` mà không tạo bản ghi trùng?"
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-## Bước 5. Thí nghiệm nhỏ
-
-Chạy trong thư mục `lessons/02-python/L09-retry/`. Script chỉ dùng thư viện chuẩn. Nếu máy không có `python` trong PATH, gọi bằng đường dẫn đầy đủ tới Python 3 trên máy bạn.
+- **Cách tệ:** `for attempt in range(MAX_TRIES + 1)` bọc quanh mọi mã khác 200, `time.sleep(1)` cố định. Điều xảy ra: payload sai được gửi 4 lần và nhận 4 lần 422; khi đối tác trả 429 thì 100 request thành 400 trong cùng một giây, đúng lúc họ yêu cầu giảm tải. Lý do hỏng: retry áp cho cả nhóm **không thể khác** ở lần sau, và không có jitter nên mọi client dồn vào một khắc.
+- **Cách tốt:** một tập `RETRYABLE = {429, 500, 502, 503, 504}`. Mã ngoài tập đi thẳng ra ngoài bằng `raise_for_status`. Trong tập thì chờ `Retry-After` nếu đối tác gửi, ngược lại `2 ** attempt`, cộng jitter. Mọi request ghi mang `Idempotency-Key`. Lý do giải quyết được: mỗi nhánh lỗi nhận đúng cách xử lý của nó, và lần gọi lại không tạo giao dịch thứ hai.
+- **Kiểm chứng bằng code (chạy thật):** mô phỏng trong `lessons/02-python/L09-retry/jitter_sim.py`.
 
 ```
 python jitter_sim.py
 ```
 
-Mô phỏng: 200 client cùng gặp lỗi tại thời điểm 0. Server "chết" tới giây thứ 2, sau đó chỉ nhận 50 request mỗi giây. Mỗi client gửi tối đa 5 lần, backoff `0,5 × 2^k`. Đây là mô phỏng, không gọi mạng. Kết quả cố định vì có `random.Random(seed)`.
-
-Kết quả đã chạy trên máy này:
+Output đã chạy:
 
 ```
 Mo phong: 200 client cung loi tai t=0; server song lai sau 2.0s,
@@ -95,83 +86,42 @@ co jitter (full jitter)    tong gui:   961 | dinh 100ms khi thu lai:   64 | xong
                            dinh 100ms tinh ca lan dau:  250
 ```
 
-Hai con số cần đọc: **đỉnh 200 request trong 100 mili giây** khi không jitter, và **64** khi có jitter. Cùng 200 client, cùng backoff, cùng trần số lần thử — chỉ khác chỗ có rải thời điểm hay không. Đỉnh giảm hơn ba lần.
+Đọc hai dòng theo đúng một ý: **jitter không giảm tổng số request** (950 so với 961, gần như bằng nhau), nhưng nó **san đỉnh** từ 200 xuống 64 request trong 100 ms, và nhờ vậy số client xong tăng từ 100 lên 148. Đây là toàn bộ giá trị của jitter: không phải gửi ít hơn, mà là không gửi cùng lúc.
 
-Điều đáng chú ý thứ hai: số request xong tăng từ 100 lên 148 trên 200. Khi 200 request dồn vào cùng một khoảnh khắc, server chỉ nhận được 50 mỗi giây và phần còn lại bị từ chối; năng lực của server bị lãng phí trong những khoảng không có ai gọi. Jitter rải request ra, nên phần năng lực đó được dùng.
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-Một chi tiết trung thực: tổng số request gửi gần như bằng nhau (950 và 961). Trong mô hình này, jitter **không** giảm tổng công việc, vì mỗi client vẫn có trần 5 lần gửi và client thành công thì dừng. Cái nó giảm là **độ dồn** — và độ dồn mới là thứ làm server từ chối request. Bài viết của AWS về backoff và jitter đo trên một mô hình khác (tranh chấp ghi đồng thời) và báo cáo giảm hơn một nửa số lần gọi; đừng chép con số đó sang mô hình này.
+- **Được gì:** retry có giới hạn cho lỗi tạm thời tăng tỉ lệ thành công khi đối tác chập chờn, không cần người can thiệp. `idempotency key` cho phép gọi lại an toàn.
+- **Đánh đổi gì:** mỗi lần retry là thêm tải và thêm độ trễ cho người dùng cuối, nên phải có trần số lần **và** trần tổng thời gian. `idempotency key` cần một bảng lưu key cùng kết quả, cộng logic dọn key cũ. Không retry thì phản hồi nhanh, tải thấp, nhưng một timeout ngắn cũng thành lỗi cho người dùng.
+- **Khi nào KHÔNG nên dùng:** đừng retry trên endpoint **không idempotent** mà không có chỗ lưu key — bạn sẽ tạo hai bản ghi. Đừng đặt retry ở **nhiều tầng**: số lần thử là **tích** các vòng, không phải tổng. Đừng retry một 4xx (trừ 429). Đừng dùng retry đồng bộ cho tác vụ dài: đẩy vào SQS, trả 202, để worker retry theo lịch.
 
-**Tự thử:** đổi `MAX_ATTEMPTS` thành 8 và chạy lại. Đỉnh không jitter vẫn là 200, và đỉnh có jitter vẫn là **64** — không tăng. Cái đổi là số request xong: từ 100/200 và 148/200 lên **200/200** ở cả hai bên, với tổng gửi 1100 (không jitter) và 1024 (có jitter). Với trần 5 lần, nhiều client hết lượt trước khi server sống lại; nới lên 8 thì ai cũng tới được. Đỉnh không phụ thuộc số lần thử vì nó do lần thử lại **đầu tiên** quyết định: 200 client cùng tính ra cùng một khoảng chờ, nên vẫn dồn vào một cụm y như cũ. Giải thích vì sao.
+---
 
-## Bước 6. Bốn câu luyện tập
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-Trả lời trước khi mở đáp án.
+### Câu 1: Vì sao 422 không bao giờ đáng retry?
 
-**Câu 1.** Vì sao 422 không bao giờ đáng retry?
+- **Trả lời mẫu (30–60 giây):** Vì 422 được sinh **trước khi handler chạy**. FastAPI validate body theo schema ở biên; body sai thì response 422 được dựng ngay, handler và mọi tác dụng phụ của nó không chạy. Lần gọi sau với cùng payload đi đúng đường cũ và cho đúng kết quả cũ. Dấu hiệu kiểm chứng: log có cùng một thông báo lỗi trường cho cả bốn lần thử, và handler không xuất hiện trong log. Ngoại lệ duy nhất: nếu client **sinh lại** payload mỗi lần và payload có thể khác đi thì mới có chuyện lần sau đúng.
+- **Lỗi hay mắc khi trả lời:** nói "4xx nào cũng không retry" mà không phân biệt 429. Cách nói đúng: 422/400/401/403/409 không retry; **429 thì có**, và phải tôn trọng `Retry-After`.
 
-<details>
-<summary>Đáp án</summary>
+### Câu 2: 429 khác 5xx ở chỗ nào khi quyết định retry?
 
-Kết luận: vì kết quả của lần gọi sau giống hệt lần trước khi request không đổi. MDN nói rõ điều này: client nhận 422 nên hiểu rằng gửi lại mà không sửa gì sẽ nhận đúng lỗi đó.
+- **Trả lời mẫu (30–60 giây):** Cả hai đều tạm thời, nhưng 429 là tín hiệu **do đối tác chủ động gửi** kèm thời điểm được phép thử lại. 429 nói hạn mức đã hết trong cửa sổ hiện tại, và `Retry-After` cho biết sau bao lâu hạn mức mở lại. Vì vậy với 429 tôi đọc header thay vì tự chọn khoảng chờ; với 5xx thì dùng backoff tăng dần. Nếu bỏ qua header và thử theo backoff riêng, các client khác cũng làm vậy và cùng dồn vào một thời điểm. Dấu hiệu: lưu lượng theo giây có các đỉnh trùng nhau sau mỗi khoảng backoff; thêm jitter thì các đỉnh tản ra.
+- **Lỗi hay mắc khi trả lời:** nói "429 cũng như 503, cứ backoff là được". Cách nói đúng: nêu rằng `Retry-After` là **thông tin từ phía đối tác**, ưu tiên hơn khoảng chờ tự tính.
 
-Điều kiện để đúng: request được gửi lại y nguyên. Nếu payload được sinh lại mỗi lần và có thể khác đi thì mới có chuyện lần sau đúng — nhưng đó là sửa dữ liệu, không phải retry.
+### Câu 3: Nếu request ghi dữ liệu bị timeout, làm sao biết có được gọi lại?
 
-Cách kiểm: nếu log có cùng một thông báo lỗi trường cho cả bốn lần thử, và tỉ lệ thành công không đổi khi số lần thử tăng, thì retry đang vô ích.
+- **Trả lời mẫu (30–60 giây):** Từ phía client thì **không biết được**. Timeout chỉ nói client không nhận được phản hồi trong hạn; server có thể đã ghi xong trước khi mất kết nối. Vì vậy tôi chỉ gọi lại khi request mang `idempotency key` hoặc bản thân thao tác idempotent. Với key, server tra key và trả lại kết quả cũ thay vì ghi lần hai; không có key thì mỗi lần gọi là một bản ghi mới. Dấu hiệu kiểm chứng: đếm bản ghi theo khóa nghiệp vụ sau một đợt timeout; lớn hơn số đơn gốc là đã ghi trùng.
+- **Lỗi hay mắc khi trả lời:** nói "timeout nghĩa là request chưa tới server". Sai: timeout chỉ là **không có phản hồi**. Cách nói đúng: phân biệt "không tới" với "không biết", rồi nêu điều kiện idempotent.
 
-</details>
+### Câu 4: Đặt retry ở tầng nào thì hợp lý?
 
-**Câu 2.** Vì sao backoff mà không có jitter lại tạo ra đợt quá tải thứ hai?
+- **Trả lời mẫu (30–60 giây):** Đặt ở **đúng một tầng** sở hữu ngữ cảnh nghiệp vụ, thường là tầng gọi dịch vụ ngoài. Lý do: mỗi tầng có vòng retry riêng thì số lần thử là **tích** của các vòng, không phải tổng — ba tầng, mỗi tầng ba lần, là 27 lần gửi. Nếu hạ tầng bên dưới (SDK, load balancer) đã retry thì tầng trên phải biết và không retry thêm, hoặc phải đặt trần tổng thời gian. Dấu hiệu kiểm chứng: log đối tác cho thấy số lần thử bằng tích các cấu hình; đếm tay trên một request là thấy ngay.
+- **Lỗi hay mắc khi trả lời:** nói "retry càng nhiều tầng càng bền". Cách nói đúng: nêu phép **tích**, nêu ví dụ 27 lần, và nêu cách chặn bằng trần tổng thời gian.
 
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: vì mọi client lỗi cùng lúc sẽ tính ra cùng một khoảng chờ, nên chúng thử lại đúng cùng một thời điểm. Backoff làm thưa các đợt, nhưng mỗi đợt vẫn là một cụm dày.
-
-Điều kiện để đúng: các client lỗi gần như đồng thời — đúng tình huống khi một dịch vụ sập hoặc trả 429 hàng loạt.
-
-Cách kiểm: đo số request trong cùng một cửa sổ 100 mili giây. Trong thí nghiệm trên, con số là 200 khi không jitter và 64 khi có jitter, với cùng 200 client.
-
-</details>
-
-**Câu 3.** Request bị timeout. Vì sao retry nó có thể tạo bản ghi thứ hai, và cần gì để retry an toàn?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: timeout chỉ nói phía mình không nhận được trả lời. Server có thể đã ghi xong rồi chết trước khi trả lời, nên lần gửi lại có thể là giao dịch thứ hai.
-
-Điều kiện để đúng: thao tác idempotent, hoặc request mang idempotency key giữ nguyên qua các lần thử, và server lưu key kèm kết quả để trả lại kết quả cũ.
-
-Cách kiểm: đếm bản ghi trùng theo khoá nghiệp vụ. Nếu số bản ghi trùng tăng sau một đợt timeout thì thiếu idempotency, không phải thiếu retry.
-
-</details>
-
-**Câu 4.** Đối tác trả 429 kèm `Retry-After: 30`. Client của bạn backoff 1 giây rồi thử lại. Sai ở đâu?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: sai ở chỗ bỏ qua tín hiệu của đối tác. `Retry-After` nói thời điểm sớm nhất nên gọi lại; thử sau 1 giây là thử trong lúc họ vẫn đang từ chối, và làm tải của họ nặng thêm.
-
-Điều kiện để đúng: header chỉ có trên một số response (429, 503, và redirect). Không có header thì mới dùng backoff tự tính, và vẫn phải cộng jitter.
-
-Cách kiểm: đo lưu lượng theo giây trong lúc có 429. Nếu lưu lượng tăng sau khi bật retry thì backoff đang sai, bất kể công thức trông đúng.
-
-</details>
-
-## Bước 7. Câu neo
-
-> Chỉ lỗi tạm thời mới đáng gọi lại, và chỉ khi thao tác idempotent; 422 gửi lại y nguyên thì nhận lại đúng 422.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
-
-- https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/422 — xác nhận: 422 là lỗi phía client, server hiểu nội dung nhưng không xử lý được; client nhận 422 nên hiểu rằng gửi lại request mà không sửa gì sẽ nhận đúng lỗi đó.
-- https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Retry-After — xác nhận: `Retry-After` dùng trong 503 (thời gian dịch vụ dự kiến không sẵn sàng) và 429 (thời gian chờ trước khi gửi request mới); giá trị là số giây hoặc một ngày HTTP.
-- https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/ — xác nhận: backoff mũ không có jitter vẫn để lại các cụm lời gọi dồn vào cùng thời điểm; thêm jitter làm tốc độ lời gọi gần như đều; bài nêu các biến thể Full Jitter, Equal Jitter, Decorrelated Jitter và nói Full Jitter ít việc nhất trong ba biến thể.
-
-Chưa kiểm trong bài này: cơ chế FastAPI trả 422 ở tầng validation trước khi handler chạy (chưa mở trang tài liệu FastAPI về lỗi validation trong phiên này); ngữ nghĩa chi tiết của 409 và 401/403 trên MDN; hành vi retry mặc định của Lambda và của AWS SDK. Con số 100 request mỗi đợt và 3 lần retry là giả định của kịch bản.
-
-</details>
+- https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After — ngữ nghĩa `Retry-After` và 429.
+- https://fastapi.tiangolo.com/tutorial/body/ — kiểm body theo schema trước khi handler chạy (nguồn của 422).
+- https://docs.aws.amazon.com/lambda/latest/dg/invocation-retries.html — Lambda có thể gọi lại, nên handler phải idempotent.
+- Đã kiểm trong bài này: chạy `jitter_sim.py` trong `lessons/02-python/L09-retry/`; bảng "khong jitter / co jitter" là output thật của script. Chưa kiểm: số lần retry mặc định của từng dịch vụ AWS; các con số 100 request, ba lần retry, 2 giây `Retry-After` là thông số kịch bản.

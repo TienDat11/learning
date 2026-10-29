@@ -1,121 +1,82 @@
-# L21: Outbox: vì sao ghi cơ sở dữ liệu và gửi message lệch nhau, và chỗ nào vá được
+# L21: Outbox — vì sao ghi cơ sở dữ liệu và gửi message lệch nhau, và chỗ nào vá được
 
-> **Trạng thái:** bản viết lại đủ bảy bước, nằm ngoài `src/`. Chưa nối vào app, chưa đo với người đọc thứ hai.
-> **Số liệu:** mọi con số trong bài là giả định của kịch bản, được ghi "Giả sử" ở chỗ dùng. Không phải số đo từ hệ thống thật, không phải mặc định của AWS hay PostgreSQL.
+> **Trạng thái:** bản viết lại theo phong cách "vấn đề trước, cơ chế sau". Output ở mục 4 là output thật của script trong `l21/`.
+> **Số liệu:** mọi con số là giả định của kịch bản, ghi rõ "giả sử" ở chỗ dùng.
 
-**Tiên quyết:** biết một transaction cơ sở dữ liệu commit hoặc rollback trọn vẹn; biết hàng đợi message giao message cho worker; biết khoá chính chặn được hai hàng trùng.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-## Bước 1. Đoán trước
+- **Nhảy bước:** Bước 4 dùng ngay `FOR UPDATE SKIP LOCKED` và "đánh dấu đã gửi trong một transaction riêng" mà chưa nói vì sao hai dòng `INSERT` và `send` không nằm chung được một transaction. Người đọc phải tin kết luận trước khi thấy lý do.
+- **Thuật ngữ chưa giải thích:** `dual-write`, `transactional outbox`, `visibility timeout`, `receipt handle`, `relay`, `DLQ`, `at-least-once`, `idempotent`, `SKIP LOCKED` xuất hiện lần đầu không kèm ngoặc tiếng Việt.
+- **Thiếu ví von / ví dụ trực diện:** hai chiều lệch (mất và ma) chỉ được liệt kê bằng gạch đầu dòng; không có sơ đồ chữ cho thấy hàng đợi nằm ngoài transaction.
+- **Câu quá dài / khô:** "Vì mỗi 401 lại kích hoạt một vòng thử lại..." không có ở bài này, nhưng "Vì vậy hệ thống giao ít nhất một lần, và chạy trùng là chuyện bình thường chứ không phải ngoại lệ" gộp ba ý trong một câu.
 
-Giả sử một worker nhận message, tải tệp 5 MB, quét nội dung, gửi hoá đơn, rồi xoá message. Visibility timeout đặt 30 giây. Thời gian xử lý p99 là 45 giây.
+---
 
-1. Một message được nhận ở giây 0. Đến giây thứ 45 nó mới xử lý xong. Trong khoảng giữa, chuyện gì xảy ra với message đó?
-2. Giả sử API ghi hoá đơn vào PostgreSQL, commit xong, rồi gọi `send_message`. Lời gọi đó lỗi. Outbox có cứu được trường hợp này không? Còn trường hợp gửi xong mà commit lỗi thì sao?
+## Phần 2. Bài học viết lại
 
-Viết ra giấy. Đáp án ở cuối bước 3.
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-## Bước 2. Điều bạn đã biết
+(Các con số của kịch bản là giả định — cần kiểm tra lại trên hệ thống thật.)
 
-Bạn đã từng viết hai dòng liền nhau như thế này:
+Hai dòng code trông như một việc:
 
 ```python
 db.execute("INSERT INTO invoices ...")
 queue.send({"invoice_id": ...})
 ```
 
-Hai dòng, một hàm, trông như một việc. Trên máy bạn, chúng luôn chạy cùng nhau: test xanh, không có hoá đơn nào thiếu, không có message nào thừa.
+Chúng là hai việc, ở hai hệ thống, không có transaction chung. Đó là `dual-write` (lỗi ghi đồng thời vào hai hệ thống khác nhau không có giao dịch chung).
 
-Bài này chỉ ra rằng chúng là hai việc, ở hai hệ thống, không có transaction chung. Giữa hai dòng đó có một khoảng thời gian, và trong khoảng đó tiến trình có thể chết, mạng có thể đứt, hàng đợi có thể từ chối.
+Giả sử `visibility timeout` (thời gian message bị ẩn khỏi hàng đợi sau khi một worker nhận) là 30 giây, còn thời gian xử lý p99 là 45 giây.
 
-Có đúng hai cách lệch, và chúng ngược chiều nhau:
+Câu hỏi dự đoán: message được nhận ở giây 0 thì chuyện gì xảy ra ở giây 30? Đáp án: nó hiện lại, và worker khác nhận nó — dù worker đầu vẫn đang chạy.
 
-- Ghi cơ sở dữ liệu thành công, gửi message thất bại: hàng có, message không có. Việc nặng không bao giờ chạy, và không ai biết.
-- Gửi message thành công, ghi cơ sở dữ liệu thất bại: message có, hàng không có. Worker nhận một message trỏ tới thứ không tồn tại.
+Với 10.000 tệp, giả sử 15% message bị giao lại: 1.500 lần chạy thừa, và 340 khách nhận hai hoá đơn.
 
-## Bước 3. Một ví dụ có số
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-Giả sử đợt cao điểm có 10.000 tệp trong hai mươi phút. Visibility timeout 30 giây, p99 xử lý 45 giây. Giả sử 15% số message vượt 30 giây, tức 1.500 message bị giao lại cho worker khác.
+Ghi cơ sở dữ liệu rồi gửi message giống viết hoá đơn vào sổ rồi mới chạy ra bưu điện: nếu bạn ngã trên đường, sổ đã có hoá đơn nhưng thư chưa đi. Outbox là việc dán luôn con tem vào trang sổ, để bất kỳ ai mở sổ ra cũng biết còn thư chưa gửi.
 
-Trong 1.500 lần giao lại đó, giả sử 340 lần worker đầu đã kịp gửi hoá đơn trước khi bị giao lại. Đó là 340 khách nhận hai hoá đơn cho một lần upload — đúng con số kế toán mang tới.
+Giới hạn của phép ví von: người đưa thư chỉ giao đúng một lần, còn relay có thể gửi cùng một message hai lần — nên phép ví von không nói gì về chuyện trùng.
 
-Còn phần mất: giả sử mỗi ngày có 200 lần ghi hoá đơn mà lời gọi gửi message thất bại. Nếu không ai thử lại, đó là 200 việc không bao giờ chạy, và không có hàng nào đánh dấu là đã bỏ.
-
-**Đáp án bước 1:** message hiện lại trong hàng đợi ở giây thứ 30 và worker khác nhận nó, vì ẩn chỉ là hợp đồng thuê có hạn chứ không phải khoá. Còn outbox: nó cứu được trường hợp ghi thành công mà gửi lỗi — message trở thành hệ quả của một hàng đã commit, nên gửi lại được. Nó không cứu được việc giao trùng, và chính bước relay của outbox lại sinh thêm một nguồn trùng nữa. Còn vế "gửi xong mà commit lỗi": đó là chiều không xảy ra khi send chỉ chạy sau commit, nên outbox không cần vá chiều này.
-
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-flowchart LR
-  A[API] -->|một transaction| D[(orders + outbox)]
-  D --> R[relay: đọc hàng chưa gửi]
-  R -->|send| Q[[hàng đợi]]
-  R -->|đánh dấu đã gửi| D
-  Q --> W[worker]
-  W -->|khoá message_id| D
+```text
+API ──một transaction──► [ orders + outbox ]  (cùng commit)
+                                │
+                                ▼
+                        relay: đọc hàng chưa gửi
+                                │
+                    ┌───────────┴────────────┐
+                    ▼                        ▼
+              send lên hàng đợi        đánh dấu đã gửi
+                    │                  (transaction riêng)
+                    ▼                        │
+                 worker ◄────────────────────┘
+                    │
+                    └─► chèn message_id + việc nghiệp vụ (cùng transaction)
 ```
 
-1. **Ghi nguyên tử.** Một transaction ghi cả hàng nghiệp vụ lẫn hàng outbox, rồi commit, rồi trả 202 kèm mã việc. Commit hỏng thì không có gì được ghi, và cũng không có message nào để mồ côi.
+Chỗ chặn nằm ở mũi tên "đánh dấu đã gửi": nó ở ngoài lần gửi, nên chết giữa hai bước là gửi lại.
 
-   Đây là chỗ vá cách lệch thứ nhất. Trước đây, ghi xong mà gửi hỏng là mất; giờ hàng outbox đã nằm trong cùng lần commit đó, nên nó là bằng chứng còn lại rằng việc gửi còn nợ.
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ)
 
-2. **Relay đẩy lên hàng đợi.** Một tiến trình đọc các hàng outbox chưa gửi, gửi lên hàng đợi, rồi đánh dấu đã gửi. Trên PostgreSQL, đọc bằng `FOR UPDATE SKIP LOCKED` để nhiều relay chạy song song mà không tranh cùng một hàng: tài liệu PostgreSQL nói `SKIP LOCKED` bỏ qua những hàng không khoá được ngay, và dùng được để tránh tranh khoá khi nhiều consumer cùng đọc một bảng kiểu hàng đợi.
+- **Bước 1 — Transaction chỉ bao trùm một hệ thống:** commit của cơ sở dữ liệu không rollback được hàng đợi, và hàng đợi không giữ message lại chờ commit. Nên giữa hai lời gọi luôn có một khoảng thời gian.
+- **Bước 2 — Trong khoảng đó có đúng hai chiều lệch:** ghi thành công mà gửi lỗi thì mất việc; gửi thành công mà commit lỗi thì có message trỏ tới hàng không tồn tại.
+- **Bước 3 — Ghi message như một hàng dữ liệu:** `transactional outbox` (bảng hộp thư đi nằm cùng giao dịch database với dữ liệu nghiệp vụ) biến việc gửi thành hệ quả của commit, nên chiều mất biến mất.
+- **Bước 4 — Cái còn lại là trùng:** relay gửi xong rồi chết trước khi đánh dấu thì lần sau gửi lại. Chỉ consumer idempotent mới làm lần gửi thừa thành vô hại.
 
-   Bước đánh dấu là một transaction riêng, và đây là mấu chốt. Gửi xong mà chết trước khi đánh dấu thì lần sau relay gửi lại. Đó là nguồn trùng thứ hai, và outbox không xoá được nó — chỉ consumer idempotent mới làm nó vô hại.
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-3. **Worker tự chặn trùng.** Worker chèn `message_id` vào bảng đã xử lý trong cùng transaction với việc nghiệp vụ. Khoá chính làm trọng tài: hai worker chạy song song thì đúng một bên commit, bên kia nhận lỗi trùng khoá và chỉ xác nhận message.
+- **Cách tệ:** `send` ngay sau `commit`, visibility để mặc định 30 giây, `json.loads` nằm ngoài `try`. Hỏng ở ba điểm: mất việc khi gửi lỗi, chạy trùng khi lease hết hạn, và message hỏng định dạng quay vòng mãi không tới được hàng đợi lỗi.
+- **Cách tốt:** outbox trong cùng transaction, relay đọc bằng `FOR UPDATE SKIP LOCKED`, worker chèn `message_id` trong cùng transaction với việc nghiệp vụ, và tách lỗi tạm thời khỏi lỗi vĩnh viễn.
 
-4. **Tách lỗi tạm thời khỏi lỗi vĩnh viễn.** Lỗi hạ tầng thì gia hạn visibility để message quay lại sau. Message hỏng định dạng thì chép sang hàng đợi lỗi rồi mới xoá bản gốc — xoá không tự chuyển message đi đâu cả.
-
-5. **Hàng đợi lỗi có người đọc.** Redrive policy với số lần nhận tối đa đưa message độc sang hàng đợi lỗi, và cảnh báo khi độ sâu của nó khác 0.
-
-**Vì sao chỉ một chiều được vá.** Tài liệu về transactional outbox phát biểu kết quả đúng bằng một câu: message được bảo đảm gửi khi và chỉ khi transaction commit. "Khi và chỉ khi" là cả hai chiều ở mức transaction: không commit thì không có message, commit thì chắc chắn có đường để message ra đời.
-
-Nhưng "có đường" không phải "đúng một lần". Cũng trang đó nói rõ: relay có thể publish một message nhiều hơn một lần, ví dụ chết sau khi publish và trước khi ghi nhận đã publish, nên consumer phải idempotent. Đó chính là cách lệch còn lại: một message không tương ứng với một lần commit mới nào. Hình dạng của nó đổi từ "gửi trước rồi commit hỏng" sang "gửi hai lần cho một lần commit", nhưng bản chất thì giữ nguyên.
-
-## Bước 5. Thí nghiệm nhỏ
-
-Chạy trong thư mục `lessons/04-noi-hai-mang/l21/`. Script chỉ dùng thư viện chuẩn.
+**Kiểm chứng bằng code (chạy thật):**
 
 ```
+cd lessons/04-noi-hai-mang/l21
 python outbox_sim.py
 ```
 
-Kết quả đã chạy trên máy này:
-
 ```
-== Kịch bản 1: commit xong, gửi message thì lỗi ==
-  gửi thất bại: hàng đợi không phản hồi
-  hàng đã commit : 1
-  message đã gửi : 0
-  số mất         : 1   (hàng có, message không có)
-  số trùng       : 0   (message thừa cho cùng một hàng)
-  số ma          : 0   (message không có hàng nào)
-
-== Kịch bản 2: gửi message xong, commit thì lỗi ==
-  commit thất bại, đã rollback
-  hàng đã commit : 0
-  message đã gửi : 1
-  số mất         : 0   (hàng có, message không có)
-  số trùng       : 0   (message thừa cho cùng một hàng)
-  số ma          : 1   (message không có hàng nào)
-
-== Kịch bản 3: outbox, relay gửi xong rồi chết trước khi đánh dấu ==
-  sau commit: 1 hàng, 1 hàng outbox, 0 đã đánh dấu
-  relay lần 1: thấy 1 hàng chưa gửi
-    gửi message cho order-3
-    tiến trình chết trước khi kịp đánh dấu sent = 1
-  relay lần 2: thấy 1 hàng chưa gửi
-    gửi message cho order-3
-    đánh dấu sent = 1
-  hàng đã commit : 1
-  message đã gửi : 2
-  số mất         : 0   (hàng có, message không có)
-  số trùng       : 1   (message thừa cho cùng một hàng)
-  số ma          : 0   (message không có hàng nào)
-
-  bỏ qua message trùng order-3:invoice
-  hoá đơn thực tế sau khi consumer idempotent: 1 trong khi đã gửi 2 message
-
 == Tổng hợp ==
 kịch bản                            gửi   mất  trùng   ma
 1. commit ok, gửi lỗi                 0     1      0    0
@@ -123,95 +84,41 @@ kịch bản                            gửi   mất  trùng   ma
 3. outbox, relay chết giữa chừng      2     0      1    0
 ```
 
-Ba dòng cuối là toàn bộ bài học, và chúng do script đếm trên dữ liệu thật của từng kịch bản, không phải số dán tay.
+Ba dòng là toàn bộ bài học, và script đếm chúng trên dữ liệu thật của từng kịch bản. Dòng 3 là dòng quan trọng: outbox không xoá được trùng, nó chỉ chuyển chiều lệch từ "mất" sang "trùng". Dòng cuối của output đầy đủ chứng minh phần còn lại: hai message đã gửi, nhưng bảng `processed` có khoá chính trên `message_id` nên lần thứ hai bị bỏ qua, và hoá đơn thực tế là 1.
 
-- Kịch bản 1: hàng có, message không. Đây là chiều **mất**, và là chiều outbox vá.
-- Kịch bản 2: message có, hàng không. Đây là chiều **ma**. Ở dạng ngây thơ nó xảy ra vì gửi trước rồi commit; outbox loại bỏ đúng thứ tự đó.
-- Kịch bản 3: một hàng, hai message. Không mất, không ma, nhưng **trùng**. Outbox không cứu được dòng này — nó chỉ chuyển chiều lệch từ mất sang trùng, và trùng là chiều mà chỉ consumer idempotent mới dập được.
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-Dòng cuối cùng của output là bằng chứng cho câu đó: hai message đã gửi, nhưng bảng `processed` có khoá chính trên `message_id`, nên lần thứ hai nhận `IntegrityError` và bị bỏ qua. Hoá đơn thực tế là 1.
+- **Được gì:** một hàng đã commit chắc chắn sinh ra message; việc gửi thành bước có thể thử lại; giao trùng trở thành vô hại thay vì phải đi đền khách.
+- **Đánh đổi gì:** thêm một bảng, một relay chạy liên tục, một bảng khoá phải dọn. Độ trễ tăng thêm một nhịp quét — relay chạy mỗi phút thì mọi việc chậm thêm tới một phút. Visibility dài cũng có giá ngược lại: worker chết thật thì message nằm ẩn lâu hơn.
+- **Khi nào KHÔNG nên dùng:** việc không quan trọng, ví dụ một thông báo đẩy trong ứng dụng — bỏ một cái cũng không sao thì gửi thẳng sau commit đơn giản hơn nhiều. Cũng đừng dùng khi message nằm trong chính cơ sở dữ liệu: lúc đó một transaction là đủ.
 
-Ba điều cần nói rõ về phạm vi mô phỏng. Cơ sở dữ liệu là **SQLite trong bộ nhớ**, không phải PostgreSQL: một tiến trình, một kết nối, không có hai phiên tranh nhau, nên `SKIP LOCKED` không có gì để làm và script không dùng nó. Hàng đợi là **một list**, không phải SQS: không có visibility timeout, không có receipt handle, và "chết" chỉ là một dòng `break`. Cái giữ lại được là thứ tự hai bước và chỗ một bước thành công còn bước kia thất bại.
+---
 
-**Tự thử:** bỏ `break` ở lần relay thứ nhất. Số message gửi vẫn là 2, nhưng đó là một relay chạy hai lượt trên cùng hàng, không phải một relay chết rồi khởi động lại.
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-## Bước 6. Bốn câu luyện tập
+### Câu 1: Vì sao không thể đặt `queue.send` vào trong cùng transaction với `INSERT`?
 
-Trả lời trước khi mở đáp án.
+- **Trả lời mẫu (30–60 giây):** Vì transaction của cơ sở dữ liệu không bao trùm hàng đợi. Hàng đợi không tham gia commit đó nên không rollback theo, và cũng không giữ message lại chờ commit. Muốn một transaction thì phải dùng transaction phân tán, mà ghép chặt hai hệ thống là điều thường không mong muốn.
+- **Lỗi hay mắc khi trả lời:** nói "gửi sau commit là an toàn vì commit đã xong". Cách nói đúng: commit xong mà gửi lỗi thì việc đó mất, và không ai biết.
 
-**Câu 1.** Vì sao không thể đặt `queue.send` vào trong cùng transaction với `INSERT`?
+### Câu 2: Outbox vá chiều nào, và vì sao nó không vá được chiều còn lại?
 
-<details>
-<summary>Đáp án</summary>
+- **Trả lời mẫu (30–60 giây):** Outbox vá chiều mất: message trở thành một hàng trong cùng transaction nên commit xong là chắc chắn có đường để nó ra đời. Nó không vá chiều trùng, vì bước "đánh dấu đã gửi" là một transaction riêng nằm sau khi message đã ra khỏi tay. Relay gửi xong rồi chết trước khi đánh dấu là chuyện bình thường, không phải sự cố hiếm.
+- **Lỗi hay mắc khi trả lời:** nói "outbox cho exactly-once". Cách nói đúng: outbox cho at-least-once; exactly-once về kết quả chỉ có khi consumer idempotent.
 
-Kết luận: vì transaction của cơ sở dữ liệu không bao trùm hàng đợi. Hàng đợi không tham gia commit đó, nên nó không rollback theo, và cũng không giữ message lại chờ commit.
+### Câu 3: Worker nhận cùng một message hai lần. Cần gì để khách chỉ nhận một hoá đơn?
 
-Tài liệu về outbox nói rõ lý do người ta không dùng transaction phân tán: cơ sở dữ liệu hoặc broker có thể không hỗ trợ, và kể cả khi hỗ trợ thì ghép chặt hai hệ thống là điều thường không mong muốn.
+- **Trả lời mẫu (30–60 giây):** Cần một khoá chống trùng được ghi trong cùng transaction với việc nghiệp vụ. Chèn `message_id` vào bảng đã xử lý; khoá chính làm trọng tài nên lần thứ hai nhận lỗi trùng khoá và chỉ xác nhận message. Chỗ đặt khoá quan trọng hơn bản thân khoá: nếu chèn ở transaction riêng thì có khoảng thời gian chết giữa "đã ghi khoá" và "đã gửi hoá đơn".
+- **Lỗi hay mắc khi trả lời:** nói "SELECT kiểm tra trước rồi mới chạy là đủ". Cách nói đúng: hai worker cùng `SELECT` sẽ cùng thấy "chưa có" ở mức `READ COMMITTED`, nên chỉ ràng buộc nguyên tử mới chặn được.
 
-Điều kiện để đúng: cơ sở dữ liệu và hàng đợi là hai hệ thống riêng. Nếu message nằm trong cùng cơ sở dữ liệu, ví dụ một bảng làm hàng đợi, thì một transaction là đủ.
+### Câu 4: Vì sao vẫn phải giữ visibility timeout dài, dù đã có outbox và consumer idempotent?
 
-Cách kiểm: gửi message trong transaction rồi rollback, sau đó đọc hàng đợi. Message vẫn ở đó.
+- **Trả lời mẫu (30–60 giây):** Vì outbox giải bài toán mất message ở phía ghi, không giải bài toán giao trùng ở phía đọc. Visibility ngắn hơn thời gian xử lý thì message hiện lại giữa lúc worker còn đang chạy. Idempotent làm lần chạy thừa vô hại về kết quả, nhưng không làm nó miễn phí: vẫn tốn CPU, vẫn gọi dịch vụ ngoài. Ở 10.000 message và 15% bị giao lại, đó là 1.500 lần chạy thừa.
+- **Lỗi hay mắc khi trả lời:** nói "đã idempotent thì visibility bao nhiêu cũng được". Cách nói đúng: idempotent bảo vệ kết quả, không bảo vệ tài nguyên.
 
-</details>
-
-**Câu 2.** Outbox vá chiều nào, và vì sao nó không vá được chiều còn lại?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: outbox vá chiều mất — hàng đã commit mà không có message — bằng cách ghi message như một hàng trong cùng transaction, rồi để relay gửi lại cho tới khi được. Nó không vá chiều trùng, vì bước "đánh dấu đã gửi" là một transaction riêng nằm sau khi message đã ra khỏi tay.
-
-Relay gửi xong rồi chết trước khi đánh dấu là chuyện bình thường, không phải sự cố hiếm. Lần chạy sau nó thấy hàng vẫn chưa gửi và gửi lại. Đó là at-least-once, và outbox không có cách nào biến nó thành exactly-once.
-
-Điều kiện để đúng: bước đánh dấu nằm ngoài transaction đã gửi. Nếu gửi và đánh dấu nằm trong cùng một transaction nguyên tử với hàng đợi thì mới hết trùng — điều kiện đó không tồn tại khi hàng đợi là hệ thống riêng.
-
-Cách kiểm: dừng relay ngay sau lời gọi gửi, khởi động lại, đếm message trong hàng đợi. Con số lớn hơn số hàng outbox.
-
-</details>
-
-**Câu 3.** Worker nhận cùng một message hai lần. Cần gì để khách chỉ nhận một hoá đơn?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: cần một khoá chống trùng được ghi trong cùng transaction với việc nghiệp vụ. Chèn `message_id` vào bảng đã xử lý; khoá chính làm trọng tài, nên lần thứ hai nhận lỗi trùng khoá và chỉ xác nhận message mà không làm lại việc.
-
-Chỗ đặt khoá quan trọng hơn bản thân khoá. Nếu chèn khoá ở transaction riêng, có khoảng thời gian giữa "đã ghi khoá" và "đã gửi hoá đơn", và chết trong khoảng đó là mất việc. Cùng transaction thì hai thứ cùng sống hoặc cùng chết.
-
-Điều kiện để đúng: `message_id` ổn định qua các lần giao. Nếu mỗi lần giao sinh một ID mới thì khoá không bắt được gì.
-
-Cách kiểm: chạy cùng message hai lần rồi đếm hoá đơn. Phải là một, và lần thứ hai phải có một dòng lỗi trùng khoá trong log.
-
-</details>
-
-**Câu 4.** Vì sao vẫn phải giữ visibility timeout dài, dù đã có outbox và consumer idempotent?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: vì outbox giải bài toán mất message ở phía ghi, không giải bài toán giao trùng ở phía đọc. Visibility timeout ngắn hơn thời gian xử lý thì message hiện lại giữa lúc worker còn đang chạy, và mọi lần giao trùng đều phải trả giá bằng công việc chạy hai lần.
-
-Idempotent làm lần chạy thừa vô hại về kết quả, nhưng không làm nó miễn phí: nó vẫn tốn CPU, vẫn gọi dịch vụ ngoài, vẫn chiếm một worker. Ở 10.000 message và 15% bị giao lại, đó là 1.500 lần chạy thừa.
-
-Điều kiện để đúng: thời gian xử lý thật lớn hơn visibility timeout. Nếu xử lý luôn xong trong 2 giây thì 30 giây là dư.
-
-Cách kiểm: so p99 thời gian xử lý với visibility timeout. Nếu p99 lớn hơn, log sẽ có hai dòng cho cùng một `message_id`, cách nhau đúng bằng visibility timeout.
-
-</details>
-
-## Bước 7. Câu neo
-
-> Hai hệ thống không có transaction chung thì không có thứ tự nào là an toàn; outbox biến việc gửi thành hệ quả của commit, nên cái còn lại phải chặn là giao trùng.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
-
-- SQS giao ít nhất một lần, và ứng dụng phải idempotent: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html — xác nhận "you might get that message copy again" và "Design your applications to be idempotent".
-- Transactional outbox, "sent if and only if the transaction commits", và relay có thể publish hơn một lần: https://microservices.io/patterns/data/transactional-outbox.html — cũng là nguồn cho câu "consumer must be idempotent, perhaps by tracking the IDs of the messages that it has already processed".
-- `FOR UPDATE SKIP LOCKED` bỏ qua hàng không khoá được ngay, dùng được cho bảng kiểu hàng đợi có nhiều consumer: https://www.postgresql.org/docs/current/sql-select.html
-
-Chưa kiểm trong bài này: visibility timeout mặc định của SQS; hành vi redrive policy; chi phí thật của một relay chạy liên tục. Con số 10.000 tệp, 30 giây, 45 giây, 15%, 340 và 200 đều là giả định của kịch bản. Script ở bước 5 dùng SQLite trong bộ nhớ và một list làm hàng đợi — mô phỏng thứ tự hai bước, không phải PostgreSQL và không phải SQS.
-
-</details>
+- https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html — SQS giao ít nhất một lần, ứng dụng phải idempotent.
+- https://microservices.io/patterns/data/transactional-outbox.html — "sent if and only if the transaction commits"; relay có thể publish hơn một lần.
+- https://www.postgresql.org/docs/current/sql-select.html — `FOR UPDATE SKIP LOCKED` bỏ qua hàng không khoá được ngay.

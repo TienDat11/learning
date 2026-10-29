@@ -1,87 +1,102 @@
 # L06: Vì sao thêm consumer không làm hàng đợi nhanh hơn
 
-> **Trạng thái:** bản viết lại đủ bảy bước, nằm ngoài `src/`. Chưa nối vào app, chưa đo với người đọc thứ hai.
-> **Số liệu:** mọi con số kịch bản là giả định, ghi "Giả sử" ở chỗ dùng. Không phải số đo của SQS thật, không phải mặc định của AWS. Thí nghiệm ở Bước 5 là **mô phỏng cơ chế** bằng thư viện chuẩn của Python, không gọi dịch vụ nào.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-**Tiên quyết:** biết một vòng lặp worker nhận việc rồi xử lý; biết việc xử lý có thể thất bại giữa chừng; biết một tác dụng phụ như gửi email là việc không nên làm hai lần.
+- **Nhảy bước:** Bước 3 tính ra 0,15 message mỗi giây rồi mới giải thích vì sao kích thước lô không đổi con số đó — người đọc phải tin trước, hiểu sau. Bước 4 mục 6 đưa `redrive policy`, `maxReceiveCount` và `dead-letter queue` trong một bullet, ba khái niệm mới cùng lúc.
+- **Thuật ngữ chưa giải thích:** `consumer`, `visibility timeout`, `receipt handle`, `long polling`, `redrive policy`, `maxReceiveCount`, `dead-letter queue`, `giao ít nhất một lần`, `backlog`, `throughput`. Có chỗ bài dùng chữ "at-least-once" và "idempotent" mà không có dòng tiếng Việt bên cạnh.
+- **Thiếu ví von / ví dụ trực diện:** không có phép ví von nào cho ý "message bị ẩn chứ không bị xoá". Sơ đồ là `mermaid sequenceDiagram`, không đọc được ở nhiều nơi. Cách tệ và Cách tốt không được đặt cạnh nhau.
+- **Câu quá dài / khô:** câu "Điều ít ai để ý: với lô 10, message cuối trong lô chỉ được xử lý xong ở giây 400, nhưng nó đã hết hạn ẩn từ giây 30." gộp phép tính, kết luận và hệ quả vào một dòng. Đoạn "Vì sao thêm consumer không làm hàng đợi nhanh hơn" cũng là một khối dày đặc.
 
-## Bước 1. Đoán trước
+---
 
-Giả sử sau một đợt nhập dữ liệu, hàng đợi còn 12 000 message tồn. Giả sử có 6 consumer, mỗi lần nhận tối đa 10 message và xử lý lần lượt từng message, mỗi message mất khoảng 40 giây. Giả sử visibility timeout (khoảng thời gian message bị ẩn sau khi một consumer nhận) đặt 30 giây.
+## Phần 2. Bài học viết lại
 
-Trước khi đọc tiếp, trả lời bốn câu:
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-1. Cả cụm xử lý được bao nhiêu message mỗi giây?
-2. Mất bao lâu để hết 12 000 message?
-3. Có message nào bị xử lý hai lần không?
-4. Nếu nâng visibility timeout lên 600 giây thì đổi lại cái gì?
+Giả sử sau một đợt nhập dữ liệu, hàng đợi còn 12 000 message tồn. Bạn có 6 consumer (tiến trình lấy việc ra làm), mỗi lần nhận tối đa 10 message, xử lý lần lượt, mỗi message khoảng 40 giây.
 
-Viết đáp án ra giấy. Đáp án nằm ở cuối bước 3.
+Bạn đặt `visibility timeout` (khoảng thời gian ẩn message khỏi các worker khác khi đang xử lý) là 30 giây.
 
-## Bước 2. Điều bạn đã biết
+Ba ngày sau, khách phàn nàn nhận hai email xác nhận cho cùng một đơn. Backlog thì gần như không giảm.
 
-Bạn đã từng viết một worker đọc việc từ một danh sách trong Redis hoặc một bảng trong cơ sở dữ liệu: lấy một dòng, đánh dấu "đang làm", làm xong thì xoá dòng đó. Nếu tiến trình chết giữa chừng, dòng vẫn còn đó và một worker khác nhặt lên.
+Đau ở đâu? Đau ở hai chỗ cùng lúc. Thứ nhất, **thêm consumer không làm hàng đợi nhanh hơn** nếu tài nguyên phía sau đã kín. Thứ hai, **message bị làm lại** mà không ai bấm gì — chỉ vì một tham số nhỏ hơn thời gian xử lý.
 
-Bài này giữ nguyên vòng lặp đó và thay từng khớp bằng hàng đợi:
+**Câu hỏi dự đoán:** Message đã được consumer nhận, vậy nó còn nằm trong hàng đợi không?
+**Đáp án:** còn. Nó chỉ bị ẩn tạm. Hết khoảng ẩn mà chưa có lệnh xoá thì nó hiện lại cho consumer khác.
 
-- Danh sách việc thành **hàng đợi** (queue), consumer hỏi hàng đợi theo lô thay vì tự quét bảng.
-- Cột "đang làm" thành **visibility timeout**: message không bị đánh dấu, nó bị ẩn tạm.
-- Dòng bị xoá thành lời gọi xoá có **receipt handle** (mã nhận, cấp riêng cho mỗi lần giao).
-- "Worker chết thì dòng còn đó" thành một mô hình có tên: **giao ít nhất một lần**.
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-Khác biệt cần nhớ: ở danh sách của bạn, "đang làm" là một trạng thái bạn tự quản. Ở hàng đợi, hàng đợi không biết consumer còn sống hay đã chết — nó chỉ biết đã nhận được lệnh xoá hay chưa.
+Một quầy phát việc ở hội chợ. Bạn rút một xấp phiếu, mỗi phiếu là một việc. Quầy đánh dấu xấp phiếu đó là "đang có người làm" trong 30 giây. Nếu sau 30 giây bạn chưa trả phiếu về kèm dấu "xong", quầy coi như bạn bỏ đi và đưa phiếu cho người khác — người đó làm lại việc từ đầu.
 
-## Bước 3. Một ví dụ có số
+*Giới hạn của phép ví von:* quầy thật biết bạn còn đứng đó hay không; hàng đợi thì không. Nó chỉ biết đã nhận được lệnh xoá hay chưa.
 
-Giả sử mỗi consumer xử lý lần lượt từng message, mỗi message 40 giây. Một consumer làm được 1 ÷ 40 = 0,025 message mỗi giây. Sáu consumer cho 6 ÷ 40 = 0,15 message mỗi giây.
+```text
+Hàng đợi:  [m1][m2][m3] ................ [m12000]
 
-Giả sử lô 10 message không đổi con số đó. Lô chỉ quyết định bao nhiêu message bị ẩn cùng lúc, không quyết định mỗi message mất bao lâu. Công thức viết theo lô cũng ra cùng kết quả: consumer × lô ÷ thời gian cả lô = 6 × 10 ÷ (10 × 40) = 0,15.
+Consumer 1 nhận lô 10  →  10 message bị ẨN 30 giây
+  giây 0    : bắt đầu m1
+  giây 30   : m1 hết hạn ẩn, CHƯA xoá  →  hiện lại
+  giây 40   : m1 mới xong ở consumer 1
+  giây 31   : consumer 2 (đang rảnh) nhận lại m1  ←  GIAO TRÙNG
 
-Với 12 000 message và 0,15 message mỗi giây, thời gian là 12 000 ÷ 0,15 = 80 000 giây, khoảng 22 giờ.
+Thông lượng = số consumer ÷ thời gian một message
+   6 ÷ 40 giây = 0,15 message/giây
+   12 000 ÷ 0,15 = 80 000 giây ≈ 22 giờ
 
-Bây giờ đến phần trùng lặp. Giả sử visibility timeout 30 giây, ngắn hơn 40 giây cần để xử lý. Message thứ nhất trong lô được nhận ở giây 0, bị ẩn tới giây 30, nhưng consumer còn bận tới giây 40. Từ giây 30 tới 40, message đó đã hiện lại và chưa bị xoá: một consumer khác rảnh trong khoảng đó sẽ nhận nó và làm lại từ đầu.
-
-Điều ít ai để ý: với lô 10, message cuối trong lô chỉ được xử lý xong ở giây 400, nhưng nó đã hết hạn ẩn từ giây 30. Vì vậy visibility timeout phải phủ **cả lô**, không phải một message. Giả sử đặt 600 giây thì cả lô nằm gọn trong khoảng ẩn.
-
-**Đáp án bước 1:** (1) 0,15 message mỗi giây; (2) khoảng 80 000 giây, hơn 22 giờ; (3) có, vì 30 giây ngắn hơn 40 giây và ngắn hơn nhiều so với 400 giây của cả lô; (4) hết trùng nhưng message của một consumer chết bị treo lâu hơn trước khi được giao lại.
-
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-sequenceDiagram
-  participant C1 as Consumer 1
-  participant Q as Hàng đợi
-  participant C2 as Consumer 2
-  C1->>Q: nhận lô 10 message
-  Q-->>C1: 10 message + receipt handle, ẩn 30 giây
-  Note over Q: giây 30: message hiện lại vì chưa có lệnh xoá
-  C2->>Q: nhận lô
-  Q-->>C2: cùng message đó, receipt handle mới
-  C1->>Q: xoá bằng receipt handle cũ
-  C2->>Q: làm lại việc, rồi xoá
+Trần phía sau: chỉ 6 suất xử lý song song
+   thêm consumer  →  thông lượng ĐỨNG YÊN, giao trùng TĂNG
 ```
 
-1. **Consumer hỏi, hàng đợi không đẩy.** Consumer gọi API nhận message theo lô. Đây là mô hình kéo: số việc song song bằng số consumer nhân số message đang được xử lý cùng lúc, không phải bằng số message trong hàng đợi.
-2. **Message bị ẩn, không bị xoá.** Ngay khi trả về, message vẫn nằm trong hàng đợi nhưng không consumer nào khác nhận được trong khoảng visibility timeout. Nó không biến mất; nó chỉ tạm vô hình.
-3. **Xoá chỉ sau khi xong việc, bằng receipt handle.** Mỗi lần giao cấp một receipt handle khác nhau. Xoá phải dùng handle của lần giao hiện tại. Nếu consumer không xoá trước khi hết khoảng ẩn, message hiện lại và có thể được giao cho consumer khác — kể cả khi consumer đầu vẫn đang chạy.
-4. **Hàng đợi không biết consumer đã chết.** Nó chỉ biết chưa nhận được lệnh xoá. Vì vậy message của một consumer chết quay lại sau đúng khoảng visibility timeout, không phải ngay lúc chết. Đây là lý do phải chọn giữa hai cái giá: khoảng ẩn ngắn thì phục hồi nhanh nhưng dễ trùng, khoảng ẩn dài thì hết trùng nhưng chậm phục hồi.
-5. **Long polling giảm số lời gọi rỗng.** Thay vì hỏi liên tục và nhận về rỗng, consumer đặt thời gian chờ để hàng đợi giữ request lại cho tới khi có message hoặc hết thời gian chờ. Cách này không làm message nhanh hơn; nó chỉ bỏ bớt các lời gọi vô ích.
-6. **Đếm số lần nhận, rồi chuyển sang dead-letter queue.** Redrive policy đặt `maxReceiveCount`: số lần một message được giao tối đa trước khi bị chuyển sang dead-letter queue (hàng đợi dành cho message hỏng). Không có bước này, một message luôn lỗi sẽ quay vòng mãi và không ai thấy nó.
-7. **Giao ít nhất một lần, nên tác dụng phụ phải chịu lặp.** Có hai nguồn trùng độc lập: visibility timeout ngắn hơn thời gian xử lý, và consumer chết sau khi đã làm xong việc nhưng trước khi kịp xoá. Cả hai đều nằm ngoài tầm kiểm soát của code. Vì vậy mọi tác dụng phụ phải có khoá chống lặp theo nội dung hoặc mã message, và khoá đó phải được ghi **trước** khi gọi dịch vụ ngoài.
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ, mỗi bước 1 ý)
 
-**Vì sao thêm consumer không làm hàng đợi nhanh hơn.** Thông lượng xấp xỉ số consumer chia thời gian một message. Công thức đó chỉ đúng khi tài nguyên phía sau còn dư. Nếu mỗi message phải gọi một dịch vụ chỉ nhận được 6 việc song song, thì thông lượng bị chặn ở 6 ÷ 40 = 0,15 message mỗi giây, dù bạn có 6 hay 60 consumer. Thêm consumer khi đó không tăng số việc xong; nó chỉ tăng số consumer đang rảnh, và mỗi consumer rảnh là một cơ hội nhận lại message vừa hiện ra — tức là tăng giao trùng.
+- **Bước 1 — Hàng đợi là nơi giữ việc, consumer là nơi làm việc:** consumer chủ động hỏi hàng đợi, hàng đợi không đẩy. Số việc đang làm cùng lúc bằng số consumer, không bằng số message trong hàng đợi.
+- **Bước 2 — Nhận message là ẩn nó, không phải xoá nó:** message vẫn nằm trong hàng đợi nhưng không ai khác nhận được trong khoảng `visibility timeout`. Hết khoảng đó mà chưa xoá thì nó hiện lại.
+- **Bước 3 — Xoá phải dùng `receipt handle` của lần giao hiện tại:** mỗi lần giao cấp một mã khác nhau. Dùng mã cũ để xoá là xoá sai lần giao, và message vẫn quay lại.
+- **Bước 4 — Thông lượng bằng số consumer chia thời gian một message:** 6 consumer, mỗi message 40 giây, ra 0,15 message mỗi giây. Kích thước lô không đổi con số này: lô chỉ quyết định bao nhiêu message bị ẩn cùng lúc.
+- **Bước 5 — `visibility timeout` phải phủ cả lô, không phải một message:** với lô 10 và 40 giây mỗi message, message cuối trong lô chỉ xong ở giây 400. Nếu khoảng ẩn là 30 giây thì nó đã hiện lại từ giây 30, suốt 370 giây.
+- **Bước 6 — Hàng đợi không biết consumer đã chết:** message của một consumer chết quay lại sau đúng khoảng ẩn, không phải ngay lúc chết. Khoảng ẩn ngắn thì phục hồi nhanh nhưng dễ trùng; dài thì hết trùng nhưng chậm phục hồi.
+- **Bước 7 — Vì thế mọi tác dụng phụ phải chịu được lặp, và message hỏng phải có chỗ đi:** mô hình là giao ít nhất một lần. `Dead-Letter Queue - DLQ` (hàng đợi chứa các message xử lý lỗi nhiều lần) nhận message sau `maxReceiveCount` lần giao, để nó không quay vòng mãi.
 
-## Bước 5. Thí nghiệm nhỏ
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-Script mô phỏng bằng thư viện chuẩn, chạy trong `lessons/01-aws/l06/`. Đồng hồ chạy theo từng giây rời rạc; mỗi consumer giữ một lô và xử lý lần lượt. Đây là mô phỏng cơ chế, **không phải SQS thật**: không có mạng, không có độ trễ API, không có hàng đợi FIFO.
+- **Cách tệ:** thấy backlog không giảm thì thêm consumer, và để visibility timeout ở mức mặc định.
 
+```text
+# Cấu hình sai điển hình (mô tả, không phải lệnh chạy được):
+#   - visibility timeout = 30 giây, trong khi một lô 10 message mất 400 giây
+#   - tăng consumer từ 6 lên 12, 24, 48 vì "backlog không giảm"
+#   - handler gửi email ở đầu hàm, không có khoá chống lặp
 ```
+
+Điều gì xảy ra: thông lượng đứng yên ở 0,15 message mỗi giây vì tài nguyên phía sau chỉ nhận 6 việc song song. Giao trùng tăng gấp đôi mỗi lần bạn nhân đôi consumer. Khách nhận thêm email trùng, còn backlog thì vẫn thế.
+
+Vì sao hỏng: bạn tăng số người bốc phiếu, không tăng số bếp. Và mỗi người rảnh thêm là một chỗ nữa có thể nhặt lại message đang bay.
+
+- **Cách tốt:** đo trước, đặt visibility timeout theo thời gian của cả lô, và cho mỗi message một khoá chống lặp.
+
+```python
+def handle(message, receipt_handle):
+    key = message["message_id"]
+    if not ledger.claim(key):                 # đã xử lý thì bỏ qua
+        queue.delete(ReceiptHandle=receipt_handle)
+        return
+    do_work(message)
+    send_email(message["to"])                 # sau khi việc chính xong
+    queue.delete(ReceiptHandle=receipt_handle)
+
+# visibility timeout >= thời gian xử lý cả lô + biên an toàn
+# ví dụ: lô 10 × 40 giây = 400 giây → đặt 600 giây
+```
+
+Vì sao đúng: khoảng ẩn dài hơn thời gian xử lý nên message không hiện lại giữa chừng. Khoá chống lặp xử lý nốt trường hợp consumer chết sau khi đã làm xong nhưng trước khi kịp xoá. Và bạn chỉ thêm consumer sau khi biết tài nguyên phía sau còn suất trống.
+
+- **Kiểm chứng bằng code (chạy thật):** chạy trong `lessons/01-aws/l06/`. Đây là mô phỏng cơ chế, không phải SQS thật: không có mạng, không có độ trễ API, không có hàng đợi FIFO.
+
+```bash
 python visibility.py
 ```
 
-Kết quả đã chạy trên máy này (12 000 message, lô 10, 40 giây mỗi message):
-
-```
+```text
 Kịch bản: 12 000 message, lô 10, mỗi message 40 giây xử lý.
 
    consumer   vis  trần sau   lần giao  giao trùng  xử lý lại     giây   msg/giây
@@ -103,84 +118,45 @@ Công thức: consumer × lô ÷ thời gian một lô = consumer ÷ thời gian
   trần phía sau 6 suất ÷ 40 giây = 0.150 msg/giây
 ```
 
-Bốn điều đọc được từ bảng:
+Bốn điều đọc được từ bảng. Thông lượng đi theo số consumer, tuyến tính — cho tới khi có trần. Giao trùng xuất hiện đúng khi khoảng ẩn ngắn hơn thời gian xử lý: 54 lần ở 30 giây, 0 lần ở 600 giây, cùng code cùng dữ liệu. Thêm consumer làm trùng tăng: 6 lên 12 thì 54 lên 108. Và dòng cuối cùng là câu trả lời cho cả bài: 12 consumer nhưng chỉ 6 suất phía sau vẫn cho 0,150 message mỗi giây, còn giao trùng tăng lên 114.
 
-- **Thông lượng đi theo số consumer, tuyến tính.** 2 → 6 → 12 consumer cho 0,050 → 0,150 → 0,300 message mỗi giây. Con số này chỉ phụ thuộc thời gian một message.
-- **Giao trùng xuất hiện đúng khi khoảng ẩn ngắn hơn thời gian xử lý.** 54 lần ở cấu hình 6 consumer với 30 giây; nâng lên 600 giây thì về 0. Cùng code, cùng dữ liệu, khác một tham số.
-- **Thêm consumer làm trùng tăng.** 6 → 12 consumer: giao trùng 54 → 108, đúng gấp đôi. Mỗi consumer thêm vào là một chỗ nữa có thể nhặt lại message đang bay.
-- **Có trần phía sau thì thêm consumer không tăng thông lượng.** 12 consumer nhưng chỉ 6 suất xử lý song song: vẫn 0,150 message mỗi giây, bằng đúng 6 consumer, còn giao trùng tăng lên 114.
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-**Tự thử:** giữ 6 consumer và visibility timeout 30 giây, đổi thời gian xử lý một message xuống 10 giây. Giao trùng còn bao nhiêu, và vì sao?
+- **Được gì:** hàng đợi tách việc chậm ra khỏi đường trả lời người dùng, và cho bạn thử lại tự động khi worker chết. Consumer hỏng không làm mất việc.
+- **Đánh đổi gì (chi phí / độ trễ / độ phức tạp):** mọi tác dụng phụ phải idempotent, tức thêm một nơi lưu khoá và một lời gọi mạng cho mỗi message. Visibility timeout dài thì phục hồi chậm; ngắn thì giao trùng. Thêm consumer khi tài nguyên phía sau đã kín chỉ tăng trùng chứ không tăng thông lượng.
+- **Khi nào KHÔNG nên dùng:** đừng dùng hàng đợi khi người dùng đang chờ kết quả ngay — thêm một khớp chỉ làm chậm. Đừng dùng khi thứ tự tuyệt đối là bắt buộc và bạn không kiểm soát được khoá phân vùng của hàng đợi FIFO. Và đừng dùng hàng đợi để "thay" việc tối ưu: nếu mỗi message mất 40 giây vì một truy vấn thiếu index, sửa truy vấn rẻ hơn nhiều so với nhân bản consumer.
 
-## Bước 6. Bốn câu luyện tập
+---
 
-Trả lời trước khi mở đáp án.
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-**Câu 1.** Một consumer đang xử lý message thì message đó nằm ở đâu, và vì sao không ai khác nhận được?
+### Câu 1: Vì sao message đã được nhận vẫn có thể bị xử lý hai lần?
 
-<details>
-<summary>Đáp án</summary>
+- **Trả lời mẫu (30–60 giây):** Vì nhận message chỉ là ẩn nó, không phải xoá nó. Hết `visibility timeout` mà chưa có lệnh xoá thì message hiện lại cho consumer khác. Có hai nguồn trùng độc lập: khoảng ẩn ngắn hơn thời gian xử lý, và consumer chết sau khi đã làm xong nhưng trước khi kịp xoá. Cả hai đều nằm ngoài tầm kiểm soát của code, nên mô hình là giao ít nhất một lần. Vì vậy mọi tác dụng phụ phải idempotent.
+- **Lỗi hay mắc khi trả lời:** nói "xoá message là xong". Cách nói đúng: xoá bằng `receipt handle` của lần giao hiện tại, và khoá chống lặp phải ghi trước tác dụng phụ.
 
-Kết luận: message vẫn nằm trong hàng đợi nhưng bị ẩn trong khoảng visibility timeout. Hàng đợi không chuyển quyền sở hữu, nó chỉ tạm không trả message đó cho lần nhận khác. Hết khoảng ẩn mà chưa có lệnh xoá thì message hiện lại.
+### Câu 2: Thêm consumer có làm hàng đợi nhanh hơn không?
 
-Điều kiện để đúng: khoảng ẩn phải còn hiệu lực. Nếu thời gian xử lý dài hơn khoảng ẩn, message hiện lại giữa chừng và consumer khác nhận được, dù consumer đầu vẫn đang làm.
+- **Trả lời mẫu (30–60 giây):** Chỉ khi tài nguyên phía sau còn suất trống. Thông lượng xấp xỉ số consumer chia thời gian một message, nên 6 consumer với 40 giây cho 0,15 message mỗi giây. Nhưng nếu mỗi message gọi một dịch vụ chỉ nhận 6 việc song song thì thông lượng bị chặn ở đúng 0,15, dù bạn có 60 consumer. Lúc đó thêm consumer chỉ tăng giao trùng. Cách biết: nhân đôi consumer rồi đo lại thông lượng.
+- **Lỗi hay mắc khi trả lời:** nói "thêm consumer là tăng thông lượng tuyến tính" mà không nêu điều kiện. Cách nói đúng: tuyến tính cho tới trần của tài nguyên phía sau.
 
-Cách kiểm: trong lúc một consumer đang giữ message, gọi API nhận từ một consumer khác và thấy lô rỗng. Chờ qua mốc hết khoảng ẩn rồi gọi lại, thấy message xuất hiện với receipt handle mới.
+### Câu 3: Visibility timeout nên đặt bao nhiêu?
 
-</details>
+- **Trả lời mẫu (30–60 giây):** Dài hơn thời gian xử lý **cả lô**, cộng một biên an toàn. Với lô 10 và 40 giây mỗi message, cả lô mất khoảng 400 giây, nên tôi đặt 600 giây chứ không phải 30. Nếu đặt ngắn hơn, message cuối lô hiện lại rất lâu trước khi được xoá, và bạn nhận giao trùng. Cái giá của khoảng ẩn dài là message của một consumer chết bị treo lâu hơn trước khi được giao lại.
+- **Lỗi hay mắc khi trả lời:** đặt theo thời gian của một message. Cách nói đúng: theo thời gian của cả lô, vì cả lô bị ẩn cùng lúc.
 
-**Câu 2.** Vì sao visibility timeout ngắn hơn thời gian xử lý lại gây xử lý trùng, và vì sao lô làm chuyện này nặng hơn?
+### Câu 4: Message luôn lỗi thì xử lý thế nào?
 
-<details>
-<summary>Đáp án</summary>
+- **Trả lời mẫu (30–60 giây):** Tôi cấu hình `redrive policy` với `maxReceiveCount`, để sau một số lần nhận thì message sang `Dead-Letter Queue`. Không có bước này, message lỗi quay vòng mãi và không ai thấy nó. Đồng thời tôi phân biệt lỗi tạm thời và lỗi vĩnh viễn: lỗi dữ liệu sai thì thử lại chỉ nhân tác dụng phụ, nên đẩy thẳng vào DLQ. DLQ cần người xem, và cần một cảnh báo khi nó có message — nếu không nó chỉ là nơi chôn việc.
+- **Lỗi hay mắc khi trả lời:** coi DLQ là giải pháp khử trùng. Cách nói đúng: DLQ chặn vòng lặp vô hạn; khử trùng là việc của khoá idempotency trong code.
 
-Kết luận: vì message hiện lại trước khi lần xử lý đầu kết thúc, nên một consumer khác nhận được nó và làm lại từ đầu. Với lô, khoảng ẩn tính từ lúc nhận cho từng message, nhưng message cuối trong lô chỉ được xử lý xong sau `lô × thời gian một message`, nên khoảng ẩn phải phủ cả lô chứ không phải một message.
-
-Điều kiện để đúng: phải có consumer khác rảnh trong khoảng message đã hiện lại mà chưa bị xoá. Nếu mọi consumer đều bận suốt khoảng đó thì trùng không xảy ra, nhưng đó là may mắn về thời điểm, không phải thiết kế.
-
-Cách kiểm: so thời gian xử lý trung bình của một lô với giá trị visibility timeout đang cấu hình. Trong thí nghiệm ở Bước 5, 6 consumer với 30 giây cho 54 lần giao trùng; nâng lên 600 giây cho 0.
-
-</details>
-
-**Câu 3.** Backlog không giảm. Làm sao biết nên thêm consumer hay nên giảm thời gian mỗi message?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: đo trước, vì hai cách sửa hai nguyên nhân khác nhau. Nếu tăng số consumer mà thông lượng tăng gần tuyến tính thì nút thắt là số consumer. Nếu tăng mà thông lượng đứng yên thì nút thắt nằm trong từng message hoặc ở tài nguyên phía sau.
-
-Điều kiện để đúng: phần lớn thời gian mỗi message là chờ I/O độc lập, và tài nguyên phía sau còn suất trống. Nếu mỗi message gọi một dịch vụ chỉ nhận 6 việc song song thì thêm consumer chỉ tăng giao trùng — như dòng cuối của bảng ở Bước 5.
-
-Cách kiểm: nhân đôi số consumer và đo lại thông lượng. Tăng gần gấp đôi thì nút thắt ở số consumer; không tăng thì đo tiếp thời gian mỗi message, tách phần xử lý và phần chờ.
-
-</details>
-
-**Câu 4.** Hàng đợi có bảo đảm mỗi message chỉ xử lý một lần không? Nếu không thì đặt gì ở đâu?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: không. Mô hình mặc định là giao ít nhất một lần: message có thể hiện lại sau visibility timeout, và consumer có thể chết sau khi đã làm xong việc nhưng trước khi xoá. Vì vậy mọi tác dụng phụ phải idempotent (chịu được việc chạy lại mà kết quả không đổi), và khoá chống lặp phải nằm trong code hoặc tầng lưu trữ, không nằm ở cấu hình hàng đợi.
-
-Điều kiện để đúng: khoá chống lặp phải được ghi trước khi gọi dịch vụ ngoài, và phải dùng một giá trị ổn định giữa các lần giao — mã message hoặc một mã nghiệp vụ do bạn sinh. Dead-letter queue với `maxReceiveCount` chặn vòng lặp vô hạn nhưng không khử trùng.
-
-Cách kiểm: đếm số lần tác dụng phụ được thực hiện cho cùng một message, so với số message thật đã gửi vào hàng đợi. Trong thí nghiệm ở Bước 5, cột "lần giao" lớn hơn 12 000 chính là phần dư đó.
-
-</details>
-
-## Bước 7. Câu neo
-
-> Hàng đợi chỉ hứa giao ít nhất một lần, nên visibility timeout phải dài hơn thời gian xử lý cả lô và mọi tác dụng phụ phải chịu được lặp.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
+- SQS — Visibility timeout: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
+- SQS — Dead-letter queues và `maxReceiveCount`: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html
+- SQS — At-least-once delivery cho standard queue: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html
+- SQS — Long polling: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html
+- Lambda — Event source mapping với SQS: https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
 
-- https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html — message vẫn nằm trong hàng đợi nhưng tạm vô hình khi nhận; mặc định 30 giây; không xoá trước khi hết khoảng thì message hiện lại cho consumer khác; `ChangeMessageVisibility` để gia hạn; trần 12 giờ tính từ lần nhận đầu.
-- https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html — redrive policy và `maxReceiveCount`: số lần giao tối đa trước khi message sang dead-letter queue.
-- https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html — SQS lưu nhiều bản sao; có trường hợp nhận lại message; ứng dụng phải idempotent.
-
-Chưa kiểm trong bài này: giá trị mặc định và thời gian chờ tối đa của long polling (cấu hình được, không nêu như mặc định bắt buộc); hạn mức số message đang bay; hành vi cụ thể của hàng đợi FIFO; đơn giá SQS. Toàn bộ số liệu ở Bước 5 đến từ script mô phỏng trong `lessons/01-aws/l06/visibility.py`, không phải từ dịch vụ thật.
-
-</details>
+Mọi con số trong bài (12 000 message, lô 10, 40 giây mỗi message, visibility 30 và 600 giây, 6 và 12 consumer, trần 6 suất phía sau) là giả định của kịch bản — cần kiểm tra lại trên hệ thống thật. Bảng ở mục 4 là output thật của `visibility.py`, ghi lại từ lần chạy trên máy; script không đổi.

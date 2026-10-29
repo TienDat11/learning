@@ -1,92 +1,91 @@
 # L10: Nối log của cùng một đơn qua API, Lambda và SQS
 
-> **Trạng thái:** bản đủ bảy bước, nằm ngoài `src/`. Chưa nối vào `Lesson.vue`, chưa qua Goldfish, chưa đo với người đọc thứ hai.
-> **Số liệu:** mọi con số trong bài là giả định của kịch bản, được ghi "Giả sử" ở chỗ dùng. Không phải số đo từ hệ thống thật, không phải mặc định của dịch vụ nào.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-**Tiên quyết:** biết một request HTTP có header; biết log là gì; biết SQS là hàng đợi message; đọc được một dòng JSON.
+- **Nhảy bước:** bản cũ mở bằng "Bước 1. Đoán trước" với bốn id (`requestId`, `aws_request_id`, `messageId`, `correlation_id`) trước khi giải thích mỗi id do **tầng nào** sinh và tồn tại trong phạm vi nào.
+- **Thuật ngữ chưa giải thích:** `correlation ID`, `ContextVar`, `MessageAttributes`, `distributed tracing`, `span`, `invocation`, `container warm` xuất hiện lần đầu không kèm tiếng Việt trong ngoặc.
+- **Thiếu ví von / ví dụ trực diện:** bản cũ không có sơ đồ chữ cho việc id đi qua ba ranh giới; không đặt "Cách tệ" (log chuỗi tự do) cạnh "Cách tốt" (log JSON có field) trong cùng một khối.
+- **Câu quá dài / khô:** kiểu câu như "Message gửi qua SQS không mang thuộc tính nào của request gốc, nên worker không có cách nào biết message thuộc đơn nào ngoài nội dung body." — hai mệnh đề nối bằng "nên", phải đọc lại mới tách được ý.
 
-## Bước 1. Đoán trước
+---
 
-Giả sử một đơn đi qua API Gateway, một hàm Lambda nhận request, rồi gửi message vào SQS cho một hàm Lambda khác xử lý. Không ai thêm gì vào code, không cấu hình gì thêm.
+## Phần 2. Bài học viết lại
 
-Trước khi đọc tiếp, trả lời hai câu:
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-1. `requestId` của API Gateway, `aws_request_id` của Lambda nhận request, `aws_request_id` của Lambda worker, và `messageId` của SQS — có cặp nào trùng nhau không?
-2. Muốn nối ba tầng, phải thêm gì, và thêm ở đâu?
+Một đơn hàng đi qua ba tầng: API Gateway → Lambda nhận request → SQS → Lambda worker. Một khách báo đơn không tới sau 30 phút.
 
-Viết đáp án ra giấy. Đáp án nằm ở cuối bước 3.
+Đội trực mở ba nhóm log:
 
-## Bước 2. Điều bạn đã biết
+- Nhóm API Gateway có một `requestId`.
+- Nhóm Lambda nhận request có `aws_request_id` **khác**.
+- Nhóm worker có `messageId` **thứ ba**.
 
-Bạn đã từng debug một API trên một máy. Server ghi log kiểu `INFO 10:04:12 nhận request /orders`, và mọi dòng của cùng một request nằm liền nhau trong một file. Muốn xem một request đi qua những bước nào, bạn mở file và đọc từ trên xuống.
+Không id nào xuất hiện ở cả ba nhóm. Mỗi nhóm có khoảng 200 dòng trong khung giờ đó. Bốn mươi phút sau, người trực tìm ra đơn bằng cách **đọc thủ công và ghép theo thời gian**. `(Các con số của kịch bản — cần kiểm tra lại trên hệ thống thật.)`
 
-Bài này giữ nguyên ý đó — "đọc các bước của cùng một request" — và thay hai khớp:
+**Câu hỏi dự đoán:** ba id kia do ai sinh ra, và id nào tồn tại ở tầng nào?
 
-- **Một file** đổi thành **ba nhóm log** ở ba dịch vụ.
-- **Một tiến trình** đổi thành **hai hàm Lambda**, mỗi hàm có container riêng, có thể chạy lại.
+**Đáp án:** mỗi tầng sinh id cho **phạm vi của chính nó**, và không id nào tự lan sang tầng sau:
 
-Thêm một khác biệt nhỏ nhưng quyết định: ba dịch vụ đều **có** id trong log. Chúng chỉ không phải cùng một id.
+- `requestId` — API Gateway sinh cho từng request tới nó.
+- `aws_request_id` — runtime Lambda sinh cho từng **invocation** (một lần chạy hàm).
+- `messageId` — SQS sinh khi message được gửi vào hàng đợi.
 
-## Bước 3. Một ví dụ có số
+Thuật ngữ dùng trong bài:
 
-Giả sử ba nhóm log, mỗi nhóm khoảng 200 dòng trong khung giờ sự cố. Một khách báo đơn không tới sau 30 phút.
+- `correlation ID` — mã định danh gắn xuyên suốt một request qua nhiều hàm/dịch vụ.
+- `ContextVar` — biến ngữ cảnh giữ giá trị riêng cho từng tác vụ async hoặc từng luồng.
+- `MessageAttributes` — metadata gửi kèm message SQS, tách khỏi body nghiệp vụ.
 
-- Nhóm API Gateway có `requestId`, sinh cho từng request tới nó.
-- Nhóm Lambda nhận request có `aws_request_id`, sinh cho từng invocation.
-- Nhóm Lambda worker có `messageId`, sinh bởi SQS khi message được gửi.
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-Ba id thuộc ba phạm vi khác nhau. Không id nào tự đi sang tầng sau: `requestId` không nằm trong payload mà Lambda nhận, `aws_request_id` đổi mỗi lần chạy, `messageId` chỉ tồn tại từ lúc message được gửi.
+Ba tầng giống ba quầy trong một bệnh viện: quầy tiếp nhận phát số thứ tự riêng, phòng xét nghiệm ghi mã mẫu riêng, phòng trả kết quả ghi số hồ sơ riêng. Không quầy nào biết số của quầy kia. Muốn lần lại một bệnh nhân, phải có **một mã bệnh nhân do quầy đầu tiên phát** và ghi mã đó lên mọi phiếu.
 
-Không có id chung, việc tìm một đơn là đọc thủ công: 200 dòng nhân ba nhóm, ghép theo thời gian, và cách đó chỉ đúng khi không có hai đơn cùng giây. Giả sử việc đó mất 40 phút.
+*Giới hạn của phép ví von:* bệnh nhân tự mang mã của mình đi; còn message SQS chỉ mang theo những gì code **chủ động** đặt vào.
 
-Nếu mỗi dòng log là JSON có một trường `correlation_id` do biên tạo, cùng một việc là một truy vấn lọc theo trường đó: 7 dòng của đúng đơn, dưới 2 phút.
+```text
+ API Gateway          Lambda A               SQS            Lambda worker
+ ┌───────────┐      ┌────────────┐      ┌──────────┐      ┌────────────┐
+ │ requestId │      │aws_request_│      │messageId │      │aws_request_│
+ │  gw-77    │      │  id lam-a-1│      │ msg-aaa  │      │ id lam-a-2 │
+ └───────────┘      └────────────┘      └──────────┘      └────────────┘
+       │                  │                  │                  │
+       └──── không id nào tự đi tiếp ───────┴──────────────────┘
+                          │
+        ✂ RANH GIỚI: mỗi mũi tên là một lời gọi mới
 
-**Đáp án bước 1:** không cặp nào trùng, và không id nào tự lan sang tầng sau; phải tự tạo một `correlation_id` ở biên, ghi nó vào mọi dòng log, và truyền nó qua `MessageAttributes` khi gửi SQS.
+ CÁCH TỐT: một correlation_id do biên tạo, đi kèm mọi dòng log
 
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-flowchart LR
-  A[API Gateway<br/>requestId] -->|ghi header| B[Lambda API<br/>aws_request_id]
-  B -->|MessageAttributes<br/>correlation_id| C[SQS<br/>messageId]
-  C --> D[Lambda worker<br/>aws_request_id khac]
-  B -.-> E[(log JSON<br/>correlation_id)]
-  D -.-> E
+ ┌──────────────────────────────────────────────────────────────┐
+ │ correlation_id = corr-a1                                     │
+ │   ├─ api-gateway   : log JSON có field correlation_id        │
+ │   ├─ lambda-api    : log JSON có field correlation_id        │
+ │   │     └─ gửi SQS: MessageAttributes{correlation_id}  ──────┼──→
+ │   └─ lambda-worker : đọc MessageAttributes, log cùng id      │
+ └──────────────────────────────────────────────────────────────┘
+        ↓
+   một truy vấn: filter correlation_id = "corr-a1"
 ```
 
-1. **Tạo ở biên.** Middleware của API đọc header định danh nếu client gửi, ngược lại sinh một giá trị mới. Giá trị này là `correlation_id` của cả đường đi. Tạo ở biên chứ không tạo ở giữa, vì mọi tầng phía sau phải tham chiếu **cùng một** giá trị; tạo ở giữa thì tầng trước đã ghi log xong và không có id đó.
-2. **Ghi log dạng JSON, một dòng một sự kiện.** Mỗi dòng có `event`, `correlation_id`, và các trường của sự kiện. Log dạng chuỗi tự do (`f"đơn {order_id} lỗi"`) không lọc được theo trường; mọi truy vấn phải tìm chuỗi con, và sẽ khớp nhầm dòng của đơn khác có mã nằm trong chuỗi khác.
-3. **Truyền qua ranh giới.** Khi gửi SQS, `correlation_id` đi trong `MessageAttributes` — một map tên → giá trị có `DataType` và `StringValue` — chứ không nhét vào body. Body giữ nghiệp vụ; thuộc tính giữ siêu dữ liệu. Worker đọc được thuộc tính mà không phải parse nghiệp vụ, và nghiệp vụ không phải biết gì về việc tracing.
-4. **Nhận ở worker và reset.** Worker đọc `correlation_id` từ record, gắn vào context của lần chạy, và **reset sau mỗi invocation**. Container Lambda được tái sử dụng, nên một biến cấp module còn sót giá trị cũ sẽ làm dòng log của đơn sau mang id của đơn trước. Dấu hiệu: id lạ xuất hiện, hoặc một dòng log của đơn mới mang id cũ.
-5. **Đọc lại bằng truy vấn.** CloudWatch Logs Insights dùng cú pháp dòng lệnh nối bằng dấu `|`, với các lệnh như `fields`, `filter`, `sort`, `limit`, `stats`. Truy vấn đọc đường đi của một đơn:
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ)
 
-```
-fields @timestamp, layer, event, correlation_id, order_id, aws_request_id, messageId, error
-| filter correlation_id = "corr-a1"
-| sort @timestamp asc
-| limit 200
-```
+- **Bước 1 — Tạo ở biên, không tạo ở giữa.** Middleware của API đọc header định danh nếu client gửi; nếu không, sinh giá trị mới. Giá trị đó là `correlation_id` cho cả đường đi. Tạo ở giữa đường thì các tầng trước đã log mà không có nó.
+- **Bước 2 — Ghi log dạng JSON có field.** Mọi dòng log ghi dạng JSON có field `correlation_id`. Log chuỗi tự do không lọc được theo field, nên mọi truy vấn phải tìm chuỗi con — và tìm chuỗi con sẽ khớp cả dòng của đơn khác.
+- **Bước 3 — Truyền qua ranh giới bằng `MessageAttributes`.** Khi gửi SQS, `correlation_id` đi trong `MessageAttributes`, không nhét vào body. Worker đọc được mà không phải parse nghiệp vụ.
+- **Bước 4 — Nhận và reset ở worker.** Worker đọc thuộc tính từ record, bind vào `ContextVar` của lần chạy, và **reset sau mỗi invocation** — vì container Lambda được tái sử dụng, id của đơn trước sẽ dính sang đơn sau.
 
-Đây là **cú pháp truy vấn**, viết theo tài liệu Logs Insights, **chưa chạy trên CloudWatch** trong phiên này. Thí nghiệm ở bước 5 làm đúng việc tương đương bằng Python trên file log cục bộ.
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-6. **Mức log.** `INFO` cho các mốc nghiệp vụ (nhận đơn, gửi message, hoàn tất), `WARN` cho thứ đáng chú ý nhưng tự hết (retry lần 1, `Retry-After`), `ERROR` cho thứ cần người xem. Không log payload đầy đủ: dung lượng tăng, và dữ liệu khách hàng nằm trong log là một sự cố khác. Log **mã trạng thái gốc** và **id**, không log cả request.
-
-**Ba id hệ thống vẫn giữ.** `correlation_id` không thay ba id kia: `aws_request_id` là thứ phải đưa cho AWS Support khi hỏi về một invocation, `messageId` là thứ phải đưa khi hỏi về một message. Cái `correlation_id` làm được là trả lời "đơn này đi qua những dòng nào", không phải "invocation này chạy trên máy nào".
-
-**Dạng câu hỏi phỏng vấn bài này trả lời được:** "Làm sao trace một request đi qua nhiều dịch vụ?", "`requestId` của API Gateway có dùng làm correlation id được không?", "Vì sao log nên là JSON?", "Truyền metadata qua SQS bằng cách nào?"
-
-## Bước 5. Thí nghiệm nhỏ
-
-Chạy trong thư mục `lessons/02-python/L10-log-correlation/`. Hai script chỉ dùng thư viện chuẩn. Nếu máy không có `python` trong PATH, gọi bằng đường dẫn đầy đủ tới Python 3 trên máy bạn.
+- **Cách tệ:** chỉ log id do runtime sinh (`aws_request_id`) dạng chuỗi tự do. Điều xảy ra: mỗi nhóm log có id riêng, không id nào có mặt ở cả ba nhóm; truy một đơn thành thao tác đọc thủ công và thời gian tỉ lệ với số dòng log. Lý do hỏng: id đó thuộc **một invocation**, không thuộc **một đơn**.
+- **Cách tốt:** tạo `correlation_id` ở biên, ghi vào log JSON, truyền qua `MessageAttributes`, worker đọc lại và reset trong `finally`. Lý do giải quyết được: mọi tầng cùng tham chiếu **một** giá trị, nên một truy vấn lọc theo field là ra toàn bộ đường đi.
+- **Kiểm chứng bằng code (chạy thật):** `lessons/02-python/L10-log-correlation/` có `emit_logs.py` sinh log mẫu và `trace_order.py` lọc theo `correlation_id`.
 
 ```
 python emit_logs.py
 python trace_order.py
 ```
 
-Script thứ nhất sinh 12 dòng log JSON cho **hai** đơn đi qua ba tầng, xen kẽ nhau, và ghi ra `logs.jsonl`. Script thứ hai lọc theo `correlation_id` và in dòng thời gian của đúng một đơn. Đây là mô phỏng định dạng log, không gọi AWS.
-
-Kết quả đã chạy trên máy này:
+Output đã chạy:
 
 ```
 da ghi 12 dong vao logs.jsonl
@@ -110,87 +109,43 @@ Neu chi co mot id he thong thi loc duoc bao nhieu dong:
   order_id        tong  2 dong, o cac tang: lambda-api=2
 ```
 
-Bốn điều đọc ra:
+Đọc bảng theo một ý duy nhất: **không id hệ thống nào phủ được cả ba tầng.** `requestId` chỉ thấy 2 dòng ở một tầng. `aws_request_id` thấy 10 dòng nhưng vắt qua hai tầng chứ không chỉ một đơn. `correlation_id` thấy đúng **7 dòng**, từ `api-gateway` tới `lambda-worker`, và trong đó có cả dòng `payment_failed` lẫn `message_redelivered` — tức là đọc được nguyên nhân, không phải chỉ đọc được sự tồn tại.
 
-- Bảy dòng, đúng một đơn, đúng thứ tự thời gian. Không phải đọc 12 dòng rồi tự ghép.
-- `requestId` chỉ có ở tầng API Gateway: 2 dòng, cho 2 đơn. Lọc theo nó thì đường đi đứt ngay sau tầng đầu.
-- `aws_request_id` có 10 dòng nhưng chia làm ba giá trị khác nhau (`lam-a-1`, `lam-a-2`, `lam-a-3`). Đây chính là chỗ dễ hiểu nhầm: cùng một đơn, ba invocation, ba id. `lam-a-3` là lần xử lý lại sau khi `payment_failed`.
-- `messageId` có 8 dòng nhưng chỉ 2 giá trị, mỗi đơn một giá trị. Nó nối được tầng gửi với tầng nhận của **một** message, không nối được về request gốc.
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-Đơn B (`corr-b2`) nằm xen giữa các dòng của đơn A. Đó là lý do ghép theo thời gian không đáng tin: hai đơn chồng lên nhau trong cùng một giây.
+- **Được gì:** truy một đơn bằng **một** truy vấn thay vì ghép tay; log JSON lọc và ghép được bằng máy; `MessageAttributes` tách id khỏi payload nghiệp vụ.
+- **Đánh đổi gì:** log JSON dài hơn log chuỗi ngắn, nên tốn dung lượng lưu. Mọi chỗ ghi log phải đi qua **cùng một cấu hình**, nếu không sẽ có dòng thiếu field và đường đi đứt đúng chỗ đó. `MessageAttributes` có giới hạn số lượng và kích thước. Nếu client cũng có id riêng thì phải ánh xạ hai id và ghi cả hai.
+- **Khi nào KHÔNG nên dùng:** đừng dùng `correlation_id` thay cho `distributed tracing` khi câu hỏi là "60 phần trăm độ trễ nằm ở tầng nào" — correlation trả lời "thuộc đơn nào", tracing trả lời "mất bao lâu ở đâu". Đừng nhét cả context lớn vào `MessageAttributes`. Đừng dùng `requestId` của API Gateway làm id chung nếu còn đường vào khác (job theo lịch, message từ hệ thống khác) — các đường đó không có `requestId`.
 
-**Tự thử:** chạy `python trace_order.py corr-b2`. Đơn B xong bình thường, không có dòng lỗi. So sánh số dòng với đơn A và giải thích vì sao A nhiều hơn.
+---
 
-## Bước 6. Bốn câu luyện tập
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-Trả lời trước khi mở đáp án.
+### Câu 1: Vì sao không dùng luôn `requestId` của API Gateway làm `correlation_id`?
 
-**Câu 1.** Vì sao `requestId` của API Gateway không tự trở thành correlation id của cả đường đi?
+- **Trả lời mẫu (30–60 giây):** Dùng được **nếu** mọi đường vào đều đi qua API Gateway và code chủ động đọc rồi chuyển tiếp. Nhưng `requestId` thuộc phạm vi một request tới API Gateway; nó **không nằm trong payload** mà Lambda nhận. Nếu có thêm đường vào khác — job theo lịch, message từ hệ thống khác — các đường đó không có `requestId` và sẽ thiếu id. Dấu hiệu kiểm chứng: đếm số message tới worker không có id; khác 0 nghĩa là đã có đường vào không qua cổng đó.
+- **Lỗi hay mắc khi trả lời:** nói "dùng luôn cho tiện". Cách nói đúng: nêu điều kiện "mọi đường vào qua cùng một cổng", rồi nêu cách đếm để kiểm.
 
-<details>
-<summary>Đáp án</summary>
+### Câu 2: Correlation ID có thay được distributed tracing không?
 
-Kết luận: vì nó thuộc phạm vi một request tới API Gateway. Nó không nằm trong payload mà Lambda nhận, trừ khi code chủ động đọc header và chuyển tiếp.
+- **Trả lời mẫu (30–60 giây):** Không. Nó trả lời **món này thuộc đơn nào**, không trả lời **thời gian từng bước** hay quan hệ cha con giữa các lời gọi. Correlation là một field trong log; tracing ghi `span` có thời điểm bắt đầu, kết thúc và span cha. Khi cần biết 60 phần trăm độ trễ nằm ở tầng nào, log chỉ cho biết các mốc rời rạc, còn tracing cho biết cấu trúc. Nếu câu hỏi là "vì sao chậm" mà log chỉ trả lời được "đã gọi những gì", đó là giới hạn của correlation.
+- **Lỗi hay mắc khi trả lời:** nói "có correlation_id là đủ để debug". Cách nói đúng: tách hai câu hỏi — "thuộc đơn nào" và "mất bao lâu ở đâu" — rồi gán đúng công cụ cho từng câu.
 
-Điều kiện để đúng: mọi đường vào đều đi qua API Gateway, và code đọc rồi chuyển tiếp ở mọi chỗ. Nếu có thêm job theo lịch hay message từ hệ thống khác thì các đường đó không có `requestId`.
+### Câu 3: Nếu worker chạy lại cùng một message, `correlation_id` có đổi không?
 
-Cách kiểm: đếm số message tới worker mà không có `correlation_id`. Khác 0 nghĩa là có đường vào không qua cổng đó.
+- **Trả lời mẫu (30–60 giây):** Không đổi **nếu** id được lưu cùng message. Id nằm trong `MessageAttributes` nên nó đi theo message qua mọi lần nhận lại. Nó **đổi** nếu worker sinh id mới cho mỗi lần chạy — đó là lỗi, vì như vậy mỗi lần thử thành một "đơn" khác trong log. Muốn phân biệt lần thử thứ nhất và thứ hai thì thêm một field đếm số lần nhận, **không** đổi `correlation_id`. Kiểm chứng: hai lần chạy cùng đơn phải cho cùng id và khác số lần thử.
+- **Lỗi hay mắc khi trả lời:** nói "mỗi lần chạy sinh id mới cho sạch". Cách nói đúng: id thuộc **đơn/message**, số lần thử là field **riêng**.
 
-</details>
+### Câu 4: Có nên đặt toàn bộ context vào `MessageAttributes` không?
 
-**Câu 2.** Vì sao `correlation_id` phải được tạo ở biên chứ không phải ở Lambda worker?
+- **Trả lời mẫu (30–60 giây):** Không nên. `MessageAttributes` là metadata có ràng buộc riêng về số lượng và kích thước, không phải chỗ chứa payload tuỳ ý. Chỉ nên đặt vài trường cần cho việc nối log, như `correlation_id` và tên đơn vị gọi; phần còn lại để trong body. Dấu hiệu: message bị từ chối khi gửi do vượt giới hạn thuộc tính — lúc đó đã nhét quá nhiều. Và nếu cần cả context lớn cho nghiệp vụ thì đó là dấu hiệu body mới là chỗ đúng.
+- **Lỗi hay mắc khi trả lời:** nói "cứ đặt hết vào cho tiện đọc". Cách nói đúng: nêu giới hạn cứng của thuộc tính, nêu tiêu chí "chỉ trường phục vụ nối log".
 
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: vì tầng trước đã ghi log trước khi worker chạy. Tạo ở giữa thì các dòng log phía trước không có id đó, và đường đi vẫn đứt ở đúng chỗ cần nối.
-
-Điều kiện để đúng: biên phải là chỗ duy nhất mọi request đi qua — middleware của API, và với job theo lịch thì là chỗ job khởi động.
-
-Cách kiểm: tỉ lệ dòng log có `correlation_id` trên tổng số dòng. Thiếu một chỗ là đường đi đứt ở chỗ đó.
-
-</details>
-
-**Câu 3.** Log dạng chuỗi `don A-1001 loi` có gì không ổn so với log JSON?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: không lọc được theo trường. Mọi truy vấn thành tìm chuỗi con, nên sẽ khớp cả dòng của đơn khác có `A-1001` nằm trong một chuỗi khác, và không đếm được theo trường.
-
-Điều kiện để đúng: JSON chỉ có ích khi mọi chỗ ghi log đi qua cùng một cấu hình. Một chỗ ghi chuỗi tự do là một lỗ hổng trong đường nối.
-
-Cách kiểm: chạy một truy vấn `filter` theo trường và so số dòng với khi tìm chuỗi con. Lệch nghĩa là có dòng không phải JSON.
-
-</details>
-
-**Câu 4.** Worker chạy lại cùng một message. Log của lần thứ hai nên khác lần thứ nhất ở đâu?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: khác `aws_request_id` (invocation mới) và khác thời điểm, nhưng **giữ nguyên** `correlation_id` và `messageId`. Đó là điều cho phép nhìn ra "cùng một đơn, xử lý hai lần".
-
-Điều kiện để đúng: `correlation_id` phải đi theo message, không phải sinh lại ở worker. Sinh lại thì hai lần xử lý trông như hai đơn khác nhau.
-
-Cách kiểm: lọc theo `messageId`, đếm số `aws_request_id` khác nhau. Lớn hơn 1 nghĩa là message đã được xử lý nhiều lần — thông tin cần để biết handler có idempotent không.
-
-</details>
-
-## Bước 7. Câu neo
-
-> Ba id của ba dịch vụ không tự lan truyền, nên muốn nối một đơn thì phải tự tạo `correlation_id` ở biên và mang nó theo qua log JSON và `MessageAttributes`.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
-
-- https://docs.aws.amazon.com/lambda/latest/dg/python-context.html — xác nhận: context object của handler có thuộc tính `aws_request_id` là "the identifier of the invocation request", cùng `log_group_name`, `log_stream_name`; id này thuộc phạm vi một invocation.
-- https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html — xác nhận: `$context.requestId` là "an ID for the request", và ghi chú rằng client có thể ghi đè request ID này; `$context.extendedRequestId` là ID duy nhất do API Gateway sinh.
-- https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html — xác nhận: `MessageAttributes` là map tên → object có `DataType`, `StringValue`, `BinaryValue`; `MessageId` được trả về trong response của `SendMessage`.
-- https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html — xác nhận: cú pháp Logs Insights nối nhiều lệnh bằng dấu `|`, có các lệnh `fields`, `filter`, `sort`, `limit`, `stats`, `parse`; comment bằng `#`.
-
-Chưa kiểm trong bài này: câu truy vấn Logs Insights ở bước 4 chưa chạy trên CloudWatch (mới đối chiếu cú pháp với trang tài liệu); định dạng log mặc định của API Gateway và tên các trường trong đó; cách Lambda đọc `MessageAttributes` từ record SQS ở mức tài liệu; giới hạn kích thước và số lượng message attribute. Con số 40 phút, 200 dòng mỗi nhóm và 12 dòng log là giả định của kịch bản.
-
-</details>
+- https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html — `requestId` trong context của request.
+- https://docs.aws.amazon.com/lambda/latest/dg/python-context.html — `aws_request_id` trong object context.
+- https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html — `MessageAttributes`.
+- https://docs.python.org/3/library/contextvars.html — `ContextVar`.
+- Đã kiểm trong bài này: chạy `emit_logs.py` và `trace_order.py` trong `lessons/02-python/L10-log-correlation/`; bảng "12 dòng / 7 dòng / theo từng id" là output thật. Chưa kiểm: cú pháp query chi tiết của CloudWatch Logs Insights, hạn mức của SQS `MessageAttributes`, và các con số 40 phút, 200 dòng là thông số kịch bản.

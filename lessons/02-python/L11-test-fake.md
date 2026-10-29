@@ -1,90 +1,82 @@
 # L11: Test thay client AWS bằng fake ở đúng chỗ
 
-> **Trạng thái:** bản đủ bảy bước, nằm ngoài `src/`. Chưa nối vào `Lesson.vue`, chưa qua Goldfish, chưa đo với người đọc thứ hai.
-> **Số liệu:** mọi con số trong bài là giả định của kịch bản, được ghi "Giả sử" ở chỗ dùng. Không phải số đo từ hệ thống thật, không phải mặc định của pytest, FastAPI hay AWS.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-**Tiên quyết:** biết viết một route FastAPI; biết `pytest` chạy một hàm `test_*`; biết `MagicMock` dùng để thay một object trong test.
+- **Nhảy bước:** bản cũ mở bằng "Bước 1. Đoán trước" về hai đường import khác nhau, trong khi người đọc chưa biết `dependency_overrides` là dict và key của nó là **function object**. Thiếu bước nền đó thì câu hỏi đoán trước không có gì để bám.
+- **Thuật ngữ chưa giải thích:** `dependency_overrides`, `patch`, `namespace`, `fixture`, `teardown`, `monkeypatch`, `moto`, `LocalStack` xuất hiện lần đầu không kèm tiếng Việt trong ngoặc.
+- **Thiếu ví von / ví dụ trực diện:** bản cũ không có sơ đồ chữ cho luồng "route khai Depends → FastAPI tra dict → gọi hàm thay thế"; không đặt "Cách tệ" (patch theo tên) cạnh "Cách tốt" (override đúng object) trong cùng một khối.
+- **Câu quá dài / khô:** kiểu câu như "Patch theo tên chỉ thay giá trị trong namespace được patch; namespace mà route đọc là namespace của module nó import, không phải của test." — ba mệnh đề, hai lần "namespace", phải đọc lại.
 
-## Bước 1. Đoán trước
+---
 
-Giả sử route khai `Depends(get_s3_client)`, và `get_s3_client` được định nghĩa trong module `app.aws`. Test đặt `app.dependency_overrides[get_s3_client] = fake`.
+## Phần 2. Bài học viết lại
 
-Có hai cách import trong test:
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-- Cách A: `from app.aws import get_s3_client`
-- Cách B: `from app.api.routes import get_s3_client` (trong khi `routes.py` cũng import hàm đó từ `app.aws`)
+Một suite có 60 test cho API đọc và ghi S3. Client được tạo ở cấp module bằng `boto3.client("s3")`. Mỗi lần chạy suite mất khoảng **14 phút**, vì mọi test đều gọi S3 thật.
 
-Trước khi đọc tiếp, trả lời hai câu:
+Trên máy cá nhân mọi test xanh — vì có credential. Trên CI, nơi không có credential, **cả suite đỏ**. Người trực thêm một hàm mock rồi patch tên client trong module test. Route vẫn gọi S3 thật.
 
-1. Cách nào làm override có tác dụng, cách nào không?
-2. Nếu override không khớp thì route gọi cái gì, và test có đỏ ngay không?
+Điều tệ nhất: **test vẫn xanh sau khi patch sai**, vì không có assert nào kiểm tra fake đã được gọi. Suite chỉ đỏ khi mạng hỏng — đúng lúc không ai muốn debug. `(Các con số của kịch bản — cần kiểm tra lại trên hệ thống thật.)`
 
-Viết đáp án ra giấy. Đáp án nằm ở cuối bước 3.
+**Câu hỏi dự đoán:** patch một cái **tên** trong module test có tác động tới **object** mà route đang giữ không?
 
-## Bước 2. Điều bạn đã biết
+**Đáp án:** không. Route không tra tên lúc chạy. Nó đã giữ object từ lúc import.
 
-Bạn đã từng viết unit test cho một hàm Python. Muốn không gọi mạng, bạn patch tên mà hàm đó dùng: `monkeypatch.setattr("mymodule.requests", fake)`. Cách này hiệu quả vì Python tra tên trong namespace **lúc chạy**, nên đổi giá trị trong namespace là đổi thứ hàm nhìn thấy.
+Thuật ngữ dùng trong bài:
 
-Bài này giữ nguyên ý "thay thứ được gọi" và thay đúng một khớp: **cách tra cứu**.
+- `dependency_overrides` — bảng ánh xạ của FastAPI dùng để thay thế dependency thật bằng bản giả khi chạy test.
+- `patch` — thay giá trị của một tên trong **một** namespace cụ thể.
+- `namespace` — nơi Python tra tên; mỗi module có một namespace riêng.
 
-FastAPI không tra tên. Route khai `Depends(get_s3_client)` một lần, lúc định nghĩa, và giữ **chính object hàm** đó trong danh sách dependency của route. Từ đó về sau, không có tên nào được tra lại.
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-Hệ quả: muốn thay, phải thay bằng một cơ chế tra theo **object**, không phải theo tên. Đó là `app.dependency_overrides`.
+`dependency_overrides` giống tủ đựng chìa khóa của tòa nhà. Tủ này **không ghi tên chủ phòng** — nó gắn chìa vào đúng **chiếc móc** mà lễ tân đã treo. Bạn muốn thay chìa phòng 101 thì phải thay đúng chiếc móc đó. Làm một chiếc móc mới giống hệt, ghi cũng chữ "101", rồi treo chìa giả lên — lễ tân vẫn ra chiếc móc cũ.
 
-## Bước 3. Một ví dụ có số
+*Giới hạn của phép ví von:* móc treo là vật hữu hình nên dễ nhìn; `function object` thì vô hình, chỉ phân biệt được bằng `id()`.
 
-Giả sử suite có 60 test cho API đọc và ghi S3, mỗi test gọi S3 thật, và mỗi lần chạy mất 14 phút. Trên máy cá nhân có credential nên mọi test xanh. Trên CI không có credential, cả suite đỏ cùng lúc, trông như hạ tầng sai.
-
-Sau khi override đúng và không còn test nào ra mạng, giả sử suite còn 0,74 giây cho 3 test — đó là con số đo được trên máy này ở bước 5.
-
-Ba câu trả lời:
-
-- **Cách A có tác dụng, cách B cũng có tác dụng** — với điều kiện cả hai trỏ về **cùng một object hàm**. `from app.aws import get_s3_client` ở hai nơi vẫn là một object duy nhất, vì module `app.aws` chỉ nạp một lần và cả hai nơi cùng tham chiếu tới nó.
-- **Cách B không có tác dụng** khi `routes.py` đã tạo ra một object khác — ví dụ nó định nghĩa một hàm bọc gọi hàm gốc. Khi đó route giữ hàm bọc, còn test đặt key là hàm gốc, và hai key khác nhau.
-- **Nếu override không khớp, route gọi hàm gốc.** Test chỉ đỏ khi hàm gốc thật sự hỏng — tức là khi gọi mạng thất bại. Trên máy có mạng và có credential, test vẫn xanh trong khi đang gọi AWS thật.
-
-**Đáp án bước 1:** cả hai cách đều được nếu cùng một object hàm, cách B hỏng khi có object thứ hai; override không khớp thì route gọi hàm gốc, và test không đỏ ngay — đó mới là chỗ nguy hiểm.
-
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-flowchart TD
-  A[Route khai Depends get_s3_client] --> B[FastAPI ghi nho object ham]
-  B --> C{Request chay}
-  C --> D{app.dependency_overrides<br/>co key la object do}
-  D -->|co| E[Goi ham thay the]
-  D -->|khong| F[Goi ham goc]
+```text
+  route khai:  Depends(get_s3_client)
+                     │
+                     │  FastAPI ghi nhớ CHÍNH object hàm này
+                     ↓
+        ┌────────────────────────────────────┐
+        │  app.dependency_overrides (dict)   │
+        │  key = function object             │
+        └───────────────┬────────────────────┘
+                        │  mỗi request, tra bằng object
+          ┌─────────────┴─────────────┐
+          │ khớp                      │ không khớp
+          ↓                           ↓
+   gọi hàm thay thế (fake)      gọi hàm gốc
+   → không ra mạng              → gọi AWS THẬT
+          │                           │
+          └─────────┬─────────────────┘
+                    ↓
+     assert fake.assert_called_once()  ← thiếu dòng này,
+                                          test vẫn xanh dù đi nhầm nhánh
 ```
 
-1. **Khai báo.** `Depends(get_s3_client)` truyền vào một **hàm**, không phải một chuỗi tên. FastAPI lưu object đó trong danh sách dependency của route. Đây là điểm khác biệt gốc so với `monkeypatch` theo tên.
-2. **Tra cứu lúc chạy.** Mỗi request, FastAPI tra `app.dependency_overrides` — một `dict` thường — bằng chính object hàm. Có key khớp thì gọi hàm thay thế; không có thì gọi hàm gốc. Tài liệu FastAPI nói rõ: key là dependency gốc, value là dependency thay thế, và FastAPI gọi hàm thay thế **thay vì** hàm gốc, kể cả các dependency con của nó.
-3. **Vì sao key phải là object.** Dict tra theo hash của object. Hai lần import cùng một hàm qua hai đường dẫn trỏ về cùng object thì khớp. Một hàm bọc, một `lambda` viết lại, hay một module bị nạp hai lần dưới hai tên khác nhau thì tạo object khác và không khớp. Đây là lý do câu "patch ở nơi dùng, không phải nơi định nghĩa" đúng với `monkeypatch` nhưng phải phát biểu lại cho `dependency_overrides`: **key phải là đúng object mà route đã giữ**.
-4. **Client phải được đưa vào từ ngoài.** Nếu route tự gọi `boto3.client("s3")` bên trong thân hàm, không có object nào để override. Đưa client vào qua `Depends` (hoặc qua tham số hàm với worker) là điều kiện để test điều khiển được nó.
-5. **Phải chứng minh fake đã được gọi.** `assert fake.head_object.assert_called_once_with(Bucket="docs", Key="a.txt")` là dòng biến "test xanh" thành "test có ý nghĩa". Không có nó, một override sai vẫn cho suite xanh trên máy có mạng.
-6. **Phải dọn sau mỗi test.** `app.dependency_overrides` thuộc về **app**, không thuộc về test. Một override còn sót sẽ ảnh hưởng test chạy sau. Dấu hiệu kinh điển: chạy riêng từng test thì xanh, chạy cả suite thì đỏ theo thứ tự. Dùng fixture `autouse` dọn trước và sau mỗi test.
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ)
 
-**Cái fake không chứng minh được.** Fake chứng minh route nối đúng dependency và gọi đúng tham số. Nó **không** chứng minh tên bucket tồn tại, quyền IAM đúng, hay cấu trúc key hợp lệ. Những thứ đó chỉ hiện khi gọi dịch vụ thật hoặc một dịch vụ giả lập đủ chi tiết. Test nhanh và test tích hợp là hai tầng, không thay nhau.
+- **Bước 1 — Khai báo giữ object, không giữ tên.** Route khai `Depends(get_s3_client)`. FastAPI ghi nhớ **chính object hàm** đó trong danh sách dependency của route.
+- **Bước 2 — Tra cứu lúc chạy bằng object.** Mỗi request, FastAPI tra `app.dependency_overrides` bằng object hàm. Có key khớp thì gọi hàm thay thế; không khớp thì gọi hàm gốc.
+- **Bước 3 — Vì key là object nên đường import quan trọng.** Hai lần import cùng một hàm qua hai đường dẫn trỏ về **cùng** object thì khớp. Một hàm bọc lại, hoặc module bị nạp hai lần dưới hai tên, tạo object **khác** thì không khớp.
+- **Bước 4 — Dọn sau mỗi test và chứng minh fake đã chạy.** Override còn trong dict sẽ ảnh hưởng test sau, nên phải gán lại dict rỗng trong `teardown`. Và phải `assert` fake đã được gọi — nếu không, một override sai vẫn cho suite xanh.
 
-**Dạng câu hỏi phỏng vấn bài này trả lời được:** "Làm sao test một route FastAPI mà không gọi AWS?", "Patch ở đâu thì có tác dụng?", "Vì sao `app.dependency_overrides` lấy hàm làm key?", "Làm sao biết test của bạn thật sự dùng fake?"
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-## Bước 5. Thí nghiệm nhỏ
-
-Chạy trong thư mục `lessons/02-python/L11-test-fake/`. Thư mục này đã có một venv với `fastapi`, `httpx`, `pytest`. Nếu máy bạn chưa có, tạo lại:
+- **Cách tệ:** tạo client ở cấp module rồi `patch` tên `s3` trong module test (hoặc trong module chứa route). Điều xảy ra: test vẫn mất vài giây mỗi lần, vẫn cần credential, vẫn ra mạng. Lý do hỏng: `patch` chỉ đổi giá trị trong **một namespace**; namespace mà route đọc là namespace của **module nó import**, không phải của test.
+- **Cách tốt:** đưa client vào qua `Depends`, rồi trong test đặt `app.dependency_overrides[get_s3_client] = lambda: fake`. Kèm hai điều bắt buộc: `assert` fake đã được gọi, và `.clear()` trong `finally`. Lý do giải quyết được: key chính là object mà route đã giữ, nên không có chỗ nào để "trượt".
+- **Kiểm chứng bằng code (chạy thật):** `lessons/02-python/L11-test-fake/` có `app.py` và `test_overrides.py` với ba test: một test override đúng chỗ, một test patch sai chỗ, một test kiểm override không rò giữa các test.
 
 ```
 python -m venv .venv
 .venv\Scripts\python -m pip install fastapi httpx pytest
-```
-
-Trên Linux hoặc macOS thì dùng `.venv/bin/python`. Nếu máy không có `python` trong PATH, gọi bằng đường dẫn đầy đủ tới Python 3 trên máy bạn.
-
-```
 python -m pytest -v
 ```
 
-`app.py` là app FastAPI nhỏ: route `/objects/{key}` gọi `client.head_object` qua `Depends(get_s3_client)`. Client "thật" ở đây **không gọi AWS**: nó ném `RuntimeError` ngay khi bị gọi, để test nào lọt ra ngoài fake sẽ đỏ tại chỗ thay vì âm thầm đi ra mạng.
-
-Kết quả đã chạy trên máy này:
+Output đã chạy:
 
 ```
 test_overrides.py::test_dung_cho_thi_fake_duoc_goi PASSED                [ 33%]
@@ -93,92 +85,49 @@ test_overrides.py::test_override_khong_ro_giua_cac_test PASSED           [100%]
 
 ============================== warnings summary ===============================
 .venv\Lib\site-packages\fastapi\testclient.py:1
-  D:\research\lessons\02-python\L11-test-fake\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  ...\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
     from starlette.testclient import TestClient as TestClient  # noqa
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 ======================== 3 passed, 1 warning in 0.74s =========================
 ```
 
-(Cảnh báo kia là của Starlette về `httpx`, không liên quan tới bài.)
+Đọc ba tên test là đọc được toàn bộ bài: test thứ nhất chứng minh **override đúng chỗ thì fake được gọi**; test thứ hai chứng minh **patch sai chỗ thì fake không được gọi** — và nó pass nghĩa là ta *phát hiện* được cái sai đó, chứ không phải nó im lặng; test thứ ba chứng minh **override không rò** sang test sau.
 
-Ba test, ba việc khác nhau:
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-- `test_dung_cho_thi_fake_duoc_goi` — override đúng key. Kiểm ba thứ: mã 200, body đúng, và `fake.head_object.assert_called_once_with(Bucket="docs", Key="a.txt")`. Dòng assert cuối là thứ chứng minh fake thật sự được dùng.
-- `test_patch_sai_cho_thi_fake_khong_duoc_goi` — đây là ca patch sai chỗ. Test bọc hàm gốc trong `get_s3_client_wrapper()` rồi dùng **hàm bọc** làm key. Key không khớp object nào mà route giữ, nên FastAPI gọi hàm gốc, hàm gốc ném `RuntimeError`, và `client.get(...)` ném lỗi đó ra. Test khẳng định hai điều: có `RuntimeError`, và `fake.head_object.call_count == 0`. Nghĩa là: override sai **không** làm fake chạy, và cũng không làm request thành công.
-- `test_override_khong_ro_giua_cac_test` — chạy sau hai test kia, khẳng định `app.dependency_overrides == {}` và request lại ném `RuntimeError`. Nếu fixture dọn bị bỏ, test này đỏ ngay.
+- **Được gì:** test nhanh, không cần mạng, không cần credential; kiểm được cả nhánh lỗi của AWS bằng cách cho fake ném ngoại lệ; suite chạy được trên CI.
+- **Đánh đổi gì:** fake ở ranh giới dependency chỉ chứng minh **route nối đúng**, không chứng minh **câu lệnh AWS đúng**. Mỗi dependency mới là một dòng override mới trong test. Nếu fake không được assert là đã gọi, test xanh có thể chỉ là đang gọi AWS thật.
+- **Khi nào KHÔNG nên dùng:** đừng dùng fake ở dependency khi cần kiểm **quyền IAM**, tên bucket hay cấu trúc key thật — những thứ đó chỉ hiện khi gọi dịch vụ thật hoặc dùng dịch vụ giả lập đủ chi tiết (`moto`, `LocalStack`). Đừng dùng nó cho luồng nhiều bước (tạo → đọc → xoá trên S3): fake sẽ phải giả lập quá nhiều hành vi. Và đừng bao giờ để override tồn tại giữa các test.
 
-**Điều đáng chú ý:** ca patch sai chỗ là một test **xanh**. Nó xanh vì nó khẳng định đúng điều cần khẳng định: fake không được gọi. Đây là cách biến một cái bẫy thành một test — thay vì tin rằng mình patch đúng, hãy viết một test cho biết patch sai thì trông thế nào.
+---
 
-**Tự thử:** xoá dòng `fake.head_object.assert_called_once_with(...)` ở test đầu và thay `app.dependency_overrides[get_s3_client]` bằng `app.dependency_overrides[get_s3_client_wrapper]`. Test nào đỏ, test nào vẫn xanh, và vì sao?
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-## Bước 6. Bốn câu luyện tập
+### Câu 1: Vì sao patch tên client trong module test không có tác dụng?
 
-Trả lời trước khi mở đáp án.
+- **Trả lời mẫu (30–60 giây):** Vì route không tra **tên** lúc chạy; nó giữ **object** đã lấy từ namespace của module nó import. `patch` thay giá trị trong một namespace cụ thể, mà namespace route đọc không phải namespace của test. Patch chỉ hiệu quả khi trỏ đúng **nơi tên được dùng**, không phải nơi nó được định nghĩa. Dấu hiệu: test vẫn gọi mạng, vẫn cần credential, thời gian chạy không giảm.
+- **Lỗi hay mắc khi trả lời:** nói "patch sai vì thiếu `autospec`". Cách nói đúng: nguyên nhân là **namespace**, không phải thiếu tham số của `patch`.
 
-**Câu 1.** Vì sao patch tên `s3` trong module test không có tác dụng?
+### Câu 2: Vì sao key của `dependency_overrides` phải là chính function object?
 
-<details>
-<summary>Đáp án</summary>
+- **Trả lời mẫu (30–60 giây):** Vì dict tra theo **object**, không theo tên. Hai hàm cùng tên ở hai module là hai object khác nhau. Route ghi nhớ object hàm lúc khai báo, và mỗi request FastAPI tra dict bằng chính object đó. Import lại cùng một hàm qua đường dẫn khác vẫn trỏ về cùng object nếu module không bị nạp hai lần; bọc lại bằng hàm mới thì tạo object khác. Dấu hiệu kiểm chứng: in `id()` của hàm trong route và trong test; khác nhau là override sẽ không khớp.
+- **Lỗi hay mắc khi trả lời:** nói "override theo tên hàm, trùng tên là được". Cách nói đúng: nêu key là object, và nêu cách kiểm bằng `id()`.
 
-Kết luận: vì route không tra tên lúc chạy. Nó giữ object đã lấy từ namespace của module nó import, và patch chỉ đổi giá trị trong namespace được patch.
+### Câu 3: Nếu fake không được gọi thì test có xanh không?
 
-Điều kiện để đúng: patch đúng namespace mà code **dùng** — tức `app.api.routes.s3`, không phải `app.aws.s3` và càng không phải namespace của test.
+- **Trả lời mẫu (30–60 giây):** Có, nếu test không assert. Đó chính là lý do phải assert fake đã được gọi, không chỉ assert mã trạng thái. Override không khớp thì FastAPI gọi hàm gốc; ở môi trường có mạng và credential, kết quả vẫn đúng nên test xanh. Lỗi chỉ lộ ra ở nơi không có mạng hoặc không có quyền — tức là lộ ở CI, không lộ ở máy người viết. Cách kiểm chắc chắn: chạy suite với socket bị chặn; nếu test đỏ thì override chưa từng có tác dụng.
+- **Lỗi hay mắc khi trả lời:** nói "test xanh nghĩa là fake đã chạy". Cách nói đúng: xanh chỉ chứng minh **kết quả** đúng, cần thêm assert để chứng minh **đường đi** đúng.
 
-Cách kiểm: test vẫn mất vài giây và vẫn cần credential; thời gian chạy không giảm sau khi patch.
+### Câu 4: Có nên để override tồn tại giữa các test không?
 
-</details>
+- **Trả lời mẫu (30–60 giây):** Không. Dict thuộc về **app**, và app là object cấp module dùng chung cho mọi test. Override còn lại sẽ làm test sau chạy với dependency giả mà không ai chủ ý. Chỉ an toàn nếu mỗi test tạo app riêng, hoặc fixture `teardown` gán lại dict rỗng. Dấu hiệu: chạy cả suite và chạy riêng từng test cho kết quả khác nhau, hoặc đổi thứ tự test thì kết quả đổi.
+- **Lỗi hay mắc khi trả lời:** nói "mỗi test tự dọn là được" mà không nói dọn ở đâu. Cách nói đúng: dọn trong `finally` hoặc fixture `teardown`, để test fail giữa chừng vẫn dọn.
 
-**Câu 2.** Vì sao key của `dependency_overrides` phải là chính function object?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: vì đó là `dict` tra theo hash của object, và FastAPI dùng chính object hàm mà route đã khai làm khoá tra cứu.
-
-Điều kiện để đúng: hai bên cùng trỏ về một object. Import cùng một hàm qua hai đường dẫn thì khớp; một hàm bọc hoặc một `lambda` mới thì không.
-
-Cách kiểm: `assert fake.head_object.call_count > 0` sau request. Bằng 0 nghĩa là key không khớp, bất kể mã trạng thái là gì.
-
-</details>
-
-**Câu 3.** Test xanh mà vẫn gọi AWS thật. Thiếu gì?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: thiếu assert trên fake, và thiếu một cơ chế chặn mạng. Mã 200 chỉ nói request thành công, không nói ai đã phục vụ nó.
-
-Điều kiện để đúng: muốn biết chắc, phải khẳng định fake đã được gọi đúng tham số. Muốn chắc hơn nữa, chặn socket trong CI để mọi lần ra mạng thành lỗi rõ ràng.
-
-Cách kiểm: chạy suite trên máy không có credential và không có mạng. Nếu vẫn xanh thì test đang dùng fake; nếu đỏ thì nó đang gọi thật.
-
-</details>
-
-**Câu 4.** Vì sao override phải được dọn sau mỗi test, và dấu hiệu nào cho thấy chưa dọn?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: vì `app.dependency_overrides` là attribute của **từng instance** `FastAPI` — gán trong `FastAPI.__init__` rồi truyền xuống router qua `dependency_overrides_provider` — chứ không phải trạng thái của tiến trình. Mọi test dùng chung một app object, ví dụ app import ở cấp module, đều thấy override còn sót, nên test sau nhận fake của test trước. Test tự tạo `FastAPI()` mới thì có dict rỗng riêng và không thừa hưởng gì.
-
-Điều kiện để đúng: chỉ cần một test quên dọn là đủ, nên cách chắc chắn là dọn ở fixture `autouse` chạy trước và sau mỗi test, không dựa vào kỷ luật từng test.
-
-Cách kiểm: chạy riêng từng test rồi chạy cả suite. Kết quả khác nhau theo thứ tự là dấu hiệu state rò giữa các test.
-
-</details>
-
-## Bước 7. Câu neo
-
-> `dependency_overrides` tra theo function object, nên fake chỉ có tác dụng khi key là đúng object mà route đã giữ, và chỉ đáng tin khi có assert rằng fake đã được gọi.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
-
-- https://fastapi.tiangolo.com/advanced/testing-dependencies/ — xác nhận: `app.dependency_overrides` là một `dict`; key là dependency gốc (một hàm), value là dependency thay thế; FastAPI gọi hàm thay thế thay vì hàm gốc và không chạy cả các dependency con của hàm gốc; đặt lại bằng cách gán `app.dependency_overrides = {}`.
-
-Chưa kiểm trong bài này: hành vi của `monkeypatch` trong pytest ở mức tài liệu; chi tiết `TestClient` và cảnh báo `httpx` của Starlette; cách `moto` giả lập S3; giới hạn quyền IAM khi gọi S3 thật. Con số 60 test và 14 phút là giả định của kịch bản; con số 0,74 giây là thời gian chạy thật của 3 test trên máy này.
-
-</details>
+- https://fastapi.tiangolo.com/advanced/testing-dependencies/ — `app.dependency_overrides` là dict, key là hàm dependency gốc, value là hàm thay thế; đặt lại bằng dict rỗng.
+- https://docs.python.org/3/library/unittest.mock.html — `patch` theo namespace và `assert_called_once_with`.
+- https://docs.pytest.org/en/stable/how-to/fixtures.html — fixture và teardown.
+- Đã kiểm trong bài này: chạy `python -m pytest -v` trong `lessons/02-python/L11-test-fake/`; khối output ba test PASSED và `3 passed, 1 warning in 0.74s` là output thật. Chưa kiểm: hành vi của `moto`/`LocalStack` với phiên bản SDK hiện tại; các con số 60 test, 14 phút là thông số kịch bản.

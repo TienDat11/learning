@@ -1,103 +1,74 @@
-# L25: Chọn FastAPI, Django hay Flask theo ba trục: I/O, schema và thành phần có sẵn
+# L25: Chọn FastAPI, Django hay Flask theo ba trục — I/O, schema, thành phần có sẵn
 
-> **Trạng thái:** bản viết lại đủ bảy bước, nằm ngoài `src/`. Chưa nối vào app, chưa đo với người đọc thứ hai.
-> **Số liệu:** số request, độ trễ và mọi phần trăm trong bài là giả định của kịch bản, ghi "Giả sử" ngay chỗ dùng. Không phải benchmark, không phải mặc định của framework nào.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-**Tiên quyết:** biết `def` và `async def` khác nhau ở chỗ hàm async phải có `await` mới nhường quyền; biết mỗi kết nối database là một tài nguyên có trần; biết một API cần hợp đồng để client biết gửi gì.
+- **Nhảy bước:** bản cũ vào bảng chọn ba framework ở bước cơ chế, trong khi người đọc chưa có lý do để tin ba trục đó là đủ. Thiếu bước "vì sao chỉ ba câu này".
+- **Nhảy bước:** sự cố `async def` gọi driver đồng bộ được kể ở bước 3 nhưng cơ chế event loop chỉ xuất hiện ở bước 4 — người đọc phải tự nối hai phần.
+- **Thuật ngữ chưa giải thích:** `WSGI`, `ASGI`, `event loop`, `threadpool`, `middleware`, `DI - Dependency Injection`, `Depends`, `OpenAPI`, `Pydantic`, `serializer`, `teardown`, `CPU-bound` / `I/O-bound`.
+- **Thiếu ví von / ví dụ trực diện:** "event loop bị chặn" là khái niệm trừu tượng nhất bài, nhưng không có hình ảnh nào cho thấy vì sao 40 request biến thành một hàng đợi.
+- **Câu quá dài / khô:** "Async chỉ đổi cách chờ; nếu bên trong vẫn là lời gọi chặn thì nó tệ hơn đồng bộ vì mất luôn khả năng song song thật" — hai mệnh đề nhân quả gộp trong một câu.
 
-## Bước 1. Đoán trước
+---
 
-Giả sử một endpoint tra cứu đơn hàng mất 220 ms, trong đó 200 ms là chờ database. Endpoint đang viết bằng `def` và được đổi sang `async def`, nhưng driver database vẫn là bản đồng bộ. Một worker, một event loop.
+## Phần 2. Bài học viết lại
 
-Trước khi đọc tiếp, trả lời ba câu:
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-1. Với 1 request một lúc, endpoint nhanh hơn hay chậm hơn?
-2. Với 40 request đồng thời, p99 xấp xỉ bao nhiêu?
-3. Lúc đó có bao nhiêu kết nối database đang mở?
+Giả sử một endpoint tra cứu đơn hàng chạy 220 ms, trong đó 200 ms là chờ database.
 
-Viết đáp án ra giấy. Đáp án nằm ở cuối bước 3.
+Endpoint được đổi từ `def` sang `async def` để tăng số request xử lý đồng thời. Nhưng driver database vẫn là bản đồng bộ.
 
-## Bước 2. Điều bạn đã biết
+Trên máy dev, một request một lúc, nó nhanh hơn khoảng 10 ms. Không ai thấy vấn đề.
 
-Bạn đã biết ba điều, và cả ba đều dùng được ngay cho quyết định chọn framework:
+Trên production với 40 request đồng thời, p99 lên 6,4 giây và health check bắt đầu timeout.
 
-- `def` trong FastAPI bị đẩy sang **threadpool** (bể luồng), nên một lời gọi chặn chỉ chiếm một luồng. `async def` chạy thẳng trên **event loop** (vòng lặp sự kiện), nên một lời gọi chặn khoá cả vòng lặp.
-- `Depends` giải đồ thị phụ thuộc theo từng request và dọn dẹp sau `yield`.
-- Kết nối database có trần, và trần đó không tự nới theo lưu lượng.
+**Câu hỏi dự đoán:** lúc đó có bao nhiêu kết nối database đang mở?
 
-Bài này giữ nguyên ba điều đó và thay câu hỏi. Câu hỏi không còn là "framework nào nhanh hơn" mà là ba câu bạn phải trả lời trước khi viết dòng code đầu tiên:
+**Đáp án:** **1**. Uvicorn chạy một `event loop` (vòng lặp sự kiện) trên một worker. Mỗi lần `async def` gọi driver đồng bộ, cả vòng lặp đứng yên đúng bằng thời gian chờ database. Bốn mươi request không chồng lên nhau — chúng xếp hàng sau nhau.
 
-1. Phần lớn thời gian của request là **chờ I/O** hay **chờ CPU**?
-2. **Schema** lấy từ đâu làm nguồn sự thật?
-3. Thành phần nào bạn muốn **có sẵn** thay vì tự viết?
+(Mọi con số trong bài là giả định của kịch bản — cần kiểm tra lại trên hệ thống thật.)
 
-Khác biệt cần nhớ: cú pháp route của ba framework gần như giống nhau. Ba câu trên mới là thứ khác nhau, và chúng quyết định bạn sẽ phải tự viết bao nhiêu.
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-## Bước 3. Một ví dụ có số
+Một quầy tiếp nhận chỉ có **một nhân viên**. Nếu nhân viên đứng chờ máy fax thay vì bấm nút rồi quay sang việc khác, cả hàng phải chờ theo.
 
-Giả sử endpoint tra cứu đơn hàng chạy 220 ms, trong đó 200 ms là chờ database. Đội đổi `def` sang `async def` để tăng số request xử lý đồng thời, giữ nguyên driver đồng bộ, chạy một worker.
+*Giới hạn của phép ví von:* người thật biết mình đang chờ, còn `event loop` chỉ biết nó không có việc gì chạy tiếp.
 
-Trên máy dev, một request một lúc: bỏ được chi phí chuyển sang threadpool, nên nhanh hơn khoảng 10 ms. Không ai thấy vấn đề.
-
-Trên production với 40 request đồng thời, p99 lên 6,4 giây. Con số này không đến từ database: mỗi lần `async def` gọi driver đồng bộ, event loop đứng yên đúng bằng thời gian chờ database. Bốn mươi request không chồng lên nhau, chúng xếp hàng sau nhau. Nếu mỗi request chiếm 200 ms thì 40 request tuần tự là khoảng 8 giây; p99 đo được 6,4 giây vì một phần request tới muộn hơn và hàng đợi ngắn hơn. Cùng bậc độ lớn, cùng nguyên nhân.
-
-Số kết nối database lúc đó là **1**. Dashboard database hoàn toàn bình thường, và đó chính là tín hiệu đánh lừa: tầng dữ liệu nhàn, nên không ai nghĩ tới nó.
-
-**Đáp án bước 1:** nhanh hơn khoảng 10 ms; p99 xấp xỉ 8 giây (đo được 6,4 giây); 1 kết nối.
-
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-flowchart LR
-  A[Ba câu hỏi] --> B{Chờ I/O hay CPU?}
-  B -->|chờ I/O bất đồng bộ| C[FastAPI]
-  B -->|chờ I/O ít, cần thành phần có sẵn| D[Django]
-  B -->|CPU, hoặc rất ít endpoint| E[Flask hoặc không framework]
+```text
+40 request đồng thời
+   ↓
+[event loop] ── gọi driver đồng bộ ──→ đứng yên 200 ms
+   │                                   │
+   ├─ request 2 chờ ───────────────────┤
+   ├─ request 3 chờ ───────────────────┤   → p99 = tổng thời gian phía trước
+   └─ ... request 40 chờ ──────────────┘
+                                        ↓
+                              [database] chỉ thấy 1 kết nối
 ```
 
-1. **Trục 1 — request chờ gì.** WSGI là callable đồng bộ: một request chiếm một luồng từ đầu tới khi response xong. ASGI là coroutine với `receive` và `send`: chờ I/O không chiếm luồng. FastAPI chạy `async def` trên event loop và đẩy `def` sang threadpool. Django và Flask mặc định đi đường đồng bộ.
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ, mỗi bước 1 ý)
 
-   Cái giá: async chỉ thắng khi phần lớn thời gian là chờ I/O **bất đồng bộ**. Với việc nặng CPU, event loop chỉ có một luồng và mọi phép tính đều chiếm nó, nên async không giúp gì mà còn làm code phức tạp hơn. Lúc đó lựa chọn đúng là nhiều worker process hoặc đẩy việc sang hàng đợi.
+- **Bước 1 — Trục I/O:** `WSGI` (chuẩn giao tiếp đồng bộ giữa web server và ứng dụng Python) cho một request chiếm một luồng tới khi xong. `ASGI` (chuẩn giao tiếp bất đồng bộ giữa web server và ứng dụng Python) cho phép chờ I/O mà không chiếm luồng.
+- **Bước 2 — Trục schema:** FastAPI lấy type hint cộng Pydantic làm hợp đồng. Django lấy model và serializer. Flask để bạn tự chọn.
+- **Bước 3 — Trục thành phần có sẵn:** Django có ORM, migration, admin, auth. FastAPI có routing, validation, OpenAPI. Flask gần như chỉ có routing.
+- **Bước 4 — Vòng đời request:** `middleware` (lớp bọc trung gian xử lý trước và sau khi request vào hàm chính) chạy trước; `DI - Dependency Injection` (cơ chế tự động khởi tạo và tiêm các thành phần phụ thuộc vào hàm) mở tài nguyên; teardown chạy sau khi response được gửi.
 
-2. **Trục 2 — schema lấy từ đâu.** Ba nguồn sự thật khác nhau, và chọn nguồn nào là chọn cái gì được phép là "đúng":
-   - **Type hint.** FastAPI dựng hợp đồng từ khai báo kiểu Python cộng Pydantic. Tài liệu FastAPI nói rõ: nó dựa trên **OpenAPI** cho việc mô tả API, kèm **JSON Schema** cho model dữ liệu, và tài liệu tương tác được sinh ra từ chính các khai báo đó. Dữ liệu được validate trước khi vào thân hàm.
-   - **Model của database.** Django lấy model làm gốc; migration sinh từ chênh lệch giữa model và lịch sử migration. Tài liệu Django mô tả `makemigrations` là bước đóng gói thay đổi model thành file migration, `migrate` là bước áp chúng vào database, và coi migration như "hệ thống quản lý phiên bản cho schema database".
-   - **Bạn tự chọn.** Flask không quyết định. Bạn có thể dùng dataclass, Pydantic, marshmallow, hoặc không validate gì.
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-   Cái giá: nguồn sự thật càng gần database thì hợp đồng API càng dễ lệch khỏi cái client cần; nguồn sự thật càng gần type hint thì bạn càng phải tự nối nó xuống database.
+- **Cách tệ:** đổi `def` sang `async def` mà giữ driver đồng bộ, rồi tin rằng đã tăng được concurrency. Nó hỏng vì `def` vốn đã được đẩy sang threadpool — mỗi lời gọi chặn chỉ chiếm một luồng. Chuyển sang `async def` làm lời gọi chặn chiếm cả event loop.
+- **Cách tốt:** chọn mô hình I/O theo chỗ request thật sự chờ. Chờ I/O bất đồng bộ thì dùng client async; chờ CPU thì đẩy việc sang worker hoặc hàng đợi.
+- **Kiểm chứng bằng code (chạy thật):** script có hai phần — một bảng quyết định chỉ dùng thư viện chuẩn, và một đoạn dùng `fastapi` để in OpenAPI sinh từ type hint. Không có số đo hiệu năng nào trong output.
 
-3. **Trục 3 — thành phần nào có sẵn.** Django đi kèm ORM, migration, admin, auth và phân quyền trong một lần cài. FastAPI đi kèm routing, validate và OpenAPI; ORM, migration, admin, auth vẫn là việc của bạn. Flask gần như chỉ có routing và một app context.
-
-   Cái giá: mỗi thành phần có sẵn là một quan điểm. Bẻ quan điểm đó thường đắt hơn viết từ đầu, vì bạn phải hiểu cả framework lẫn chỗ mình bẻ. Ngược lại, tự ghép mọi thứ thì bộ khung tự chế luôn thiếu người bảo trì.
-
-4. **Cái giá vận hành, tính bằng người.** Giả sử đội bạn có 3 người và một quý. Chọn Django: tuần đầu có admin cho vận hành dùng được, nhưng ba người phải đọc cùng một mô hình. Chọn FastAPI: code nhỏ, hợp đồng rõ, nhưng ba người phải tự dựng auth và migration — khoảng hai tuần công, và không ai kiểm tra chéo được vì không có chuẩn chung. Chọn Flask: tự do, nhưng mọi ranh giới do bạn đặt và người mới phải đọc toàn bộ code để hiểu.
-
-5. **Bảng chọn, không có ô nào thắng tuyệt đối.**
-
-   | Framework | Mô hình I/O | Nguồn schema | Có sẵn |
-   |---|---|---|---|
-   | Django | WSGI đồng bộ, async ở mức vỏ | Model và serializer | ORM, migration, admin, auth |
-   | Flask | WSGI đồng bộ | Bạn chọn | Gần như chỉ routing |
-   | FastAPI | ASGI, `async def` trên event loop | Type hint và Pydantic | Routing, validate, OpenAPI |
-
-6. **Cách kiểm lựa chọn sau khi đã chọn.** Ba phép đo, không phải cảm nhận:
-   - Tăng dần số request đồng thời và vẽ p99. Đường p99 tăng gần tuyến tính trong khi CPU thấp nghĩa là chỗ chờ đang bị chặn — thường là event loop hoặc pool.
-   - Đo **event loop lag**. Lag tăng cùng lúc với lưu lượng nghĩa là có lời gọi chặn nằm trong `async def`.
-   - Diff OpenAPI giữa hai bản deploy. Một trường đổi kiểu mà client không biết là lỗi hợp đồng, không phải lỗi code.
-
-## Bước 5. Thí nghiệm nhỏ
-
-Chạy trong thư mục `lessons/06-dao-sau/l25/`. Script có hai phần: một bảng quyết định chỉ dùng thư viện chuẩn, và một đoạn dùng `fastapi` để in OpenAPI sinh từ type hint. Đây là **bảng quyết định và một ví dụ sinh schema**, không phải benchmark: không có số đo hiệu năng nào trong output.
-
-```
+```text
+cd lessons/06-dao-sau/l25
 uv venv --python <đường dẫn python3> .venv
 uv pip install --python .venv/Scripts/python.exe fastapi
 ./.venv/Scripts/python.exe framework_axes.py
 ```
 
-Output dưới đây chạy với fastapi 0.162.0 và Python 3.14; tạo venv đúng ba lệnh trên cho kết quả y hệt.
+Kết quả chạy trên máy này (fastapi 0.162.0):
 
-```
+```text
 ========== A. Bảng quyết định theo ba trục ==========
 Số request mỗi giây chỉ là giả định của kịch bản.
 
@@ -165,85 +136,53 @@ Kiểu trả về khai báo trong type hint: OrderOut
 Số dòng tài liệu phải viết tay: 0 (mọi thứ trên đây sinh từ khai báo type).
 ```
 
-Ba chỗ đáng đọc kỹ trong output:
+Ba chỗ đáng đọc kỹ:
 
-- **`Đường dẫn có trong hợp đồng`** là thứ client đọc được. Nó bằng đúng chuỗi trong `@app.get`, không có bước viết tay nào chen vào.
-- **`tenant` là `required=True`** chỉ vì nó có `= Query(...)` không kèm giá trị mặc định. Đổi thành `tenant: str = "default"` là nó thành `required=False`. Hợp đồng đổi theo chữ ký hàm, không theo tài liệu.
-- **`chi_tiet` có `"default": false`** vì kiểu là `bool` với giá trị mặc định `False`. Đây là kiểu suy luận mà bạn phải kiểm: nếu client gửi `?chi_tiet=maybe`, FastAPI trả lỗi validate trước khi thân hàm chạy.
+- **`Đường dẫn có trong hợp đồng`** là thứ client đọc được, và nó bằng đúng chuỗi trong `@app.get`.
+- **`tenant` là `required=True`** chỉ vì nó có `= Query(...)` không kèm giá trị mặc định. Hợp đồng đổi theo chữ ký hàm, không theo tài liệu.
+- **`chi_tiet` có `"default": false`** vì kiểu là `bool` với mặc định `False`. Client gửi `?chi_tiet=maybe` sẽ bị chặn trước khi thân hàm chạy.
 
-Giới hạn của thí nghiệm: bảng quyết định là **luật do bài này đặt ra**, không phải khuyến nghị chính thức của dự án nào. Ba nhãn `io-mang`, `db-model`, `cpu` là đầu vào của bài, không phải thuật ngữ của framework. Phần B chỉ chứng minh một điều: OpenAPI sinh từ type hint. Nó không nói gì về tốc độ của ba framework.
+Giới hạn: bảng quyết định là luật do bài này đặt ra, không phải khuyến nghị chính thức của dự án nào. Phần B chỉ chứng minh OpenAPI sinh từ type hint — không nói gì về tốc độ.
 
-**Tự thử:** đổi `chi_tiet: bool = False` thành `chi_tiet: bool = Query()` rồi chạy lại. `required` của tham số đó thành gì, và vì sao?
+Một chi tiết thứ tự dễ nói sai khi phỏng vấn: trong FastAPI, `solve_dependencies` chạy **trước** `request_body_to_args`. Nghĩa là dependency được mở trước khi body được validate.
 
-## Bước 6. Bốn câu luyện tập
+**Tự thử:** đổi `chi_tiet: bool = False` thành `chi_tiet: bool = Query()` rồi chạy lại. `required` thành gì, và vì sao?
 
-Trả lời trước khi mở đáp án.
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-**Câu 1.** Vì sao cùng một lời gọi database, `def` không làm sập cả server còn `async def` thì có?
+- **Được gì:** Django cho admin, auth, migration, ORM trong một lần cài nên tuần đầu rất nhanh. FastAPI cho code nhỏ và hợp đồng rõ. Flask cho tự do tối đa.
+- **Đánh đổi gì (chi phí / độ trễ / độ phức tạp):** mọi thứ đi kèm một quan điểm, và bẻ quan điểm đó thường đắt hơn viết từ đầu. Chọn FastAPI thì bạn tự dựng auth, migration, admin. Chọn Flask thì bộ khung tự chế luôn thiếu người bảo trì.
+- **Khi nào KHÔNG nên dùng:** đừng chọn FastAPI khi driver chưa có bản async — bạn sẽ có đúng sự cố ở đầu bài. Đừng chọn FastAPI khi cần admin ngay tuần đầu. Đừng chọn Django khi mọi request đều chờ dịch vụ ngoài. Đừng chọn Flask cho hệ thống nhiều người bảo trì. Và đừng dùng framework nào khi chỉ có một hai endpoint đơn giản.
 
-<details>
-<summary>Đáp án</summary>
+---
 
-Kết luận: `def` bị đẩy sang threadpool nên một lời gọi chặn chỉ chiếm một luồng, các request khác vẫn được phục vụ. `async def` chạy trên event loop nên lời gọi chặn khoá luôn mọi request đang chờ.
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-Điều kiện để đúng: driver database chưa có bản bất đồng bộ và trong thân hàm không có `await` nào. Nếu driver đã là bản async thì `await` nhường quyền và kết luận đổi.
+### Câu 1: Vì sao `async def` gọi driver đồng bộ lại tệ hơn `def`?
 
-Cách kiểm: tăng số request đồng thời và đo p99 cùng CPU. p99 tăng gần tuyến tính trong khi CPU thấp và số kết nối database gần như không đổi là dấu hiệu vòng lặp bị chặn.
+- **Trả lời mẫu (30–60 giây):** Vì `def` bị đẩy sang `threadpool` (bể luồng) nên một lời gọi chặn chỉ chiếm một luồng, các request khác vẫn được phục vụ. Còn `async def` chạy trên event loop nên lời gọi chặn khoá luôn mọi request đang chờ. Kết quả là p99 bằng tổng thời gian các request phía trước. Dấu hiệu kiểm chứng: p99 tăng theo concurrency trong khi CPU thấp và số kết nối database bằng 1.
+- **Lỗi hay mắc khi trả lời:** nói "async nhanh hơn" mà không nói nhanh hơn khi nào. Cách nói đúng: nêu điều kiện — driver chưa có bản async và trong thân hàm không có `await`.
 
-</details>
+### Câu 2: Service dành 90% thời gian chờ một dịch vụ ngoài, chọn gì?
 
-**Câu 2.** Schema lấy từ type hint khác schema lấy từ model ở chỗ nào, và mỗi cách có cái giá gì?
+- **Trả lời mẫu (30–60 giây):** Tôi chọn FastAPI với client async, vì đó đúng là hình dạng mà ASGI có lợi: chờ I/O không chiếm luồng nên một worker phục vụ được nhiều request đồng thời. Điều kiện là client của dịch vụ ngoài có bản async và tôi đặt giới hạn concurrency để không dội hàng loạt request sang dịch vụ đó. Dấu hiệu kiểm chứng: p99 gần như phẳng khi tăng concurrency.
+- **Lỗi hay mắc khi trả lời:** bỏ qua việc đặt trần cho dịch vụ phía sau. Cách nói đúng: nếu p99 vẫn tăng tuyến tính thì trong đường đi còn một lời gọi chặn.
 
-<details>
-<summary>Đáp án</summary>
+### Câu 3: Schema lấy từ type hint khác schema lấy từ model ở chỗ nào?
 
-Kết luận: type hint đặt hợp đồng HTTP ở tầng giao diện, nên nó mô tả đúng cái client gửi và nhận, và sinh OpenAPI trực tiếp. Model đặt hợp đồng ở tầng lưu trữ, nên schema database là gốc và API là hình chiếu của nó.
+- **Trả lời mẫu (30–60 giây):** Type hint đặt hợp đồng HTTP ở tầng giao diện, nên nó mô tả đúng cái client gửi và nhận, và sinh OpenAPI trực tiếp. Model đặt hợp đồng ở tầng lưu trữ, nên schema database là gốc và API là hình chiếu của nó. Cái giá của cách thứ hai là hợp đồng dễ lệch khỏi cái client cần; cái giá của cách thứ nhất là bạn phải tự nối nó xuống database. Kiểm bằng cách diff OpenAPI giữa hai bản deploy.
+- **Lỗi hay mắc khi trả lời:** nói FastAPI "tự sinh tài liệu nên không cần schema". Cách nói đúng: OpenAPI chỉ mô tả hợp đồng HTTP, không mô tả schema database.
 
-Điều kiện để đúng: với FastAPI, hợp đồng chỉ đúng khi mọi route khai báo `response_model` hoặc kiểu trả về; thiếu khai báo thì OpenAPI mô tả sai. Với Django, hợp đồng chỉ đúng khi serializer được giữ đồng bộ với model.
+### Câu 4: Workload là nén ảnh. Chọn gì, và vì sao không phải async?
 
-Cách kiểm: diff OpenAPI giữa hai bản deploy, và so với schema database thật. Lệch ở đâu là chỗ nguồn sự thật chưa được nối.
+- **Trả lời mẫu (30–60 giây):** Nén ảnh là CPU-bound nên async không giúp gì: event loop chỉ có một luồng và mọi phép tính đều chiếm nó. Lựa chọn đúng là đẩy việc sang worker riêng hoặc hàng đợi, còn tầng HTTP chỉ nhận việc và trả về ngay. Framework nào cũng được, miễn là không chặn vòng lặp. Dấu hiệu: CPU chạm trần cùng lúc p99 tăng.
+- **Lỗi hay mắc khi trả lời:** khuyên tăng số worker của framework là xong. Cách nói đúng: thời gian xử lý tỉ lệ với số ảnh chứ không với số request đồng thời, nên phải tách phần tính toán khỏi tiến trình phục vụ HTTP.
 
-</details>
-
-**Câu 3.** Service dành 90% thời gian chờ một dịch vụ ngoài. Ba trục trả lời thế nào?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: trục 1 chỉ về FastAPI, vì chờ I/O bất đồng bộ là hình dạng mà ASGI có lợi. Trục 2 và 3 vẫn phải trả lời: nếu không ai cần admin và hợp đồng API cần máy đọc được, FastAPI rẻ hơn; nếu đội vận hành cần giao diện quản trị ngay thì câu trả lời đổi.
-
-Điều kiện để đúng: client của dịch vụ ngoài có bản async, và bạn đặt giới hạn concurrency để không dội hàng loạt request sang dịch vụ đó. Thiếu một trong hai thì async không giúp được.
-
-Cách kiểm: p99 gần như phẳng khi tăng concurrency. Nếu p99 vẫn tăng tuyến tính thì trong đường đi còn một lời gọi chặn.
-
-</details>
-
-**Câu 4.** Workload là nén ảnh. Chọn gì, và vì sao không phải async?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: nén ảnh là CPU-bound nên async không giúp gì — event loop chỉ có một luồng và mọi phép tính đều chiếm nó. Lựa chọn đúng là đẩy việc sang worker riêng hoặc hàng đợi, còn tầng HTTP chỉ nhận việc và trả về ngay. Framework nào cũng được, miễn là không chặn vòng lặp.
-
-Điều kiện để đúng: thời gian xử lý tỉ lệ với lượng dữ liệu chứ không với số request đồng thời. Nếu phần lớn thời gian thật ra là chờ upload hoặc chờ lưu file thì kết luận quay lại trục 1.
-
-Cách kiểm: CPU chạm trần cùng lúc p99 tăng, và tăng số worker process thì tổng thông lượng tăng theo. Nếu tăng worker không giúp, nút thắt không phải CPU của tiến trình.
-
-</details>
-
-## Bước 7. Câu neo
-
-> Ba framework không khác nhau ở cú pháp route mà ở ba câu: chờ I/O theo mô hình nào, schema lấy từ đâu, và ai sở hữu những thành phần bạn không muốn tự viết.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
+- https://fastapi.tiangolo.com/features/ — FastAPI dựa trên OpenAPI để mô tả API và JSON Schema cho model dữ liệu; tài liệu tương tác sinh từ đó; dựa trên khai báo kiểu chuẩn của Python qua Pydantic; có hệ thống dependency injection theo đồ thị.
+- https://docs.djangoproject.com/en/5.2/topics/migrations/ — `makemigrations` đóng gói thay đổi model thành file migration, `migrate` áp chúng vào database; migration là hệ thống quản lý phiên bản cho schema.
+- Script `lessons/06-dao-sau/l25/framework_axes.py` và output ở Phần 2 mục 4: chạy thật trong phiên này với fastapi 0.162.0.
 
-- https://fastapi.tiangolo.com/features/ — mở trong phiên. Xác nhận: FastAPI dựa trên OpenAPI cho việc mô tả API và JSON Schema cho model dữ liệu, tài liệu tương tác (Swagger UI, ReDoc) sinh từ đó; toàn bộ dựa trên khai báo kiểu chuẩn của Python qua Pydantic; có hệ thống dependency injection theo đồ thị.
-- https://docs.djangoproject.com/en/5.2/topics/migrations/ — mở trong phiên. Xác nhận: `makemigrations` đóng gói thay đổi model thành file migration, `migrate` áp chúng vào database, migration được mô tả như hệ thống quản lý phiên bản cho schema; migration chạy trong một transaction trên database hỗ trợ DDL transaction.
-- Script `framework_axes.py` và output ở Bước 5: chạy thật trong phiên này với fastapi 0.162.0. Bảng quyết định dùng thư viện chuẩn; phần OpenAPI dùng `app.openapi()` của FastAPI.
-
-Chưa kiểm trong bài này: tài liệu Flask (chưa mở trang nào của Flask trong phiên, nên mọi câu về Flask ở mức hiểu biết chung); hành vi threadpool mặc định của FastAPI ở mức số đo; tài liệu Starlette về ASGI; bất kỳ benchmark nào giữa ba framework. Số request, độ trễ và p99 trong bài là kịch bản giả định.
-
-</details>
+Chưa kiểm trong bài: tài liệu Flask (mọi câu về Flask ở mức hiểu biết chung); hành vi threadpool mặc định của FastAPI ở mức số đo; tài liệu Starlette về ASGI; bất kỳ benchmark nào giữa ba framework. Số request, độ trễ và p99 trong bài là kịch bản giả định.

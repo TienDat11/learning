@@ -1,101 +1,97 @@
 # L02: Ai được gọi Lambda, và Lambda được phép làm gì
 
-> **Trạng thái:** bản đủ bảy bước, nằm ngoài `src/`. Chưa nối vào `Lesson.vue`, chưa qua Goldfish, chưa đo với người đọc thứ hai.
-> **Số liệu:** mọi con số trong bài là giả định của kịch bản, được ghi "Giả sử" ở chỗ dùng. Không phải số đo từ hệ thống thật, không phải mặc định của AWS.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-**Tiên quyết:** biết HTTP ở mức request và response; biết một API trả JSON; biết trên một máy, tiến trình chạy dưới một user và user đó quyết định nó ghi được file nào.
+- **Nhảy bước:** Bước 4 liệt kê bảy bước cơ chế, trong đó bước 2 đã dùng `credential tạm` và `assumed-role ARN` trước khi bài nói credential tạm là gì và ai phát hành. Người đọc gặp một chuỗi `arn:aws:iam::111122223333:role/upload-api-role` ở Bước 3 mà chưa được giải thích ARN là gì.
+- **Thuật ngữ chưa giải thích:** `execution role`, `resource-based policy`, `identity policy`, `principal`, `ARN`, `JWT authorizer`, `assumed-role`, `credential tạm`, `blast radius`, `SCP`, `permissions boundary`, `session policy`. Bước 5 còn thả thêm bốn từ cuối vào một câu ghi chú.
+- **Thiếu ví von / ví dụ trực diện:** không có phép ví von nào cho ý "hai lớp kiểm tra ở hai thời điểm". Sơ đồ là `mermaid`, không đọc được ở nhiều nơi. Cách tệ và Cách tốt không nằm cạnh nhau trong bài.
+- **Câu quá dài / khô:** câu "Hai lớp này không thay thế nhau vì chúng chạy ở hai thời điểm: lớp invoke chạy khi chưa có tiến trình, lớp role chạy sau khi code đã bắt đầu." gộp hai ý và một mệnh đề giải thích vào một dòng. Cụm `[INFERENCE]` và các ghi chú nội bộ cũng lẫn vào thân bài.
 
-## Bước 1. Đoán trước
+---
 
-Giả sử execution role của một hàm Lambda hiện chỉ có `s3:PutObject` trên `arn:aws:s3:::uploads-staging/*`. Hàm đang chạy tốt. Bạn thêm một nhánh ghi vào bucket `uploads-prod` bằng đúng client boto3 đó.
+## Phần 2. Bài học viết lại
 
-Trả lời bốn câu trước khi đọc tiếp:
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-1. Lần ghi vào `uploads-prod` trả gì, và principal trong lỗi là ai?
-2. Nếu thay vì sửa `Resource` bạn cấp `s3:*` trên `*` thì được gì và mất gì?
-3. Nếu bạn cấp thêm quyền S3 cho **người dùng đang gọi API** thì lỗi có hết không?
-4. Nếu hàm này được **một hàm khác** gọi, phải sửa chính sách nào?
+(Các con số của kịch bản là giả định — cần kiểm tra lại trên hệ thống thật.)
 
-Viết đáp án ra giấy. Đáp án nằm ở cuối bước 3.
+Giả sử endpoint `POST /files` của bạn chạy sau API Gateway có JWT authorizer (bộ kiểm token ở cửa vào). Người dùng đã đăng nhập, token còn hạn. Hàm ghi một file nhỏ lên S3.
 
-## Bước 2. Điều bạn đã biết
+Ba ngày trước mọi thứ bình thường. Sáng nay 100 phần trăm request nhận 500. Log của hàm có đúng một dòng: `AccessDenied` khi gọi `s3:PutObject`. Và principal (bên đứng tên trong lỗi) không phải người dùng nào cả — nó là `assumed-role/upload-api-role`.
 
-Bạn đã từng chạy một API trên một máy. Tiến trình chạy dưới một user của hệ điều hành. User đó ghi được file vì quyền của file cho phép, không phải vì người gọi HTTP đã đăng nhập.
+Cùng lúc, một script nội bộ gọi thẳng hàm bằng SDK nhận 403 ngay ở bước invoke, trước khi hàm kịp chạy. Hai lỗi cùng là "không có quyền", nhưng xảy ra ở hai thời điểm khác nhau của cùng một request.
 
-Bài này giữ nguyên chuỗi đó và thay từng khớp bằng một khớp của AWS:
+Đau ở đâu? Đau ở chỗ **một chữ 403 không cho bạn biết phải sửa cái gì**. Nếu bạn đoán sai lớp, bạn sửa đúng chỗ nhưng lỗi vẫn còn.
 
-- Tiến trình trên máy → **execution environment** của Lambda (môi trường cô lập chạy code của bạn).
-- User của hệ điều hành → **execution role** (role mà Lambda đảm nhận khi chạy hàm).
-- Quyền trên file → **policy** gắn trên role.
-- Người gọi HTTP đã đăng nhập → người dùng cuối, chỉ đứng ở cửa vào.
+**Câu hỏi dự đoán:** Người dùng đã đăng nhập và token còn hạn, vậy vì sao hàm vẫn không ghi được lên S3?
+**Đáp án:** vì request ghi S3 không do người dùng ký. Nó do hàm ký, bằng credential tạm của execution role (vai trò cấp quyền tạm cho hàm).
 
-Khác biệt cần nhớ: trên một máy, user của tiến trình là thứ duy nhất quyết định quyền file. Trên Lambda có **hai** lần kiểm tra ở hai thời điểm khác nhau, và một lần cho qua không kéo theo lần kia cho qua.
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-## Bước 3. Một ví dụ có số
+Một toà nhà có hai lớp cửa. Cửa ngoài có bảo vệ: ai được vào toà nhà? Cửa trong là tủ hồ sơ có khoá: vào rồi thì mở được tủ nào? Bảo vệ cho bạn vào không có nghĩa là chìa khoá tủ tự xuất hiện trong tay bạn.
 
-Giả sử một endpoint `POST /files` chạy sau API Gateway có JWT authorizer (bộ kiểm token ở cửa vào). Người dùng đã đăng nhập, token còn hạn. Hàm nhận event rồi gọi S3 `PutObject` ghi một file nhỏ vào `uploads-staging`.
+*Giới hạn của phép ví von:* trong toà nhà thật, một người có thể mượn chìa của người khác; còn ở đây, mỗi hàm luôn hành động dưới đúng một role, không mượn được quyền của người gọi.
 
-Giả sử ba ngày trước mọi thứ chạy bình thường. Sáng nay **100 phần trăm** request nhận 500. Log của hàm có đúng một dòng:
-
-```
-User: arn:aws:sts::111122223333:assumed-role/upload-api-role/upload-api-role
-is not authorized to perform: s3:PutObject on resource:
-"arn:aws:s3:::uploads-staging/file-001.txt"
-because no identity-based policy allows the s3:PutObject action
-```
-
-Đọc dòng đó theo ba trường:
-
-| Trường | Giá trị trong ví dụ | Nói lên điều gì |
-|---|---|---|
-| principal | `assumed-role/upload-api-role` | bên ký request là **role**, không phải người dùng |
-| action | `s3:PutObject` | hành động bị từ chối |
-| resource | `arn:aws:s3:::uploads-staging/file-001.txt` | tài nguyên mà policy không phủ tới |
-
-Giả sử cùng lúc đó một script nội bộ gọi thẳng hàm bằng SDK nhận 403 **ngay ở bước invoke**, trước khi hàm chạy và trước khi có bất kỳ dòng log nào của hàm. Hai lỗi cùng là 403, nhưng rơi vào hai chỗ khác nhau của chuỗi. Đó là toàn bộ bài này.
-
-Giả sử đội xử lý theo phản xạ: gắn `AdministratorAccess` cho role. Lỗi biến mất trong vài giây. Cái giá: role đó giờ đọc được mọi bucket, xoá được bảng, và vì không còn dòng `AccessDenied` nào, nhóm mất luôn tín hiệu duy nhất từng cho biết code gọi ra ngoài phạm vi dự kiến.
-
-**Đáp án bước 1:**
-
-1. S3 từ chối; principal là `assumed-role/...`, action `s3:PutObject`, resource là ARN của bucket prod. Người dùng không xuất hiện vì họ không ký request này.
-2. Được: lỗi biến mất ngay. Mất: role ghi và xoá được mọi bucket của tài khoản, và log mất khả năng cho biết hành động nào là hành động dự kiến.
-3. Không hết. Quyền của người dùng chỉ ảnh hưởng bước gọi API và bước invoke; khi hàm chạy, boto3 ký bằng credential tạm của role.
-4. Phải sửa **lớp invoke**: resource-based policy trên hàm đích, hoặc một quyền tương ứng trên role của hàm gọi.
-
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-flowchart LR
-  U[Người dùng có JWT] --> G[API Gateway + authorizer]
-  G -->|lớp invoke: ai được gọi hàm| F[Lambda function]
-  F -->|lớp thực thi: role ký request| S[S3]
-  S -->|deny tường minh > allow > mặc định từ chối| F
+```text
+Người dùng ──JWT──► API Gateway ──invoke──► Lambda ──boto3──► S3
+                         │                     │                │
+                   (1) ai được gọi hàm?   (2) hàm được làm gì? (3) tài nguyên
+                   resource policy         execution role      có cho phép không?
+                         │                     │                │
+                    chặn TRƯỚC khi        chỉ có hiệu lực     từ chối thì trả
+                    hàm chạy → 403,        SAU khi hàm chạy    AccessDenied trong
+                    không có log hàm                           log của hàm
 ```
 
-1. **Lớp invoke — ai được gọi hàm.** Trước khi có tiến trình nào, AWS kiểm tra bên gọi có quyền `lambda:InvokeFunction` trên hàm này hay không. Quyền đó đến từ hai nơi: identity policy của bên gọi, hoặc resource policy gắn trên chính hàm. Với một dịch vụ AWS gọi hàm, tài liệu Lambda nói Lambda chỉ xét resource-based policy. Authorizer chỉ chứng minh người dùng là ai; nó không cấp quyền gọi hàm và không cấp quyền cho hàm.
-2. **Lớp thực thi — hàm được chạm vào gì.** Khi hàm chạy, Lambda đảm nhận execution role và cấp credential tạm cho tiến trình. Mọi SDK trong code ký request bằng credential đó, nên principal trong mọi lỗi quyền là role. Đây là lý do câu 3 ở bước 1 trả lời "không".
-3. **IAM quyết định theo thứ tự cố định.** Mặc định mọi request bị từ chối. Bộ đánh giá tìm `Deny` tường minh trước; gặp một cái là kết luận `Deny`, không xét tiếp. Không có `Deny` thì phải có `Allow` ở đâu đó mới được phép; không có `Allow` nào thì rơi về từ chối mặc định (implicit deny). Trong cùng một tài khoản, quyền hiệu lực là **hợp** của identity policy và resource policy.
-4. **Trust policy khác permission policy.** Một role có hai tài liệu. Trust policy trả lời "ai được đảm nhận role này" — nó là resource-based policy gắn trên role. Permission policy trả lời "đã đảm nhận rồi thì làm được gì". Lambda cần trust policy cho service principal của Lambda để đảm nhận role; nếu thiếu, hàm không chạy được dù permission policy đầy đủ.
-5. **Đọc lỗi theo ba trường, sửa đúng một chỗ.** Principal lạ → xem role. Action lạ → code gọi ra ngoài phạm vi. Resource lạ → ARN trong policy không khớp ARN thật (đổi tên bucket, sai tiền tố, sai vùng). Lệch ở đâu sửa ở đó.
-6. **Role tối thiểu: một action, một ARN.** Chọn `s3:PutObject` thay vì `s3:*`; chọn `arn:aws:s3:::uploads-staging/*` thay vì `*`. Cái giá là mỗi lần thêm tài nguyên bạn phải sửa policy cùng lúc với code — và chính việc phải sửa đó là dấu hiệu tốt.
-7. **Ranh giới IAM không làm hộ.** IAM không biết bản ghi nào thuộc người dùng nào. Quyền của role chỉ nói hàm chạm được bảng; việc chỉ trả dữ liệu của đúng người gọi vẫn là một câu `WHERE` trong code.
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ, mỗi bước 1 ý)
 
-Hai lớp này không thay thế nhau vì chúng chạy ở hai thời điểm: lớp invoke chạy khi chưa có tiến trình, lớp role chạy sau khi code đã bắt đầu. Vì vậy một lỗi 403 không kèm log của hàm **không thể** là lỗi role.
+- **Bước 1 — Mọi lời gọi AWS đều phải được ký bởi một danh tính:** không có danh tính thì AWS không biết cho ai. Danh tính đó có thể là người dùng, một role, hoặc một dịch vụ.
+- **Bước 2 — Lớp thứ nhất hỏi "ai được gọi hàm này":** đó là `resource policy` (chính sách gắn lên chính hàm). Nó chạy trước khi có tiến trình nào. Bị chặn ở đây thì không có log của hàm, và sửa quyền bên trong hàm không có tác dụng.
+- **Bước 3 — Lớp thứ hai hỏi "hàm được chạm vào cái gì":** khi hàm chạy, Lambda đảm nhận `execution role` và phát credential tạm cho tiến trình. Mọi SDK trong code ký request bằng credential đó.
+- **Bước 4 — Vì thế principal trong lỗi luôn là role, không phải người dùng:** người dùng ký request tới API Gateway. Hàm ký request tới S3. Hai chữ ký khác nhau, hai danh tính khác nhau.
+- **Bước 5 — Dịch vụ đích kiểm hai thứ: action và resource:** `s3:PutObject` trên `arn:aws:s3:::uploads-staging/*` là một cặp. Thiếu một trong hai thì kết quả là `AccessDenied`. ARN (Amazon Resource Name) chỉ là tên đầy đủ của tài nguyên.
+- **Bước 6 — Khi hai tài khoản khác nhau, cả hai phía đều phải cho phép:** chủ bucket phải cho phép trong bucket policy, và role của bạn phải cho phép trong identity policy. Một phía cho phép là chưa đủ.
+- **Bước 7 — Vì thế quyền nên hẹp, và hẹp là một tính năng:** một action trên một ARN nghĩa là khi code gọi ra ngoài phạm vi, bạn nhận được một dòng lỗi rõ ràng thay vì một hành vi âm thầm thành công.
 
-## Bước 5. Thí nghiệm nhỏ
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-Máy này không có quyền gọi AWS, nên thí nghiệm là một **mô hình** bộ đánh giá policy viết bằng thư viện chuẩn của Python 3. Nó chỉ cài đúng ba luật: deny tường minh thắng, không có deny thì cần allow, không có allow thì từ chối. Nó **không phải** bộ đánh giá thật của IAM: bộ thật còn xét SCP, permissions boundary, session policy, điều kiện, và chủ sở hữu chéo tài khoản.
+- **Cách tệ:** thấy 403 thì gắn bộ quyền rộng nhất cho role để lỗi biến mất.
 
-Chạy trong thư mục `lessons/01-aws/l02/`. Nếu máy không có `python` trong PATH thì gọi bằng đường dẫn đầy đủ tới Python 3.
-
+```bash
+aws iam attach-role-policy \
+  --role-name upload-api-role \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+# Không đọc dòng AccessDenied để biết action và resource nào bị từ chối.
 ```
+
+Điều gì xảy ra: lỗi biến mất sau lần deploy kế tiếp. Nhưng role giờ đọc được mọi bucket, xoá được bảng, đọc được secret của hệ thống khác. Và vì không còn dòng `AccessDenied` nào, bạn mất luôn tín hiệu duy nhất từng cho biết code đang gọi ra ngoài phạm vi dự kiến.
+
+Vì sao hỏng: bạn chữa triệu chứng. Lỗi biến mất, nhưng thứ gây lỗi — một chính sách không khớp tài nguyên thật — vẫn còn đó, chỉ là giờ nó không còn khả năng báo cho bạn biết.
+
+- **Cách tốt:** đọc ba trường trong lỗi trước, rồi sửa đúng một dòng.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject"],
+      "Resource": ["arn:aws:s3:::uploads-staging/*"]
+    }
+  ]
+}
+```
+
+Vì sao đúng: principal trong lỗi là role của bạn, action là `s3:PutObject`, resource là ARN của bucket prod. Ba trường đó chỉ thẳng vào dòng cần sửa. Bạn thêm đúng ARN mới, giữ nguyên phạm vi cũ. Lần sau code gọi `s3:DeleteObject`, bạn vẫn nhận được lỗi — đó là tính năng, không phải phiền toái.
+
+- **Kiểm chứng bằng code (chạy thật):** chạy trong `lessons/01-aws/l02/`. Đây là mô hình bộ đánh giá policy ở mức tối thiểu, không phải bộ đánh giá thật của IAM: bộ thật còn xét SCP, permissions boundary, session policy, điều kiện và chủ sở hữu chéo tài khoản.
+
+```bash
 python iam_eval.py
 ```
 
-Kết quả đã chạy trên máy này:
-
-```
+```text
 Principal trong mọi request dưới đây: arn:aws:iam::111122223333:role/upload-api-role
 (Lambda đã đảm nhận role, nên boto3 ký bằng credential tạm của role.)
 
@@ -138,90 +134,45 @@ Tổ hợp 1 có hai request: cái đầu được phép, cái sau bị từ ch�
 Đó là dấu hiệu role chỉ mở đúng một action, không mở cả họ s3:*.
 ```
 
-Bốn tổ hợp tương ứng bốn câu trả lời khác nhau, và chúng khớp với thứ tự IAM dùng:
+Đọc output theo đúng thứ tự IAM dùng: deny tường minh thắng mọi allow; không có deny thì cần ít nhất một allow; không có allow nào thì từ chối. Dòng `s3:DeleteObject` bị từ chối **dù cùng bucket** là bằng chứng role tối thiểu đang hoạt động.
 
-- Tổ hợp 1: có allow, không có deny → cho qua. Request thứ hai trong cùng tổ hợp (`s3:DeleteObject`) bị từ chối **dù cùng bucket**, vì policy chỉ liệt kê `s3:PutObject`. Đây là bằng chứng role tối thiểu hoạt động.
-- Tổ hợp 2: allow và deny cùng tồn tại → deny thắng. Trong IAM thật, kết quả này không phụ thuộc policy nào được viết trước.
-- Tổ hợp 3: identity policy rỗng, chỉ có bucket policy allow → cho qua. Trong cùng tài khoản, quyền hiệu lực là hợp của hai loại policy.
-- Tổ hợp 4: không có allow ở đâu → từ chối, và lý do là "mặc định", không phải "bị cấm".
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-**Tự thử:** sửa `MINIMAL_ROLE_POLICY` thành `"Action": ["s3:*"]` rồi chạy lại. Tổ hợp 1 sẽ cho qua cả `s3:DeleteObject`. Đó chính là cái mất ở câu 2 bước 1, nhìn thấy được bằng mắt.
+- **Được gì:** một role cho mỗi hàm cho bạn phạm vi thiệt hại nhỏ và log đọc được ngay. Quyền theo ARN cụ thể buộc bạn nhìn lại phạm vi mỗi lần thêm tài nguyên.
+- **Đánh đổi gì (chi phí / độ trễ / độ phức tạp):** mỗi hàm mới là một bộ quyền mới phải viết và rà. Đổi tên bucket là phải sửa chính sách cùng lúc với code, nếu không sẽ có sự cố 403 đúng như bài này. Secret trong kho secret thì xoay được nhưng thêm một lời gọi mạng và một quyền nữa phải cấp.
+- **Khi nào KHÔNG nên dùng:** đừng tách role theo từng hàm khi bạn đang ở giai đoạn thử nghiệm và chưa biết hình dạng hệ thống — lúc đó một role dùng chung cho môi trường dev là chấp nhận được. Đừng dùng quyền theo ARN cụ thể nếu code dựng đường dẫn động mà bạn không liệt kê được tập tiền tố; khi đó hãy phủ đúng tập đó, đừng phủ `*`.
 
-## Bước 6. Bốn câu luyện tập
+---
 
-Trả lời trước khi mở đáp án.
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-**Câu 1.** Hai lớp quyền kiểm tra hai hành động nào, và vì sao một lớp cho qua không kéo theo lớp kia cho qua?
+### Câu 1: Hai lớp quyền này kiểm tra hai hành động nào, và vì sao chúng không thay thế nhau?
 
-<details>
-<summary>Đáp án</summary>
+- **Trả lời mẫu (30–60 giây):** Lớp invoke trả lời ai được gọi hàm, bằng resource policy gắn trên chính hàm. Lớp execution role trả lời hàm được gọi cái gì, sau khi hàm đã chạy. Một lớp cho qua không hàm ý lớp kia cho qua, vì chúng chạy ở hai thời điểm. Cách phân biệt nhanh: lỗi ở lớp invoke không kèm log của hàm; lỗi ở lớp role có `AccessDenied` trong log của hàm.
+- **Lỗi hay mắc khi trả lời:** nói "đã qua API Gateway thì có quyền". Cách nói đúng: qua cửa xác thực chỉ chứng minh người dùng là ai.
 
-Kết luận: lớp invoke trả lời ai được gọi hàm, lớp execution role trả lời hàm được gọi cái gì. Lớp invoke chạy trước khi có tiến trình, nên bị chặn ở đó thì không có log của hàm; lớp role chỉ có hiệu lực sau khi code đã chạy.
+### Câu 2: Cho tôi cách viết một execution role tối thiểu cho một thao tác ghi S3.
 
-Điều kiện để đúng: bạn phân biệt được lỗi có kèm log của hàm hay không. Có log hàm mà vẫn `AccessDenied` là lỗi role; 403 mà không có dòng log nào là lỗi lớp invoke.
+- **Trả lời mẫu (30–60 giây):** Một action cụ thể trên một ARN cụ thể. Tôi chọn `s3:PutObject` thay vì `s3:*`, và `arn:aws:s3:::ten-bucket/*` thay vì dấu sao cho mọi bucket. Nếu hàm cần ghi log thì thêm đúng quyền ghi log. Điều kiện là tôi phải biết chính xác bucket và tiền tố mà code dùng. Cách kiểm: gọi thử `s3:DeleteObject` phải nhận `AccessDenied` với đúng action đó.
+- **Lỗi hay mắc khi trả lời:** quên rằng quyền `s3:PutObject` trên bucket ARN (không có `/*`) không cho ghi object. Cách nói đúng: object cần ARN có `/*`.
 
-Cách kiểm: gọi hàm trực tiếp bằng SDK và xem có log của hàm hay không; sau đó đối chiếu principal trong lỗi — `assumed-role` nghĩa là role đã ký, nên lỗi nằm ở lớp thực thi.
+### Câu 3: Nếu người dùng đổi từ JWT sang đăng nhập bằng một nhà cung cấp khác thì phần quyền nào phải sửa?
 
-</details>
+- **Trả lời mẫu (30–60 giây):** Chỉ lớp xác thực ở cổng vào phải sửa. Execution role và các chính sách tài nguyên giữ nguyên, vì role gắn với hàm chứ không gắn với người dùng. Đổi cách chứng minh danh tính không đổi quyền của hàm. Ngoại lệ: nếu code đang đọc một trường riêng của token cũ để quyết định quyền ở tầng ứng dụng thì phải ánh xạ lại trường đó. Cách kiểm: request qua cổng vào thành công, hàm vẫn ghi đúng bucket, log không có `AccessDenied` mới.
+- **Lỗi hay mắc khi trả lời:** nói phải cấp lại quyền S3 cho nhà cung cấp danh tính mới. Cách nói đúng: nhà cung cấp danh tính không bao giờ giữ quyền AWS của hàm.
 
-**Câu 2.** Viết một execution role chỉ mở đúng một thao tác ghi S3, và nói cách chứng minh nó đúng là tối thiểu.
+### Câu 4: Có trường hợp nào role đúng mà vẫn không ghi được S3?
 
-<details>
-<summary>Đáp án</summary>
+- **Trả lời mẫu (30–60 giây):** Có. Với bucket thuộc tài khoản khác, bucket policy cũng phải cho phép, nên role đúng vẫn nhận `AccessDenied`. Nếu bucket bật chặn truy cập công khai hoặc bắt buộc TLS, request không đúng điều kiện cũng bị chặn dù có quyền. Nếu code dựng ARN sai vùng hoặc sai tên thì quyền đúng vẫn không khớp tài nguyên. Cách kết luận: đối chiếu principal, action, resource trong lỗi với chính sách trước khi sửa bất cứ dòng nào.
+- **Lỗi hay mắc khi trả lời:** sửa role ngay khi thấy 403. Cách nói đúng: kiểm tra resource trong lỗi trước — nếu nó khác ARN trong chính sách thì sửa ARN, không sửa action.
 
-Kết luận: một `Allow` với `Action: ["s3:PutObject"]` và `Resource: ["arn:aws:s3:::uploads-staging/*"]`, cộng quyền ghi log nếu hàm cần log.
-
-Điều kiện để đúng: bạn biết chính xác bucket và tiền tố mà code dựng ra. Nếu code dựng đường dẫn động thì ARN phải phủ đúng tập tiền tố đó, không rộng hơn.
-
-Cách kiểm: gọi một thao tác ngoài phạm vi, ví dụ `s3:DeleteObject` trên cùng bucket, và phải nhận `AccessDenied` với đúng action đó. Trong bài này, tổ hợp 1 của thí nghiệm in ra đúng cặp kết quả đó.
-
-</details>
-
-**Câu 3.** Người dùng đã đăng nhập và token còn hạn. Vì sao vẫn không đủ để hàm ghi được S3?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: vì người dùng không phải bên ký request tới S3. Khi hàm chạy, boto3 ký bằng credential tạm của execution role, nên quyền được xét là quyền của role.
-
-Điều kiện để đúng: code dùng credential do môi trường cấp (không nhúng access key của người dùng vào biến môi trường). Nếu bạn nhúng key của người dùng thì kết luận này không còn đúng — và đó là một lỗi bảo mật khác.
-
-Cách kiểm: đọc principal trong dòng `AccessDenied`. Nếu là `assumed-role/<tên-role>` thì người dùng không tham gia vào lời gọi đó.
-
-</details>
-
-**Câu 4.** Có trường hợp nào role đúng mà vẫn không ghi được S3?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: có. Khi bucket thuộc tài khoản khác, bucket policy cũng phải cho phép, nên role đúng vẫn nhận `AccessDenied`. Một `Deny` tường minh trong bucket policy cũng chặn được dù identity policy có `Allow`: ví dụ điều kiện `aws:SecureTransport` bằng `false`, hoặc điều kiện VPC endpoint. Và nếu code dựng ARN sai — sai tên bucket, sai vùng — thì policy đúng vẫn không khớp tài nguyên.
-
-Chặn truy cập công khai (Block Public Access) không nằm trong danh sách này: nó chặn truy cập công khai, không chặn principal đã xác thực trong cùng tài khoản, nên role có `Allow` vẫn ghi được dù bucket bật nó. Điều kiện TLS cũng chỉ chặn khi client gửi bằng `http`; endpoint S3 mặc định là HTTPS nên trường hợp đó hiếm.
-
-Điều kiện để đúng: principal trong lỗi đúng là role của hàm, action đúng là action bạn định gọi, và resource đúng là tài nguyên bạn định chạm.
-
-Cách kiểm: đối chiếu ba trường đó với nội dung policy trước khi sửa bất cứ dòng nào; nếu resource trong lỗi khác ARN trong policy thì sửa ARN, không sửa action.
-
-</details>
-
-## Bước 7. Câu neo
-
-> Qua cửa xác thực chỉ chứng minh người dùng là ai; quyền ghi S3 do execution role quyết định, và role đó chỉ nên mở đúng một action trên đúng một ARN.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
+- Lambda — Identity and access management: https://docs.aws.amazon.com/lambda/latest/dg/lambda-permissions.html
+- IAM — Policies và policy evaluation logic: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html
+- IAM — Policy element reference (Effect, Action, Resource): https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html
+- S3 — Bucket policies và cross-account access: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html
+- Lambda — Execution role: https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html
 
-- https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic_policy-eval-denyallow.html — mặc định mọi request bị từ chối; `Deny` tường minh thắng `Allow`; phải có `Allow` mới được phép; thứ tự xét: deny → RCP → SCP → resource-based → identity-based → permissions boundary → session policy.
-- https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html — trong cùng tài khoản, quyền hiệu lực là hợp của identity-based và resource-based policy; deny tường minh ở một trong hai thắng.
-- https://docs.aws.amazon.com/lambda/latest/dg/lambda-permissions.html — execution role là nơi khai báo quyền của hàm; resource-based policy dùng để cấp quyền cho tài khoản và dịch vụ khác; khi một dịch vụ như S3 gọi hàm, Lambda chỉ xét resource-based policy.
-- https://docs.aws.amazon.com/lambda/latest/dg/permissions-granting-access.html — hai đường cấp quyền gọi hàm: identity-based policy của bên gọi, hoặc resource-based policy trên hàm.
-- https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html#id_roles_terms-and-concepts — role không có credential dài hạn mà cấp credential tạm; trust policy quy định ai được đảm nhận role; permissions policy quy định role làm được gì.
-- https://docs.aws.amazon.com/AmazonS3/latest/userguide/troubleshoot-403-errors.html — 403 là explicit deny hoặc implicit deny; định dạng `User {arn} is not authorized to perform {action} on "{resource}" because {context}`, và câu `because no identity-based policy allows the {action} action` cho trường hợp thiếu allow.
-- https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html — code ngoài handler chạy trong pha Init, client SDK đặt ở đó để tái dùng giữa các lần gọi.
-
-Chưa kiểm trong bài này: mã và nội dung lỗi 403 do API Gateway trả về; hành vi cụ thể của JWT authorizer khi token sai; hành vi của IAM Access Analyzer; giới hạn kích thước policy. Các con số trong sự cố (ba ngày, 100 phần trăm request, một dòng AccessDenied) là giả định của kịch bản.
-
-</details>
+Các con số trong bài (ba ngày, 100 phần trăm request nhận 500, một dòng `AccessDenied`, ba bucket) là giả định để dựng kịch bản, không phải số đo hay mặc định của AWS. Khối output ở mục 4 là output thật của script `iam_eval.py`, ghi lại từ lần chạy trên máy; script không đổi.

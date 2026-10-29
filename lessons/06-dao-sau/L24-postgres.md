@@ -1,105 +1,78 @@
-# L24: PostgreSQL thực chiến: planner, index, transaction và cái giá của ORM
+# L24: PostgreSQL — planner, index, transaction và cái giá của ORM
 
-> **Trạng thái:** bản viết lại đủ bảy bước, nằm ngoài `src/`. Chưa nối vào app, chưa đo với người đọc thứ hai.
-> **Số liệu:** mọi con số kịch bản trong bài là giả định, ghi "Giả sử" ngay chỗ dùng. Số đo trong Bước 5 là output thật của script trên PostgreSQL 18.6 (PGlite), không phải số đo từ hệ thống production nào và không phải benchmark.
+## Phần 1. Review bản cũ — Những chỗ gây khó hiểu
 
-**Tiên quyết:** biết `SELECT`, `WHERE`, `ORDER BY`, `LIMIT`; biết index là một cấu trúc tra cứu riêng của bảng; biết transaction là một nhóm lệnh cùng thành công hoặc cùng huỷ.
+- **Nhảy bước:** bản cũ vào ngay `pg_class`, `pg_statistic`, `seq_page_cost` ở bước cơ chế, nhưng chưa nói vì sao planner phải *ước lượng* thay vì biết chắc. Thiếu ý đó thì mọi hằng số chi phí là công thức vô nghĩa.
+- **Nhảy bước:** phần composite index nói "ràng buộc trên cột bên phải vẫn được kiểm trong index nhưng không thu hẹp phần index phải đọc" mà không có ví dụ số đứng cạnh, nên người đọc dễ hiểu thành "hai index giống nhau".
+- **Thuật ngữ chưa giải thích:** `EXPLAIN (ANALYZE, BUFFERS)`, `Seq Scan`, `Index Scan`, `Bitmap Heap Scan`, `selectivity`, `composite index`, `keyset pagination`, `MVCC`, `snapshot`, `xmin/xmax`, `isolation level`, `bulk load`.
+- **Thiếu ví von / ví dụ trực diện:** bản cũ mô tả MVCC bằng `xmin` và `xmax` trước khi cho một hình ảnh nào về "nhiều phiên bản của cùng một dòng cùng tồn tại".
+- **Câu quá dài / khô:** "Mỗi index là một B-tree phải cập nhật trong cùng transaction với lệnh ghi, cộng dung lượng và thời gian VACUUM" — ba hệ quả trong một câu, không câu nào được giải thích riêng.
 
-## Bước 1. Đoán trước
+---
 
-Giả sử bảng `orders` có 50.000 dòng, trong đó 200 dòng mang `status = 'cancelled'`. Truy vấn lấy 20 dòng cancelled mới nhất, sắp theo `created_at` giảm dần.
+## Phần 2. Bài học viết lại
 
-Trước khi đọc tiếp, trả lời ba câu:
+### 1. Không có thứ này thì đau ở đâu? (Vấn đề thực tế)
 
-1. Chưa có index nào, câu đó phải đọc bao nhiêu trang của bảng?
-2. Có composite index `(status, created_at DESC)`, còn bao nhiêu trang?
-3. Giả sử một lệnh `UPDATE` đổi 29.400 dòng từ `pending` sang `done`, rồi hỏi lại "bảng còn bao nhiêu pending" mà chưa chạy `ANALYZE`. Planner sẽ ước lượng bao nhiêu dòng?
+Giả sử bảng `orders` có 4,2 triệu dòng. Endpoint danh sách đơn lọc theo `status` đang ở p99 1,8 giây.
 
-Viết đáp án ra giấy. Đáp án nằm ở cuối bước 3.
+Đội thêm một B-tree trên `status`. Deploy. p99 không đổi một mili giây.
 
-## Bước 2. Điều bạn đã biết
+Đúng tuần đó hệ thống import 600 nghìn đơn cũ, và một job báo cáo giữ transaction mở 40 phút.
 
-Bạn đã từng thêm một index và thấy câu truy vấn nhanh lên. Bạn cũng đã từng thêm index mà không thấy gì thay đổi. Hai lần đó bạn làm cùng một thao tác, nên khác biệt không nằm ở index.
+Trên production, `EXPLAIN (ANALYZE, BUFFERS)` (lệnh chạy thật câu SQL và in kế hoạch thực thi kèm số trang bộ nhớ đã đọc) in ở nút scan `rows=3900000` nhưng `actual rows=380000`. Kế hoạch là `Seq Scan` (quét tuần tự toàn bộ các trang của bảng). Sau ba ngày, `idx_scan` của index mới vẫn bằng 0.
 
-Bài này giữ nguyên những gì bạn biết về index và thay từng khớp bằng thứ nằm dưới nó:
+**Câu hỏi dự đoán:** thêm index đúng cột, đúng kiểu, mà không có tác dụng — vậy cái gì đã quyết định kế hoạch?
 
-- Câu SQL bạn viết không được chạy trực tiếp. Nó bị biến thành một **kế hoạch** (plan): cây các bước, mỗi bước là một nút.
-- Kế hoạch do **planner** (bộ tối ưu truy vấn) chọn, dựa trên **thống kê** (statistics) mà `ANALYZE` thu thập.
-- Mỗi dòng trong bảng có thể tồn tại nhiều **phiên bản** (row version); **snapshot** quyết định transaction của bạn nhìn thấy phiên bản nào.
+**Đáp án:** *con số ước lượng* của planner, và con số đó lấy từ thống kê. Thống kê cũ thì index đúng cũng không được mở.
 
-Khác biệt cần nhớ so với trực giác "index làm mọi thứ nhanh": planner không chọn index vì index tốt. Nó chọn đường rẻ nhất theo **chi phí ước lượng**, và chi phí đó tính từ số dòng mà nó *đoán*.
+(Mọi con số trong bài là giả định của kịch bản — cần kiểm tra lại trên hệ thống thật. Riêng output ở mục 4 là lần chạy thật trên PGlite.)
 
-## Bước 3. Một ví dụ có số
+### 2. Phép ví von đời thường & Sơ đồ chữ
 
-Giả sử trên production bảng `orders` có 4,2 triệu dòng, endpoint danh sách đơn lọc theo `status` đang ở p99 1,8 giây. Đội thêm B-tree trên `status`, deploy, và p99 không đổi một mili giây. Giả sử đúng tuần đó hệ thống import 600 nghìn đơn cũ và một job báo cáo giữ transaction mở 40 phút.
+Planner là **người đi chợ có một cuốn sổ ghi giá**. Sổ cũ thì nó chọn sai quầy — và mua thêm một chiếc xe đẩy không giúp gì.
 
-Ba sự kiện đó không liên quan tới nhau bằng cảm giác, nhưng liên quan bằng cơ chế: bulk load đổi phân bố giá trị, `ANALYZE` không chạy, nên `pg_statistic` vẫn mô tả bảng của tuần trước. Planner nhân selectivity cũ với số dòng mới và ra một ước lượng sai. Với ước lượng sai, chi phí của Seq Scan và của Index Scan bị tính sai theo, và planner chọn theo con số sai đó.
+*Giới hạn của phép ví von:* giá ngoài chợ tự đổi liên tục, còn ở đây chính bạn là người quyết định khi nào cập nhật sổ.
 
-Con số cụ thể của bài này nhỏ hơn, để chạy được trên một máy: 50.000 dòng, 200 dòng cancelled, 29.880 dòng pending.
-
-- Chưa có index: câu lấy 20 dòng cancelled phải đọc tuần tự cả bảng. Trong lần chạy thật ở Bước 5, `Buffers: shared hit=368` — 368 trang.
-- Có composite index: `Buffers: shared hit=20 read=2` — 22 trang.
-- Sau `UPDATE` đổi 29.400 dòng, planner ước lượng khoảng **47.400** dòng pending trong khi bảng chỉ còn **480**. Sai khoảng 100 lần.
-- Sau `ANALYZE`, cùng câu đó, ước lượng về khoảng **470–520** — sát 480 nhưng không bằng.
-
-**Đáp án bước 1:** khoảng 368 trang; khoảng 22 trang; khoảng 47.400 dòng, tức sai cỡ 100 lần so với 480 dòng thật.
-
-## Bước 4. Cơ chế, từng bước một
-
-```mermaid
-flowchart TD
-  A[Chuỗi SQL] --> B[Parse và rewrite]
-  B --> C[Planner: pg_class + pg_statistic]
-  C --> D{Chọn access path theo chi phí}
-  D -->|phần lớn bảng khớp| E[Seq Scan]
-  D -->|ít dòng khớp| F[Index Scan hoặc Bitmap Heap Scan]
-  E --> G[Executor: đọc trang, ghi BUFFERS]
-  F --> G
+```text
+Câu SQL
+   ↓
+[Parse và rewrite] → cây truy vấn
+   ↓
+[Planner] ← pg_class (số trang) + pg_statistic (selectivity)
+   ↓ chọn theo chi phí ước lượng
+   ├→ Seq Scan            (phần lớn bảng khớp)
+   └→ Index Scan / Bitmap Heap Scan (ít dòng khớp)
+   ↓
+[Executor] → shared_buffers → (trượt) → đĩa    ← BUFFERS đếm chỗ này
 ```
 
-1. **Parse và rewrite.** Chuỗi SQL thành cây cú pháp, rồi rule hệ thống (view, row-level security) viết lại thành cây truy vấn chuẩn hoá. Trạm này rẻ và hiếm khi là thủ phạm.
+### 3. Giải thích từ nguyên lý cơ bản (từng bước nhỏ, mỗi bước 1 ý)
 
-2. **Planner ước lượng.** Với mỗi bảng, planner lấy số trang và số dòng từ `pg_class`, lấy **selectivity** (tỉ lệ dòng thoả một điều kiện) từ `pg_statistic`, nhân ra số dòng dự kiến ở từng nút. Tài liệu PostgreSQL mô tả đúng phép tính này cho một Seq Scan: chi phí bằng số trang đọc nhân `seq_page_cost` cộng số dòng nhân `cpu_tuple_cost`, với mặc định 1.0 và 0.01.
+- **Bước 1 — Ước lượng:** planner lấy số trang và số dòng từ `pg_class`, lấy `selectivity` (độ chọn lọc: tỷ lệ dòng thỏa điều kiện trên tổng số dòng) từ `pg_statistic`, rồi nhân ra số dòng dự kiến.
+- **Bước 2 — So chi phí:** chi phí cộng theo các hằng số `seq_page_cost`, `random_page_cost`, `cpu_tuple_cost`. Đường nào rẻ hơn theo *ước lượng* thì được chọn.
+- **Bước 3 — Đọc cây kế hoạch:** `rows=N` là ước lượng, `actual rows=M` là số đo. Nút lệch nhiều lần là nút bị thống kê sai.
+- **Bước 4 — Sửa đúng chỗ:** chạy `ANALYZE` trước, rồi mới tạo index nếu vẫn cần. Index không sửa được ước lượng.
 
-3. **Chọn access path.** Có ba đường chính, và tài liệu mô tả rõ khi nào đường nào rẻ:
-   - **Seq Scan** đọc tuần tự mọi trang.
-   - **Index Scan** đọc index rồi ghé bảng cho từng dòng, theo thứ tự index.
-   - **Bitmap Heap Scan** gom vị trí dòng từ index, sắp theo thứ tự trang, rồi đọc bảng một lượt — đổi đọc ngẫu nhiên lấy đọc tuần tự.
+### 4. So sánh "Cách tệ" và "Cách tốt" (kèm thí nghiệm chạy thật)
 
-4. **Đọc cây, tìm nút lệch.** Mỗi dòng của `EXPLAIN` có hai cụm số: `cost=... rows=N width=W` là ước lượng, `actual time=... rows=M loops=L` là số đo. Nút nào có `rows` cách `actual rows` nhiều lần là nút đang bị thống kê sai. Trong lần chạy thật ở Bước 5, nút `Index Scan` trên `status = 'pending'` in `rows≈47.400` và `actual rows=50`: đó là chỗ cần sửa, và sửa bằng `ANALYZE` chứ không bằng index.
+- **Cách tệ:** thêm index trước, đọc `EXPLAIN` không có `ANALYZE`, rồi đổ lỗi cho ORM. Cả ba đều sửa đầu ra thay vì sửa đầu vào.
+- **Cách tốt:** đọc `EXPLAIN (ANALYZE, BUFFERS)`, tìm nút lệch, chạy `ANALYZE`, rồi mới tạo `composite index` (chỉ mục ghép trên nhiều cột theo thứ tự cố định) đúng thứ tự.
+- **Vì sao cách tốt giải quyết tận gốc:** nó sửa đúng con số mà planner dùng để ra quyết định.
 
-   Một điều quan trọng mà lần chạy này cho thấy: **ước lượng sai không phải lúc nào cũng đổi kế hoạch**. Ở đây planner vẫn chọn Index Scan dù tưởng có 47 nghìn dòng, vì `LIMIT 50` làm chi phí dừng sớm rất thấp. Cái nó làm sai là chi phí, và chi phí mới là thứ quyết định. Còn khi ước lượng sai theo chiều ngược lại — tưởng nhiều dòng khớp trong khi thật ra ít — thì Seq Scan thắng và index đúng cột nằm im. Đó là hình dạng của sự cố ở Bước 3, dựng bằng kịch bản.
+Về thứ tự cột, giữ đúng chi tiết dễ nói sai: đảo index thành `(created_at, status)` thì điều kiện `status` **vẫn được kiểm trong index**, nhưng không thu hẹp phạm vi trang index phải quét — nên đọc nhiều buffer hơn.
 
-5. **`BUFFERS` trả lời câu "chờ gì".** `shared hit` là trang đã có trong bộ nhớ đệm; `read` là trang phải đọc từ nguồn ngoài. Cùng một câu, Seq Scan cho 368 trang, Index Scan cho 22 trang. Không có `BUFFERS`, bạn chỉ biết câu chậm; có nó, bạn biết chậm vì đọc bao nhiêu trang.
+**Kiểm chứng bằng code (chạy thật):** script dùng PGlite — PostgreSQL biên dịch sang WASM, nên planner, MVCC và `BUFFERS` đều là của PostgreSQL. Đây là mô phỏng cơ chế trên dữ liệu giả, không phải benchmark.
 
-6. **Composite index: thứ tự cột là một phần định nghĩa.** Tài liệu PostgreSQL phát biểu luật: index nhiều cột hiệu quả nhất khi có ràng buộc trên các cột **trái nhất**; chính xác hơn, ràng buộc bằng trên các cột đầu, cộng ràng buộc bất đẳng thức trên cột đầu tiên không có ràng buộc bằng, sẽ luôn được dùng để giới hạn phần index phải quét. Ràng buộc trên các cột bên phải vẫn được kiểm **trong index** nên vẫn tiết kiệm lượt ghé bảng, nhưng không nhất thiết thu hẹp phần index phải đọc.
-
-   Vì vậy với truy vấn `status = ? AND created_at BETWEEN ? AND ?`, thứ tự đúng là `(status, created_at)`: điều kiện bằng đứng trước, điều kiện khoảng đứng sau. Đảo lại thành `(created_at, status)` thì index vẫn dùng được, nhưng phần index phải đọc rộng hơn. Lần chạy thật cho thấy đúng như vậy: với `(created_at, status)` planner dùng Bitmap Heap Scan, `Buffers: shared hit=38 read=30`, 1,431 ms; với `(status, created_at)` là Index Scan, `Buffers: shared hit=29 read=2`, 0,173 ms. Cùng dữ liệu, cùng câu SQL.
-
-7. **Truy vấn composite index không phục vụ.** Hai hình dạng rõ ràng:
-   - **Thiếu cột đầu.** `ORDER BY created_at DESC LIMIT 20` mà không lọc `status`: index `(status, created_at)` không cho được thứ tự đó. Lần chạy thật: Seq Scan rồi Sort, `Buffers: shared hit=584`, 46,764 ms.
-   - **Toàn bộ cột đều bị bọc trong hàm hoặc so khớp mờ.** Ví dụ `WHERE lower(status) = 'pending'` hoặc `status LIKE '%pend%'` — B-tree trên `status` không dùng được cho biểu thức đó.
-
-   Có một ngoại lệ đáng biết, và bài này gặp nó khi chạy: PostgreSQL 18 có **skip scan**. Tài liệu mô tả nó sinh một ràng buộc bằng động cho mỗi giá trị có thể của cột thiếu ràng buộc, rồi nhảy qua các nhóm không liên quan. Trong lần chạy thật, câu chỉ lọc `created_at` (thiếu `status`) vẫn dùng được index `(status, created_at)` với `Index Searches: 5`. Nghĩa là luật "phải có cột trái nhất" đã có đường vòng, nhưng đường vòng đó chỉ rẻ khi cột thiếu ràng buộc có **rất ít giá trị phân biệt** — tài liệu nói rõ nếu có nhiều giá trị thì planner thường vẫn chọn Seq Scan.
-
-8. **MVCC: mỗi transaction thấy một snapshot.** Mỗi lần `UPDATE` không sửa dòng cũ; nó ghi một **phiên bản mới** và đánh dấu phiên bản cũ là đã bị xoá bởi transaction đó. Mỗi phiên bản mang `xmin` (transaction tạo ra nó) và `xmax` (transaction xoá nó). Transaction đọc theo một **snapshot**: một mốc các transaction đã commit tại thời điểm nó bắt đầu. Phiên bản hiện ra khi `xmin` đã commit trước snapshot và `xmax` chưa commit hoặc rỗng.
-
-   Lần chạy thật: snapshot `761:761:` lấy trước khi `INSERT`. Dòng `id=1` có `xmin=755` — hiện ra. Dòng vừa `INSERT` có `xmin=761` — không hiện ra. Sau `UPDATE`, dòng `id=1` mang `xmin=762` — phiên bản mới cũng không hiện ra trong snapshot cũ. Đó là toàn bộ cơ chế, đo được bằng `pg_visible_in_snapshot`.
-
-9. **Write conflict.** Hai transaction cùng đọc một dòng rồi cùng ghi: transaction thứ hai gặp phiên bản đã bị transaction thứ nhất sửa. Ở mức `READ COMMITTED` nó chờ rồi ghi tiếp trên phiên bản mới; ở mức `REPEATABLE READ` hoặc `SERIALIZABLE` nó nhận lỗi serialization và phải chạy lại cả transaction. Điểm mấu chốt: **isolation cao hơn không xoá race condition, nó đổi loại lỗi bạn phải xử lý** — từ "âm thầm ghi đè" sang "lỗi bắt buộc retry". [CHƯA KIỂM: lần chạy này chỉ có một kết nối nên không dựng được hai transaction đồng thời; xem ghi chú ở Bước 5.]
-
-## Bước 5. Thí nghiệm nhỏ
-
-Chạy trong thư mục `lessons/06-dao-sau/l24/`. Script dùng PGlite — PostgreSQL biên dịch sang WASM, nên planner, MVCC và `BUFFERS` đều là của PostgreSQL, không phải mô phỏng bằng thư viện khác. Đây là mô phỏng **cơ chế trên dữ liệu giả**, không phải benchmark.
-
-```
+```text
+cd lessons/06-dao-sau/l24
 npm install @electric-sql/pglite
 node explain_demo.mjs
 ```
 
-Kết quả đã chạy trên máy này:
+Kết quả của lần chạy đã kiểm chứng trên PostgreSQL 18.6 (PGlite 0.5.13):
 
-```
+```text
 ========== 0. Phiên bản PostgreSQL đang chạy ==========
 PostgreSQL 18.6 (PGlite 0.5.13) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
 Số kết nối đang mở (pg_stat_activity): 1
@@ -260,87 +233,51 @@ Sau VACUUM FULL:        3014656 byte
 Số kết nối trong pg_stat_activity: 1 — không dựng được hai transaction đồng thời.
 ```
 
-Khối trên là **một** lần chạy. `ANALYZE` lấy mẫu ngẫu nhiên, nên số dòng **ước lượng** đổi giữa các lần: chạy lại bốn lần trên máy này, ước lượng pending trước `ANALYZE` ra 47.215–47.744, sau `ANALYZE` ra 472–523, ước lượng cancelled ở bước 3 ra 200–212, và ước lượng cancelled ở bước 2 (trước khi có index) ra 170–210. `cost` và `actual time` cũng đổi theo. Thứ không đổi: `Buffers` (368 trang và 22 trang), số dòng thật (480 và 200), và bậc sai — trước `ANALYZE` sai cỡ 100 lần, sau `ANALYZE` còn sai vài phần trăm. Đọc bảng theo bậc, đừng đọc theo chữ số cuối.
+Đọc kết quả theo ba chỗ:
 
-Ba chỗ phải đọc đúng, nếu không sẽ học sai:
+- **Số trang, không phải số mili giây.** `Buffers` là thứ ổn định giữa các lần chạy: 368 trang khi chưa có index, 22 trang khi có composite index. `cost` và `actual time` đổi theo mỗi lần chạy.
+- **Ước lượng 47.469 so với 480 dòng thật.** Đó là thống kê cũ. Sau `ANALYZE`, cùng câu đó ước lượng 490 — sát 480 nhưng không bằng.
+- **Thứ tự cột, đo bằng buffer.** Bản `(created_at, status)` đọc 68 trang (`shared hit=38 read=30`, 1,431 ms); bản `(status, created_at)` đọc 31 trang (`shared hit=29 read=2`, 0,173 ms). Cùng dữ liệu, cùng câu SQL.
 
-- **`idx_scan` không ổn định giữa các lần chạy.** Trên PGlite, cùng script này cho ra 0 ở lần chạy này và 1 ở lần chạy khác — đã thấy cả hai giá trị — nên không dùng nó làm bằng chứng. Trên PostgreSQL thật, `idx_scan` là bằng chứng index có được dùng; ở đây bằng chứng là chính kế hoạch in ra.
-- **Ước lượng khoảng 47.400 so với 480 dòng thật.** Đó là thống kê cũ, và `ANALYZE` đưa về khoảng 470–520. Nút lệch nằm ở dòng `Index Scan ... rows=47...`, không nằm ở nút `Limit` phía trên.
-- **`Index Searches: 5` ở bước 7.** Đây là skip scan của PostgreSQL 18, không phải index đơn trên `created_at` được chọn. Script có tạo index đó nhưng planner vẫn đi index composite.
+Giới hạn của lần chạy: PGlite chỉ có một kết nối, nên phần write conflict giữa hai transaction đồng thời không dựng được ở đây. Bài trình bày phần đó bằng tài liệu, không bằng hai session thật.
 
-Giới hạn của lần chạy: PGlite chỉ có **một kết nối** (`pg_stat_activity` in ra 1), nên phần write conflict giữa hai transaction đồng thời không dựng được ở đây. Bài trình bày cơ chế đó bằng tài liệu và bằng luật hiện/không hiện của snapshot, không bằng hai session thật.
+**Tự thử:** đổi `LIMIT 20` thành `LIMIT 5000` rồi chạy lại. Kế hoạch còn là Index Scan không, và `Buffers` tăng lên bao nhiêu?
 
-**Tự thử:** đổi `LIMIT 20` thành `LIMIT 5000` trong `QCANCEL` và chạy lại. Kế hoạch có còn là Index Scan không, và `Buffers` tăng lên bao nhiêu?
+### 5. Trade-off (Đánh đổi) và Khi nào KHÔNG nên dùng
 
-## Bước 6. Bốn câu luyện tập
+- **Được gì:** index giảm số trang phải đọc cho truy vấn chọn lọc. Thống kê chi tiết cho ước lượng sát hơn. Isolation cao cho dữ liệu đọc được ít bất ngờ.
+- **Đánh đổi gì (chi phí / độ trễ / độ phức tạp):** mỗi index là một B-tree phải cập nhật trong cùng transaction với lệnh ghi, cộng dung lượng và thời gian VACUUM. `ANALYZE` lâu hơn. Mức isolation cao sinh lỗi serialization nên mọi caller phải retry đúng cách.
+- **Khi nào KHÔNG nên dùng:** bảng chỉ vài nghìn dòng — Seq Scan đọc hết trong vài mili giây. Truy vấn đọc phần lớn bảng — ghé heap từng dòng còn đắt hơn đọc tuần tự. Cột bị bọc trong hàm hoặc so khớp mờ — B-tree trên cột đó không dùng được. Và bảng ghi liên tục: đếm số index trước khi thêm cái thứ tư.
 
-Trả lời trước khi mở đáp án.
+---
 
-**Câu 1.** Thêm index đúng cột mà p99 không đổi. Bạn đọc gì trước, và tìm dấu hiệu nào?
+## Phần 3. Câu hỏi phỏng vấn thường gặp (kèm trả lời mẫu 30–60 giây)
 
-<details>
-<summary>Đáp án</summary>
+### Câu 1: Nếu tôi thêm index cho mọi cột trong WHERE thì sao?
 
-Kết luận: đọc `EXPLAIN (ANALYZE, BUFFERS)` của đúng câu chậm, tìm nút có `rows` ước lượng lệch nhiều lần so với `actual rows`. Nút lệch là thống kê sai, và sửa bằng `ANALYZE` trước khi nghĩ tới index thứ hai.
+- **Trả lời mẫu (30–60 giây):** Bạn đang đổi độ trễ đọc lấy độ trễ ghi và dung lượng. Mỗi index là một B-tree phải cập nhật trong cùng transaction với lệnh ghi, nên bảng tám index khiến mỗi INSERT chạm tám cấu trúc. Trên bảng ghi nhiều, đó là cách nhanh nhất để biến hệ thống ổn thành nghẽn ở tầng ghi. Tôi bắt đầu từ câu chậm đã đo rồi mới thêm index.
+- **Lỗi hay mắc khi trả lời:** chỉ nói "index làm chậm ghi" mà không nêu dấu hiệu kiểm chứng. Cách nói đúng: thêm rằng `idx_scan` của index mới phải tăng trong khi thời gian ghi không đổi.
 
-Điều kiện để đúng: index đang tồn tại và đúng cột, đúng kiểu. Nếu index sai cột hoặc cột bị bọc trong hàm thì nguyên nhân nằm ở định nghĩa index, không ở thống kê.
+### Câu 2: Index đúng cột rồi mà vẫn chậm, bạn làm gì tiếp?
 
-Cách kiểm: chạy `ANALYZE` rồi chạy lại đúng câu đó. Nếu ước lượng về sát thực tế và kế hoạch đổi đường, thủ phạm là thống kê. Nếu kế hoạch không đổi và `Buffers` vẫn lớn, thủ phạm nằm ở hình dạng truy vấn hoặc ở index.
+- **Trả lời mẫu (30–60 giây):** Tôi đọc kế hoạch trước, không thêm index thứ hai. Bước một là `EXPLAIN (ANALYZE, BUFFERS)` và tìm nút có `rows` dự kiến lệch khỏi `actual rows`. Lệch nghĩa là thống kê sai, và sửa bằng `ANALYZE` cùng statistics target chứ không bằng index. Nếu ước lượng đã đúng mà vẫn chậm, tôi xem `BUFFERS` để biết đang chờ I/O hay chờ khóa.
+- **Lỗi hay mắc khi trả lời:** nhảy thẳng vào kết luận thiếu index composite. Cách nói đúng: nêu điều kiện kết luận — index có `idx_scan` bằng 0 trong khi kế hoạch vẫn là Seq Scan.
 
-</details>
+### Câu 3: Với `WHERE status = ? AND created_at >= ? AND created_at < ?`, vì sao `(status, created_at)` rẻ hơn `(created_at, status)`?
 
-**Câu 2.** Với truy vấn `WHERE status = ? AND created_at >= ? AND created_at < ?`, vì sao `(status, created_at)` rẻ hơn `(created_at, status)`?
+- **Trả lời mẫu (30–60 giây):** Vì index nhiều cột chỉ thu hẹp phần phải quét khi điều kiện bằng nằm trên cột trái nhất. Đặt `status` trước thì `created_at` thành cột khoảng ngay sau cột bằng, nên cả hai điều kiện cùng thu hẹp lát cắt index. Đặt `created_at` trước thì điều kiện khoảng đứng đầu, còn `status` chỉ được kiểm trong index. Đo được bằng `Buffers`: 68 trang so với 31 trang.
+- **Lỗi hay mắc khi trả lời:** nói "index `(created_at, status)` không dùng được `status`". Sai: `status` vẫn được kiểm trong index, chỉ là không thu hẹp phạm vi trang index phải quét.
 
-<details>
-<summary>Đáp án</summary>
+### Câu 4: Hai transaction cùng đọc một dòng rồi cùng ghi. Điều gì quyết định transaction thứ hai thấy gì?
 
-Kết luận: index nhiều cột chỉ dùng được điều kiện bằng trên các cột trái nhất để giới hạn phần index phải quét; điều kiện bất đẳng thức dùng được ở cột đầu tiên không có ràng buộc bằng. Đặt `status` trước thì `created_at` trở thành cột khoảng ngay sau cột bằng, nên cả hai điều kiện cùng thu hẹp lát cắt index. Đặt `created_at` trước thì điều kiện khoảng đứng đầu và `status` chỉ còn được kiểm trong index.
+- **Trả lời mẫu (30–60 giây):** `snapshot` (mốc các transaction đã commit tại thời điểm bắt đầu) quyết định nó thấy phiên bản dòng nào. `UPDATE` không sửa dòng cũ mà ghi phiên bản mới với `xmin` mới, và đánh dấu phiên bản cũ bằng `xmax`. Isolation cao hơn không xoá race condition; nó đổi lỗi âm thầm ghi đè thành lỗi serialization bắt buộc retry. Đó là lý do phải có đường retry trước khi nâng mức isolation.
+- **Lỗi hay mắc khi trả lời:** nói "dùng REPEATABLE READ là hết race condition". Cách nói đúng: mức đó chỉ cố định cái bạn thấy, không ngăn hai transaction cùng đọc rồi cùng ghi.
 
-Điều kiện để đúng: cả hai điều kiện đều là hằng số so sánh trên cột của index, không bọc trong hàm, và cột `status` có đủ ít giá trị phân biệt để phần index bị quét nhỏ.
-
-Cách kiểm: so `Index Cond` và `Buffers` của hai kế hoạch. Cả hai đều in đủ ba điều kiện trong `Index Cond` — ràng buộc trên cột bên phải vẫn được kiểm trong index. Khác biệt thật là ở bản `(created_at, status)` ràng buộc đó chỉ được kiểm trong index chứ không thu hẹp phần index phải quét, nên phải đọc ra qua số trang trong `Buffers`: bản bitmap đọc 68 trang (`shared hit=38 read=30`), bản index scan đọc 31 trang (`shared hit=29 read=2`).
-
-</details>
-
-**Câu 3.** Truy vấn nào composite index `(status, created_at)` không phục vụ, và vì sao?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: ba hình dạng điển hình — chỉ sắp xếp theo `created_at` mà không lọc `status`; lọc bằng biểu thức bọc cột như `lower(status)` hoặc so khớp mờ `status LIKE '%pend%'`; và lọc theo một cột không có trong index.
-
-Điều kiện để đúng: cột dẫn đầu của index không xuất hiện dưới dạng điều kiện bằng hoặc khoảng dùng được, và không có skip scan rẻ hơn Seq Scan. Skip scan chỉ rẻ khi cột thiếu ràng buộc có rất ít giá trị phân biệt.
-
-Cách kiểm: đọc kế hoạch. Nếu thấy `Seq Scan` cộng `Sort` dù index tồn tại, hoặc `Index Cond` không nhắc tới cột bạn tưởng, thì index đang không phục vụ truy vấn đó. Trong lần chạy của bài, `ORDER BY created_at DESC LIMIT 20` cho Seq Scan cộng Sort với 584 trang.
-
-</details>
-
-**Câu 4.** Hai transaction cùng đọc một dòng rồi cùng ghi. Điều gì quyết định transaction thứ hai thấy gì, và isolation cao hơn sửa được gì?
-
-<details>
-<summary>Đáp án</summary>
-
-Kết luận: snapshot của mỗi transaction quyết định nó thấy phiên bản dòng nào. `UPDATE` không sửa dòng cũ mà ghi phiên bản mới với `xmin` mới, và đánh dấu phiên bản cũ bằng `xmax`. Isolation cao hơn không xoá race condition; nó đổi lỗi âm thầm ghi đè thành lỗi serialization bắt buộc retry.
-
-Điều kiện để đúng: transaction thứ hai đọc sau khi transaction thứ nhất đã commit, và mức isolation đủ để nó giữ một snapshot cố định thay vì lấy snapshot mới cho từng câu lệnh.
-
-Cách kiểm: in `xmin` và `xmax` của dòng trước và sau `UPDATE`; dùng `pg_visible_in_snapshot` với snapshot lấy trước đó. Phiên bản mới phải trả `false`. Với hai session thật, lỗi cần thấy là `could not serialize access due to concurrent update` ở mức `REPEATABLE READ`.
-
-</details>
-
-## Bước 7. Câu neo
-
-> Câu SQL không chậm; kế hoạch mới chậm, và kế hoạch được chọn từ thống kê, nên mọi cuộc điều tra bắt đầu ở `EXPLAIN (ANALYZE, BUFFERS)`.
-
+---
 ## Ghi chú nguồn
 
-<details>
-<summary>Ghi chú nguồn, đọc ngày 2026-10-29</summary>
+- https://www.postgresql.org/docs/18/using-explain.html — kế hoạch là cây nút; Seq Scan tính bằng số trang nhân `seq_page_cost` cộng số dòng nhân `cpu_tuple_cost`; Bitmap Heap Scan gom vị trí dòng rồi sắp theo thứ tự trang; `rows` là số dòng phát ra.
+- https://www.postgresql.org/docs/18/indexes-multicolumn.html — luật "equality constraints on leading columns, plus any inequality constraints on the first column that does not have an equality constraint"; ràng buộc trên cột bên phải được kiểm trong index nhưng không nhất thiết thu hẹp phần index phải đọc; mô tả skip scan.
+- Script `lessons/06-dao-sau/l24/explain_demo.mjs` và output ở Phần 2 mục 4: lần chạy thật trên PGlite 0.5.13, PostgreSQL 18.6 wasm32.
 
-- https://www.postgresql.org/docs/18/using-explain.html — mở trong phiên. Xác nhận: kế hoạch là cây nút; bốn số trong ngoặc là cost khởi động, cost tổng, số dòng ước lượng, độ rộng trung bình; Seq Scan tính bằng số trang nhân `seq_page_cost` cộng số dòng nhân `cpu_tuple_cost`; Bitmap Heap Scan gom vị trí dòng rồi sắp theo thứ tự trang; `rows` là số dòng **phát ra** chứ không phải số dòng quét.
-- https://www.postgresql.org/docs/18/indexes-multicolumn.html — mở trong phiên. Xác nhận: luật "equality constraints on leading columns, plus any inequality constraints on the first column that does not have an equality constraint"; ràng buộc trên cột bên phải được kiểm trong index nhưng không nhất thiết thu hẹp phần index phải quét; và mô tả skip scan của B-tree cùng điều kiện nó có lợi (cột thiếu ràng buộc có rất ít giá trị phân biệt).
-- Script `explain_demo.mjs` và toàn bộ output ở Bước 5: chạy thật trong phiên này trên PGlite 0.5.13, PostgreSQL 18.6 wasm32. `SELECT version()` in ra phiên bản đó ở đầu output.
-
-Chưa kiểm trong bài này: hành vi `idx_scan` trên PostgreSQL thật (trên PGlite giá trị này không ổn định giữa các lần chạy); lỗi serialization giữa hai session thật; trang tài liệu về MVCC và isolation của PostgreSQL 18; `max_connections` và các tham số chi phí mặc định khác ngoài hai hằng số đã nêu.
-
-</details>
+Chưa kiểm trong bài: hành vi `idx_scan` trên PostgreSQL thật (trên PGlite giá trị này không ổn định giữa các lần chạy); lỗi serialization giữa hai session thật; trang tài liệu MVCC và isolation của PostgreSQL 18.
