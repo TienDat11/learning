@@ -52,9 +52,9 @@ Hai chỗ lệch, cùng một nguyên nhân: có hai cạnh phụ thuộc không
 
 ```mermaid
 flowchart LR
-  A[effect đang chạy] -->|đọc state.q qua trap get| B[track: ghi effect vào Set của khóa q]
-  C[state.q = 'hd'] -->|qua trap set| D[trigger: lấy Set của khóa q]
-  D --> E[đánh thức đúng các effect trong Set]
+  A[effect đang chạy] -->|đọc state.q qua trap get| B[track: nối effect vào danh sách Link của Dep khóa q]
+  C[state.q = 'hd'] -->|qua trap set| D[trigger: lấy Dep của khóa q]
+  D --> E[đánh thức đúng các effect trong danh sách Link]
   E --> A
 ```
 

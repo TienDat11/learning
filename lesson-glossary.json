@@ -309,7 +309,7 @@
       },
       {
         "term": "track",
-        "is": "Trap get ghi effect đang chạy vào Set của khóa vừa được đọc.",
+        "is": "Trap get ghi effect đang chạy vào danh sách Link của Dep cho khóa vừa được đọc.",
         "not": "Việc gọi lại effect khi khóa bị ghi — đó là trigger."
       },
       {
